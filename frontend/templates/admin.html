@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Управление пользователями</title>
+    <link rel="stylesheet" href="../static/css/admin.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"
+    />
+  </head>
+  <body>
+    <header class="header">
+      Управление пользователями |
+      <button class="logout-btn" onclick="logout()">Выход</button>
+    </header>
+
+    <main class="main-content">
+      <div class="title-section">
+        <h1 class="page-title">Управление пользователями</h1>
+        <div class="user-count">Всего пользователей:<span id="total-users">0</span></div>
+        <button class="add-user-btn">Добавить пользователя</button>
+      </div>
+
+      <div class="search-section">
+        <div class="search-bar">
+            <img src="/static/images/search.svg" alt="Поиск" class="search-icon">
+            <input type="text" class="search-input" placeholder="Поиск пользователей...">
+          
+            <div class="filter-container">
+              <button class="filter-btn">
+                  <img src="/static/images/filter.svg" alt="Фильтр" class="filter-icon">
+                  <span>Фильтр</span>
+              </button>
+              <div class="filter-dropdown">
+                  <div class="filter-item">
+                      <div class="filter-select" data-type="role">
+                          <span>Роль</span>
+                          <img src="/static/images/chevron.svg" alt=">" class="chevron-icon">
+                      </div>
+                      <div class="filter-options">
+                          <div class="option" data-value="all">Все</div>
+                          <div class="option" data-value="manager">Менеджер</div>
+                          <div class="option" data-value="waiter">Официант</div>
+                          <div class="option" data-value="cook">Повар</div>
+                          <div class="option" data-value="client">Клиент</div>
+                      </div>
+                  </div>
+                  <div class="filter-item">
+                      <div class="filter-select" data-type="status">
+                          <span>Статус</span>
+                          <img src="/static/images/chevron.svg" alt=">" class="chevron-icon">
+                      </div>
+                      <div class="filter-options">
+                          <div class="option" data-value="all">Все</div>
+                          <div class="option" data-value="active">Активные</div>
+                          <div class="option" data-value="inactive">Неактивные</div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+        </div>
+    </div>
+
+      <div class="table-container">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>Пользователь</th>
+              <th>Роль</th>
+              <th>Статус</th>
+              <th>Последняя активность</th>
+              <th>Дата создания</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Table content will be dynamically populated -->
+          </tbody>
+        </table>
+        <div class="pagination">
+          <div>
+            <svg
+              class="prev"
+              width="19"
+              height="19"
+              viewBox="0 0 19 19"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M11.875 14.25L7.125 9.5L11.875 4.75"
+                stroke="#6A6A6A"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+            </svg>
+          </div>
+          <span>1 из 1 страниц</span>
+          <div>
+            <svg
+              class="next"
+              width="19"
+              height="19"
+              viewBox="0 0 19 19"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M7.125 14.25L11.875 9.5L7.125 4.75"
+                stroke="#6A6A6A"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-container">
+        <div class="stat-card">
+          <div class="stat-title">Активные пользователи</div>
+          <div class="stat-value"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">Роли</div>
+          <div class="stat-value"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">Новых за неделю</div>
+          <div class="stat-value"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">Заблокированных</div>
+          <div class="stat-value"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Модальное окно добавления пользователя -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Добавить пользователя</div>
+                <button class="close-btn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="addUserForm">
+                <div class="input-group">
+                    <label>Имя пользователя</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" name="email" required>
+                </div>
+                <div class="input-group">
+                    <label>Пароль</label>
+                    <input type="password" name="password" required>
+                </div>
+                <div class="input-group">
+                    <label>Роль</label>
+                    <select name="role" required>
+                        <option value="waiter">Официант</option>
+                        <option value="cook">Повар</option>
+                        <option value="manager">Менеджер</option>
+                        <option value="client">Клиент</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary close-btn">Отмена</button>
+                    <button type="submit" class="btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/admin.js"></script>
+  </body>
+</html>
