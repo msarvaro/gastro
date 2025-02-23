@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Restaurant Table Management</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../static/css/styles.css" />
+  </head>
+  <body>
+    <div class="waiter">
+      <div class="occupancy-status">
+        <div class="occupancy-status__title">50% занято</div>
+        <div class="occupancy-status__subtitle">
+          Количество свободных столов: 3 из 6
+        </div>
+      </div>
+
+      <div class="content-wrapper">
+        <div class="tables-section">
+          <h1 class="tables-section__title">Столы</h1>
+          <div class="tables-section__legend">
+            <span class="legend-item legend-item--occupied">Занят</span> |
+            <span class="legend-item legend-item--reserved">Забронирован</span>
+            |
+            <span class="legend-item legend-item--free">Свободен</span>
+          </div>
+
+          <button class="filter-button">
+            <img
+              src="https://cdn.builder.io/api/v1/image/assets/TEMP/ed42cdbb473f00b449d35cb2404685a76c4498c27226c51b6405a7639d3f6e1f"
+              alt="Filter icon"
+              class="filter-button__icon"
+            />
+            <span class="filter-button__text">Фильтр</span>
+            <span class="filter-button__badge">2</span>
+          </button>
+
+          <div class="tables-grid">
+            <!-- Table 1 -->
+            <div class="table-card table-card--occupied">
+              <div class="table-card__header">
+                <div class="status-dot status-dot--occupied"></div>
+                <div class="table-card__title">
+                  №1 <span class="table-card__seats">4 мест</span>
+                </div>
+              </div>
+              <div class="table-card__orders">
+                <span class="order-tag order-tag--blue">#45</span>
+                <span class="order-tag order-tag--green">#34</span>
+              </div>
+              <div class="table-card__time">15:10<br />1ч 20м</div>
+            </div>
+
+            <!-- Table 2 -->
+            <div class="table-card table-card--free">
+              <div class="table-card__header">
+                <div class="status-dot status-dot--free"></div>
+                <div class="table-card__title">
+                  №2 <span class="table-card__seats">4 мест</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table 3 -->
+            <div class="table-card table-card--reserved">
+              <div class="table-card__header">
+                <div class="status-dot status-dot--reserved"></div>
+                <div class="table-card__title">
+                  №3 <span class="table-card__seats">4 мест</span>
+                </div>
+              </div>
+              <div class="table-card__time">15:30</div>
+            </div>
+
+            <!-- Table 4 -->
+            <div class="table-card table-card--free">
+              <div class="table-card__header">
+                <div class="status-dot status-dot--free"></div>
+                <div class="table-card__title">
+                  №4 <span class="table-card__seats">4 мест</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table 5 -->
+            <div class="table-card table-card--free">
+              <div class="table-card__header">
+                <div class="status-dot status-dot--free"></div>
+                <div class="table-card__title">
+                  №5 <span class="table-card__seats">4 мест</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table 6 -->
+            <div class="table-card table-card--free">
+              <div class="table-card__header">
+                <div class="status-dot status-dot--free"></div>
+                <div class="table-card__title">
+                  №6 <span class="table-card__seats">4 мест</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="tab-bar">
+        <a href="#" class="tab-item tab-item--active">
+          <img
+            src="https://cdn.builder.io/api/v1/image/assets/TEMP/18159bd40591278cce1e8f7e729bd3a48c9811158f2517eb249ce4ad19bf9e0b"
+            alt="Tables"
+            class="tab-item__icon"
+          />
+          <span class="tab-item__text">Столы</span>
+        </a>
+        <a href="orders.html" class="tab-item">
+          <img
+            src="https://cdn.builder.io/api/v1/image/assets/TEMP/d2516b1c80a18c7868bce949e22d739c91417cb204052fccfe428bd3af77a05e"
+            alt="Orders"
+            class="tab-item__icon"
+          />
+          <span class="tab-item__text">Заказы</span>
+        </a>
+        <a href="#" class="tab-item">
+          <img
+            src="https://cdn.builder.io/api/v1/image/assets/TEMP/381fc212caebdef50ea03df1081d4f6ea66af31a3c7048937de931156fd6aa9b"
+            alt="Order History"
+            class="tab-item__icon"
+          />
+          <span class="tab-item__text">История заказов</span>
+        </a>
+        <a href="#" class="tab-item">
+          <img
+            src="https://cdn.builder.io/api/v1/image/assets/TEMP/4c27d3084e34b688d6f08a2f9479afc879f6fb056a86c5adfd5a6222c908f44d"
+            alt="Profile"
+            class="tab-item__icon"
+          />
+          <span class="tab-item__text">Профиль</span>
+        </a>
+      </nav>
+    </div>
+  </body>
+</html>

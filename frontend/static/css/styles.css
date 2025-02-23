@@ -1,0 +1,389 @@
+/* Base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family:
+    "Inter",
+    -apple-system,
+    Roboto,
+    Helvetica,
+    sans-serif;
+  background-color: #fff;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Main container */
+.waiter {
+  background-color: #fff;
+  margin: 0 auto;
+  max-width: 480px;
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  padding: 0 16px 88px;
+}
+
+@media (min-width: 768px) {
+  .waiter {
+    max-width: 720px;
+    padding: 0 24px 108px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .waiter {
+    max-width: 960px;
+    padding: 0 32px 108px;
+  }
+}
+
+/* Occupancy status section */
+.occupancy-status {
+  background-color: #006ffd;
+  width: 100%;
+  padding: 74px 18px 17px;
+  color: #fff;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.occupancy-status__title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.24px;
+}
+
+.occupancy-status__subtitle {
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 18px;
+  letter-spacing: 0.15px;
+  margin-top: 4px;
+}
+
+/* Content wrapper */
+.content-wrapper {
+  margin-top: 160px;
+  padding: 0 16px;
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Tables section */
+.tables-section {
+  width: 100%;
+}
+
+.tables-section__title {
+  color: #000;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.18px;
+}
+
+.tables-section__legend {
+  color: #000;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.1px;
+  margin-top: 10px;
+  margin-bottom: 16px;
+}
+
+.legend-item--occupied {
+  color: #006ffd;
+}
+.legend-item--reserved {
+  color: #f59e0b;
+}
+.legend-item--free {
+  color: #737373;
+}
+
+/* Tables grid */
+.tables-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+/* First row tables */
+.table-card:nth-child(-n + 3) {
+  grid-row: 1;
+}
+
+/* Second row tables */
+.table-card:nth-child(n + 4) {
+  grid-column: span 1;
+}
+
+/* Table Cards */
+.table-card {
+  background-color: rgba(212, 214, 221, 0.5);
+  border-radius: 5px;
+  padding: 12px;
+  min-height: 89px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.table-card__header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.table-card__title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12px;
+  color: #000;
+}
+
+.table-card__seats {
+  font-weight: 400;
+  font-size: 10px;
+  color: #727272;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot--occupied {
+  background-color: #006ffd;
+}
+.status-dot--reserved {
+  background-color: #f59e0b;
+}
+.status-dot--free {
+  background-color: #737373;
+}
+
+.table-card__orders {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-tag {
+  border-radius: 3px;
+  padding: 3px 9px;
+  font-size: 10px;
+  color: #fff;
+  width: fit-content;
+}
+
+.order-tag--blue {
+  background-color: rgba(0, 111, 253, 0.4);
+}
+.order-tag--green {
+  background-color: rgba(16, 185, 129, 0.4);
+}
+
+.table-card__time {
+  color: #727272;
+  font-size: 10px;
+  margin-top: 12px;
+  line-height: 1.4;
+}
+
+/* Filter Button */
+.filter-button {
+  border-radius: 12px;
+  border: 1px solid #d4d6dd;
+  display: flex;
+  min-height: 36px;
+  padding: 8px 8px 8px 12px;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+}
+
+.filter-button__icon {
+  width: 12px;
+  height: 12px;
+}
+
+.filter-button__text {
+  font-size: 12px;
+  color: #1f2024;
+  font-weight: 400;
+  letter-spacing: 0.12px;
+}
+
+.filter-button__badge {
+  border-radius: 20px;
+  background-color: #006ffd;
+  min-height: 20px;
+  padding: 0 6px;
+  font-size: 10px;
+  color: #fff;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+}
+
+/* Tab Bar */
+.tab-bar {
+  background-color: #fff;
+  display: flex;
+  min-height: 88px;
+  width: 100%;
+  padding: 16px 16px 30px;
+  gap: 4px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  text-decoration: none;
+  color: #71727a;
+  font-size: 10px;
+  font-weight: 400;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.tab-item--active {
+  font-weight: 600;
+}
+
+.tab-item--active .tab-item__icon {
+  filter: invert(37%) sepia(74%) saturate(3383%) hue-rotate(206deg)
+    brightness(101%) contrast(101%);
+}
+
+.tab-item--active .tab-item__text {
+  color: #1f2024;
+}
+.tab-item__icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.tab-item__text {
+  margin-top: 8px;
+  transition: color 0.2s ease;
+}
+
+.tab-item:hover .tab-item__icon {
+  filter: invert(37%) sepia(74%) saturate(3383%) hue-rotate(206deg)
+    brightness(101%) contrast(101%);
+}
+
+.tab-item:hover .tab-item__text {
+  color: #1f2024;
+}
+/* Responsive Adjustments */
+@media (min-width: 768px) {
+  .occupancy-status {
+    padding: 40px 32px;
+  }
+
+  .occupancy-status__title {
+    font-size: 32px;
+  }
+
+  .occupancy-status__subtitle {
+    font-size: 18px;
+    margin-top: 0;
+  }
+
+  .tables-grid {
+    gap: 16px;
+  }
+
+  .filter-button {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+
+  .filter-button:hover {
+    background-color: rgba(0, 111, 253, 0.05);
+    border-color: #006ffd;
+  }
+
+  .tab-bar {
+    padding: 20px 40px;
+    min-height: 100px;
+  }
+
+  .tab-item {
+    font-size: 12px;
+    gap: 12px;
+  }
+
+  .tab-item__icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .tab-item__text {
+    margin-top: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .tables-grid {
+    gap: 24px;
+  }
+
+  .tab-bar {
+    padding: 24px 60px;
+  }
+
+  .tab-item {
+    font-size: 14px;
+  }
+
+  .tab-item__icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .content-wrapper {
+    padding: 0 8px;
+  }
+
+  .tables-grid {
+    gap: 8px;
+  }
+}
