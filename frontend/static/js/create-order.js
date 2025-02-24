@@ -119,10 +119,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Если есть несохраненные изменения, показываем подтверждение
         if (currentOrderData.items.length > 0) {
             if (confirm('Вы уверены, что хотите вернуться? Несохраненные изменения будут потеряны.')) {
-                window.location.href = 'index.html';
+                window.location.href = 'orders.html';
             }
         } else {
-            window.location.href = 'index.html';
+            window.location.href = 'orders.html';
         }
     });
 
@@ -321,29 +321,57 @@ function hideConfirmOrderModal() {
 
 async function createOrder() {
     try {
-        // Здесь будет запрос к API
-        // const response = await fetch('/api/orders', {
-        //     method: 'POST',
-        //     headers: {
-        //         'Content-Type': 'application/json'
-        //     },
-        //     body: JSON.stringify(currentOrderData)
-        // });
+        // Проверяем, выбран ли стол
+        const selectedTableText = document.getElementById('selectedTableText');
+        if (!selectedTableText || !selectedTableText.textContent) {
+            alert('Пожалуйста, выберите стол');
+            return;
+        }
+
+        // Получаем ID стола из текста (например, "Стол №2" -> 2)
+        const tableId = parseInt(selectedTableText.textContent.match(/\d+/)[0]);
+
+        // Проверяем, есть ли выбранные блюда
+        if (currentOrderData.items.length === 0) {
+            alert('Добавьте хотя бы одно блюдо в заказ');
+            return;
+        }
+        
+        // Создаем новый заказ
+        const newOrder = {
+            id: Date.now(),
+            tableId: tableId,
+            waiterId: 1,
+            status: 'new',
+            items: currentOrderData.items,
+            comment: currentOrderData.comment || '',
+            total: currentOrderData.total,
+            createdAt: new Date().toISOString()
+        };
+
+        // Получаем существующие заказы из localStorage
+        let ordersData = JSON.parse(localStorage.getItem('orders') || '{"orders":[]}');
+        
+        // Если ordersData не имеет свойства orders, создаем его
+        if (!ordersData.orders) {
+            ordersData = { orders: [] };
+        }
+        
+        // Добавляем новый заказ
+        ordersData.orders.push(newOrder);
+        
+        // Сохраняем обновленный список заказов
+        localStorage.setItem('orders', JSON.stringify(ordersData));
         
         // Показываем уведомление об успехе
-        showSuccessNotification();
+        alert('Заказ успешно создан!');
         
-        // Очищаем форму
-        resetOrderForm();
-        
-        // Перенаправляем на страницу заказов через 2 секунды
-        setTimeout(() => {
-            window.location.href = 'orders.html';
-        }, 2000);
+        // Перенаправляем на страницу заказов
+        window.location.href = 'orders.html';
         
     } catch (error) {
         console.error('Error creating order:', error);
-        // Здесь можно добавить показ ошибки пользователю
+        alert('Ошибка при создании заказа: ' + error.message);
     }
 }
 

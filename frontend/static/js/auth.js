@@ -8,14 +8,30 @@ document.addEventListener('DOMContentLoaded', function() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const remember = document.querySelector('input[type="checkbox"]').checked;
-            
+
+            // Локальные данные официантов для тестирования
+            const waiters = [
+                { id: 1, username: 'waiter1', password: 'password123', role: 'waiter' },
+                { id: 2, username: 'waiter2', password: 'password123', role: 'waiter' }
+            ];
+
+            const waiter = waiters.find(w => 
+                w.username === username && 
+                w.password === password
+            );
+
+            if (waiter) {
+                localStorage.setItem('currentUser', JSON.stringify(waiter));
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Если не официант, пробуем через бэкенд
             const requestData = { 
                 username, 
                 password,
                 remember
             };
-            
-            console.log('Sending login request:', requestData);
             
             try {
                 const response = await fetch('/api/login', {
@@ -26,11 +42,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: JSON.stringify(requestData)
                 });
                 
-                console.log('Response status:', response.status);
-                
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('Login successful:', data);
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('role', data.role);
                     window.location.href = '/admin';
@@ -41,7 +54,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 console.error('Error during login:', error);
-                alert('Произошла ошибка при входе');
+                // Если сервер недоступен, просто показываем общую ошибку
+                alert('Неверные учетные данные');
             }
         });
     } else {
@@ -53,5 +67,6 @@ document.addEventListener('DOMContentLoaded', function() {
 function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
+    localStorage.removeItem('currentUser');
     window.location.href = '/';
 }

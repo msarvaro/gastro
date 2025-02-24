@@ -14,9 +14,9 @@
   <body>
     <div class="waiter">
       <div class="orders-status">
-        <div class="orders-status__title">5 активных заказов</div>
-        <div class="orders-status__subtitle">
-          Новых: 1 | В работе: 2 | Готовых: 2
+        <div class="orders-status__title">Заказы</div>
+        <div class="orders-status__subtitle" id="ordersStatusInfo">
+          <!-- Будет заполнено динамически -->
         </div>
       </div>
 
@@ -26,168 +26,48 @@
             <h1 class="orders-header__title">Заказы</h1>
             <div class="orders-filters">
               <button class="filter-button filter-button--time">
-                <img
-                  src="https://cdn.builder.io/api/v1/image/assets/b109aefc5e5b44d6bb19e3dddae30754/aec4b91dd1ca7b2d371054e650f123961069d8ac247e4fdfc12d1906b96f4f66"
-                  alt="Time filter"
-                  class="filter-button__icon"
-                />
+                <img src="../static/images/sort.svg" alt="Time filter" class="filter-button__icon" />
                 <span class="filter-button__text">Время заказа</span>
-                <img
-                  src="https://cdn.builder.io/api/v1/image/assets/b109aefc5e5b44d6bb19e3dddae30754/59575d13eaef4ff4a4011484a0a012c9c8b1b257d7e240fb1506a97dfc2e1fff"
-                  alt="Arrow"
-                  class="filter-button__arrow"
-                />
+                <img src="../static/images/arrow-down.svg" alt="Arrow" class="filter-button__arrow" />
               </button>
               <button class="filter-button filter-button--filter">
-                <img
-                  src="https://cdn.builder.io/api/v1/image/assets/b109aefc5e5b44d6bb19e3dddae30754/122b3dd672124db62d7ce7a8f5e3e55daef29831a19ade1d3fc793e60ea8988a"
-                  alt="Filter"
-                  class="filter-button__icon"
-                />
+                <img src="../static/images/filter.svg" alt="Filter" class="filter-button__icon" />
                 <span class="filter-button__text">Фильтр</span>
                 <span class="filter-button__badge">2</span>
               </button>
             </div>
           </div>
 
-          <div class="orders-list">
-            <div class="order-card">
-              <div class="order-card__number">#3</div>
-              <div class="order-card__content">
-                <div class="order-card__header">
-                  <div class="order-card__title">
-                    Стол 1:
-                    <span class="order-card__time">15:10, 22.02.2025</span>
-                  </div>
-                  <div class="order-card__items">
-                    Яйцо пашот, пицца по аджарски...
-                  </div>
-                </div>
-                <div class="order-card__footer">
-                  <div class="status-badge status-badge--new">Новый заказ</div>
-                  <div class="order-card__price">5567 KZT</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="order-card">
-              <div class="order-card__number">#4</div>
-              <div class="order-card__content">
-                <div class="order-card__header">
-                  <div class="order-card__title">
-                    Стол 5:
-                    <span class="order-card__time">14:50, 22.02.2025</span>
-                  </div>
-                  <div class="order-card__items">
-                    Яйцо пашот, пицца по аджарски...
-                  </div>
-                </div>
-                <div class="order-card__footer">
-                  <div class="status-badge status-badge--accepted">Принят</div>
-                  <div class="order-card__price">15900 KZT</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="order-card">
-              <div class="order-card__number">#7</div>
-              <div class="order-card__content">
-                <div class="order-card__header">
-                  <div class="order-card__title">
-                    Стол 2:
-                    <span class="order-card__time">14:30, 22.02.2025</span>
-                  </div>
-                  <div class="order-card__items">
-                    Яйцо пашот, пицца по аджарски...
-                  </div>
-                </div>
-                <div class="order-card__footer">
-                  <div class="status-badge status-badge--cooking">
-                    Готовится
-                  </div>
-                  <div class="order-card__price">5567 KZT</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="order-card">
-              <div class="order-card__number">#6</div>
-              <div class="order-card__content">
-                <div class="order-card__header">
-                  <div class="order-card__title">
-                    Стол 2:
-                    <span class="order-card__time">14:10, 22.02.2025</span>
-                  </div>
-                  <div class="order-card__items">
-                    Яйцо пашот, пицца по аджарски...
-                  </div>
-                </div>
-                <div class="order-card__footer">
-                  <div class="status-badge status-badge--ready">Готов</div>
-                  <div class="order-card__price">5567 KZT</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="order-card">
-              <div class="order-card__number">#5</div>
-              <div class="order-card__content">
-                <div class="order-card__header">
-                  <div class="order-card__title">
-                    Стол 2:
-                    <span class="order-card__time">14:10, 22.02.2025</span>
-                  </div>
-                  <div class="order-card__items">
-                    Яйцо пашот, пицца по аджарски...
-                  </div>
-                </div>
-                <div class="order-card__footer">
-                  <div class="status-badge status-badge--served">Подан</div>
-                  <div class="order-card__price">5567 KZT</div>
-                </div>
-              </div>
-            </div>
+          <div class="orders-list" id="ordersList">
+            <!-- Заказы будут добавлены динамически -->
           </div>
 
-          <button class="add-order-button">Добавить заказ</button>
+          <button class="add-order-button" onclick="window.location.href='create-order.html'">
+            Добавить заказ
+          </button>
         </div>
       </div>
 
       <nav class="tab-bar">
         <a href="index.html" class="tab-item">
-          <img
-            src="https://cdn.builder.io/api/v1/image/assets/b109aefc5e5b44d6bb19e3dddae30754/a44b3b76a170cb9141f961d1812acc65911df464e91056a87e37e053693a4fcd"
-            alt="Tables"
-            class="tab-item__icon"
-          />
+          <img src="../static/images/tables.svg" alt="Tables" class="tab-item__icon" />
           <span class="tab-item__text">Столы</span>
         </a>
         <a href="orders.html" class="tab-item tab-item--active">
-          <img
-            src="https://cdn.builder.io/api/v1/image/assets/TEMP/d2516b1c80a18c7868bce949e22d739c91417cb204052fccfe428bd3af77a05e"
-            alt="Orders"
-            class="tab-item__icon"
-          />
+          <img src="../static/images/orders.svg" alt="Orders" class="tab-item__icon" />
           <span class="tab-item__text">Заказы</span>
         </a>
-        <a href="#" class="tab-item">
-          <img
-            src="https://cdn.builder.io/api/v1/image/assets/b109aefc5e5b44d6bb19e3dddae30754/7295ca51a0abff2936ff76295446f3d892766cb764a4c5a3c37dcd126077d856"
-            alt="Order History"
-            class="tab-item__icon"
-          />
+        <a href="history.html" class="tab-item">
+          <img src="../static/images/history.svg" alt="History" class="tab-item__icon" />
           <span class="tab-item__text">История заказов</span>
         </a>
         <a href="#" class="tab-item">
-          <img
-            src="https://cdn.builder.io/api/v1/image/assets/b109aefc5e5b44d6bb19e3dddae30754/b2a54acf63348bc76122a81f68507d4f351416fd512a15fd3c27d67e44514acc"
-            alt="Profile"
-            class="tab-item__icon"
-          />
+          <img src="../static/images/profile.svg" alt="Profile" class="tab-item__icon" />
           <span class="tab-item__text">Профиль</span>
         </a>
       </nav>
     </div>
 
+    <script src="../static/js/orders.js"></script>
   </body>
 </html>
