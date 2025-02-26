@@ -15,10 +15,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Временные данные о столах
     const tables = [
         { id: 1, number: 1, seats: 4, status: 'free' },
-        { id: 2, number: 2, seats: 4, status: 'occupied' },
+        { id: 2, number: 2, seats: 4, status: 'free' },
         { id: 3, number: 3, seats: 6, status: 'free' },
         { id: 4, number: 4, seats: 2, status: 'free' },
-        { id: 5, number: 5, seats: 4, status: 'occupied' },
+        { id: 5, number: 5, seats: 4, status: 'free' },
         { id: 6, number: 6, seats: 8, status: 'free' }
     ];
 

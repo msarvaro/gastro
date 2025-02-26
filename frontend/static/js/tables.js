@@ -17,6 +17,10 @@ function loadTables() {
         const ordersData = JSON.parse(localStorage.getItem('orders') || '{"orders":[]}');
         const activeOrders = ordersData.orders || [];
         
+        // Получаем резервации столов
+        const reservationsData = JSON.parse(localStorage.getItem('reservations') || '{"reservations":[]}');
+        const activeReservations = reservationsData.reservations || [];
+        
         // Получаем контейнер для столов
         const tablesGrid = document.getElementById('tablesGrid');
         let tablesHTML = '';
@@ -27,13 +31,28 @@ function loadTables() {
             const tableOrders = activeOrders.filter(order => order.tableId === i);
             const isOccupied = tableOrders.length > 0;
             
+            // Проверяем, забронирован ли стол
+            const isReserved = activeReservations.some(reservation => reservation.tableId === i);
+            
+            // Определяем класс для стола на основе его статуса
+            let tableClass = 'table-card--free';
+            let statusText = 'Свободен';
+            
+            if (isOccupied) {
+                tableClass = 'table-card--occupied';
+                statusText = 'Занят';
+            } else if (isReserved) {
+                tableClass = 'table-card--reserved';
+                statusText = 'Забронирован';
+            }
+            
             tablesHTML += `
-                <div class="table-card ${isOccupied ? 'table-card--occupied' : 'table-card--free'}" 
+                <div class="table-card ${tableClass}" 
                      onclick="handleTableClick(${i})">
                     <div class="table-card__header">
                         <div class="table-card__number">Стол ${i}</div>
-                        <div class="table-card__status ${isOccupied ? 'status--occupied' : 'status--free'}">
-                            ${isOccupied ? 'Занят' : 'Свободен'}
+                        <div class="table-card__status ${tableClass.replace('table-card--', 'status--')}">
+                            ${statusText}
                         </div>
                     </div>
                     ${isOccupied ? `
@@ -130,8 +149,10 @@ document.addEventListener('DOMContentLoaded', loadTables);
 function updateTablesStatus() {
     const statusInfo = document.getElementById('tablesStatusInfo');
     const freeTables = document.querySelectorAll('.table-card--free').length;
+    const reservedTables = document.querySelectorAll('.table-card--reserved').length;
+    const occupiedTables = document.querySelectorAll('.table-card--occupied').length;
     const totalTables = document.querySelectorAll('.table-card').length;
-    statusInfo.textContent = `Свободно ${freeTables} из ${totalTables} столов`;
+    statusInfo.textContent = `Свободно ${freeTables} из ${totalTables} столов (${occupiedTables} занято, ${reservedTables} забронировано)`;
 }
 
 function logout() {

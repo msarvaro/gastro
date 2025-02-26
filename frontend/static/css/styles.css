@@ -76,7 +76,7 @@ body {
   margin-top: 160px;
   padding: 0 16px;
   width: 100%;
-  max-width: 1200px;
+  max-width: 1440px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -132,13 +132,72 @@ body {
 
 /* Table Cards */
 .table-card {
-  background-color: rgba(212, 214, 221, 0.5);
-  border-radius: 5px;
-  padding: 12px;
-  min-height: 89px;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.table-card--occupied {
+  background-color: #E5EDFF; /* Голубой для занятых столов */
+  border-left: 4px solid #3366FF; /* Синяя полоса для занятых столов */
+}
+
+.table-card--reserved {
+  background-color: #FFF4E5; /* Светло-оранжевый фон для забронированных столов */
+  border-left: 4px solid #FF9933; /* Оранжевая полоса для забронированных столов */
+}
+
+.table-card--free {
+  background-color: #F5F5F5; /* Серый для свободных столов */
+  border-left: 4px solid #B0B0B0; /* Серая полоса для свободных столов */
+}
+
+/* Стили для индикатора статуса */
+.table-card__status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.status--occupied {
+  background-color: #3366FF; /* Синий фон для текста "Занят" */
+  color: white;
+}
+
+.status--reserved {
+  background-color: #FF9933; /* Оранжевый фон для текста "Забронирован" */
+  color: white;
+}
+
+.status--free {
+  background-color: #B0B0B0; /* Серый фон для текста "Свободен" */
+  color: white;
+}
+
+/* Стили для легенды */
+.legend-item {
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.legend-item--occupied {
+  background-color: #3366FF;
+  color: white;
+}
+
+.legend-item--reserved {
+  background-color: #FF9933;
+  color: white;
+}
+
+.legend-item--free {
+  background-color: #B0B0B0;
+  color: white;
 }
 
 .table-card__header {
