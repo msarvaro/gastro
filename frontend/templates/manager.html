@@ -11,7 +11,7 @@
 <body>
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
-    <div class="logo" onclick="toggleSidebar()">
+    <div class="logo">
         <img src="../static/images/logo.svg" alt="Logo">
         <span class="sidebar-label">Markiz</span>
     </div>
@@ -56,7 +56,7 @@
 <!-- Main Content -->
 <div class="main-content">
     <!-- Главная страница -->
-    <section id="main-section">
+    <section id="main-section" class="section">
         <div class="header">Главная страница</div>
         <div class="cards">
             <div class="card">
@@ -80,7 +80,7 @@
     </section>
 
     <!-- Управление запасами -->
-    <section id="inventory-section" style="display:none;">
+    <section id="inventory-section" class="section" style="display:none;">
         <div class="header">Управление запасами</div>
         <div class="tabs">
             <button class="tab-btn active" onclick="showInventoryTab('stock')">Склад</button>
@@ -89,7 +89,7 @@
             <button class="tab-btn" onclick="showInventoryTab('history')">История</button>
         </div>
         <!-- Склад -->
-        <div id="inventory-stock-tab">
+        <div id="inventory-stock-tab" class="tab-content">
             <div class="filters">
                 <input type="text" id="productSearch" placeholder="Поиск продукта...">
                 <select id="productCategoryFilter"><option value="">Категория</option><option value="Кофе">Кофе</option><option value="Молочные продукты">Молочные продукты</option><option value="Сиропы">Сиропы</option><option value="Расходники">Расходники</option><option value="Чай">Чай</option></select>
@@ -120,7 +120,7 @@
             </div>
         </div>
         <!-- Заявки -->
-        <div id="inventory-requests-tab" style="display:none;">
+        <div id="inventory-requests-tab" class="tab-content" style="display:none;">
             <div class="filters">
                 <input type="text" id="requestSearch" placeholder="Поиск заявки...">
                 <select id="requestStatusFilter"><option value="">Статус</option><option value="pending">Ожидает одобрения</option><option value="active">В обработке</option><option value="completed">Выполнено</option><option value="rejected">Отклонено</option></select>
@@ -130,7 +130,7 @@
             <div class="cards">
                 <div class="card">Активные заявки<br><span class="value"></span></div>
                 <div class="card">Ожидают одобрения<br><span class="value"></span></div>
-                <div class="card">Выполнено в этом месяце<br><span class="value">L</span></div>
+                <div class="card">Выполнено в этом месяце<br><span class="value"></span></div>
             </div>
             <div class="table-section">
                 <table>
@@ -141,11 +141,11 @@
                         <!-- Динамические строки -->
                     </tbody>
                 </table>
-                <div class="pagination">1 из 3 страниц</div>
+                <div class="pagination">1 из 1 страниц</div>
             </div>
         </div>
         <!-- Поставщики -->
-        <div id="inventory-suppliers-tab" style="display:none;">
+        <div id="inventory-suppliers-tab" class="tab-content" style="display:none;">
             <div class="filters">
                 <input type="text" id="supplierSearch" placeholder="Поиск поставщика...">
                 <select id="supplierCategoryFilter"><option value="">Категория</option><option value="Кофе, чай">Кофе, чай</option><option value="Молочные продукты">Молочные продукты</option><option value="Сиропы">Сиропы</option><option value="Расходные материалы">Расходные материалы</option><option value="Выпечка, кондитерские изделия">Выпечка, кондитерские изделия</option><option value="Фрукты, ягоды">Фрукты, ягоды</option></select>
@@ -163,13 +163,30 @@
                 <div class="pagination">1 из 1 страниц</div>
             </div>
         </div>
-        <!-- История (заглушка) -->
-        <div id="inventory-history-tab" style="display:none;">
+        <!-- История -->
+        <div id="inventory-history-tab" class="tab-content" style="display:none;">
             <div class="table-section">
                 <p>История операций (заглушка)</p>
             </div>
         </div>
     </section>
+
+    <!-- Другие секции -->
+    <section id="finances-section" class="section" style="display:none;"><div class="header">Финансы (заглушка)</div></section>
+    <section id="menu-section" class="section" style="display:none;">
+        <div class="header">Управление меню</div>
+        <div class="menu-actions">
+            <button id="addCategoryBtn">Добавить категорию</button>
+            <button id="addMenuItemBtn">Добавить блюдо</button>
+        </div>
+        <div class="menu-content">
+            <div class="categories"></div>
+            <div class="menu-items"></div>
+        </div>
+    </section>
+    <section id="staff-section" class="section" style="display:none;"><div class="header">Персонал (заглушка)</div></section>
+    <section id="settings-section" class="section" style="display:none;"><div class="header">Настройки (заглушка)</div></section>
+    <section id="analytics-section" class="section" style="display:none;"><div class="header">Аналитика (заглушка)</div></section>
 
     <!-- Модальные окна -->
     <!-- Добавить продукт -->
@@ -229,9 +246,15 @@
                     <option value="">Поставщик*</option>
                     <!-- Динамически -->
                 </select>
-                <div>
-                    <select name="requestItems" id="requestItemsSelect" multiple required style="width:100%; min-height:60px;"></select>
-                    <a href="#" style="font-size:13px;">+ Добавить товар</a>
+                <div id="requestItemsList"></div>
+                <button type="button" id="addRequestItemBtn" style="font-size:13px; margin-top:4px;">+ Добавить товар</button>
+                <!-- Место для динамической формы выбора товара -->
+                <div id="addRequestItemForm" style="display:none; margin-top:8px;">
+                    <select id="requestItemSelect"></select>
+                    <input type="number" id="requestItemQty" placeholder="Количество" min="0.01" step="0.01" style="width:80px;">
+                    <select id="requestItemUnit"></select>
+                    <button type="button" id="confirmAddRequestItemBtn">Добавить</button>
+                    <button type="button" id="cancelAddRequestItemBtn">Отмена</button>
                 </div>
                 <select name="requestPriority" required>
                     <option value="">Приоритет</option>
@@ -239,6 +262,7 @@
                     <option value="high">Высокий</option>
                 </select>
                 <input type="text" name="requestComment" placeholder="Комментарий">
+                <input type="hidden" name="requestItemsData">
                 <div style="display:flex; gap:8px;">
                     <button type="button" class="cancel">Отмена</button>
                     <button type="submit">Создать</button>
@@ -302,97 +326,96 @@
             </form>
         </div>
     </div>
-    <!-- Другие секции (заглушки) -->
-    <section id="finances-section" style="display:none;"><div class="header">Финансы (заглушка)</div></section>
-    <section id="menu-section" style="display:none;"><div class="header">Меню (заглушка)</div></section>
-    <section id="staff-section" style="display:none;"><div class="header">Персонал (заглушка)</div></section>
-    <section id="settings-section" style="display:none;"><div class="header">Настройки (заглушка)</div></section>
-    <section id="analytics-section" style="display:none;"><div class="header">Аналитика (заглушка)</div></section>
+    <!-- Меню -->
+    <!-- Добавить категорию -->
+    <div class="modal" id="addCategoryModal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Добавление новой категории</h3>
+            <form id="addCategoryForm" onsubmit="addCategory(event)">
+                <input type="text" name="categoryName" placeholder="Название категории*" required>
+                <textarea name="categoryDescription" placeholder="Описание категории"></textarea>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="cancel" onclick="closeModal('addCategoryModal')">Отмена</button>
+                    <button type="submit">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Добавить блюдо -->
+    <div class="modal" id="addMenuItemModal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Добавление нового блюда</h3>
+            <form id="addMenuItemForm" onsubmit="addMenuItem(event)">
+                <select name="itemCategory" required>
+                    <option value="">Выберите категорию*</option>
+                    <!-- Динамически заполняется -->
+                </select>
+                <input type="text" name="itemName" placeholder="Название блюда*" required>
+                <div style="display:flex; gap:8px;">
+                    <input type="number" name="itemPrice" placeholder="Цена*" required min="0" step="100">
+                    <input type="number" name="itemPrepTime" placeholder="Время приготовления (мин)*" required min="0">
+                </div>
+                <input type="file" name="itemImage" accept="image/*">
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="cancel" onclick="closeModal('addMenuItemModal')">Отмена</button>
+                    <button type="submit">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Редактировать категорию -->
+    <div class="modal" id="editCategoryModal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Редактирование категории</h3>
+            <form id="editCategoryForm" onsubmit="updateCategory(event)">
+                <input type="hidden" name="categoryId">
+                <input type="text" name="categoryName" placeholder="Название категории*" required>
+                <textarea name="categoryDescription" placeholder="Описание категории"></textarea>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="cancel" onclick="closeModal('editCategoryModal')">Отмена</button>
+                    <button type="submit">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Редактировать блюдо -->
+    <div class="modal" id="editMenuItemModal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Редактирование блюда</h3>
+            <form id="editMenuItemForm" onsubmit="updateMenuItem(event)">
+                <input type="hidden" name="itemId">
+                <select name="itemCategory" required>
+                    <option value="">Выберите категорию*</option>
+                    <!-- Динамически заполняется -->
+                </select>
+                <input type="text" name="itemName" placeholder="Название блюда*" required>
+                <textarea name="itemDescription" placeholder="Описание блюда"></textarea>
+                <div style="display:flex; gap:8px;">
+                    <input type="number" name="itemPrice" placeholder="Цена*" required min="0" step="0.01">
+                    <input type="number" name="itemPrepTime" placeholder="Время приготовления (мин)*" required min="0">
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <input type="number" name="itemCalories" placeholder="Калории" min="0">
+                    <input type="text" name="itemAllergens" placeholder="Аллергены (через запятую)">
+                </div>
+                <input type="file" name="itemImage" accept="image/*">
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="cancel" onclick="closeModal('editMenuItemModal')">Отмена</button>
+                    <button type="submit">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
 <script src="../static/js/manager.js"></script>
-<script src="../static/js/inventory.js"></script>
-<script src="../static/js/admin-api.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', async function() {
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    
-    if (!token || role !== 'manager') {
-        window.location.href = '/';
-        return;
-    }
-
-    // Проверяем токен через API
-    try {
-        const resp = await fetch('/api/manager/stats', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (!resp.ok) {
-            console.error('Auth check failed:', resp.status);
-            localStorage.removeItem('token');
-            localStorage.removeItem('role');
-            document.cookie = 'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-            window.location.href = '/';
-            return;
-        }
-
-        // Если авторизация успешна, загружаем данные
-        await loadDashboardData();
-        setupEventListeners();
-        
-        // Показываем основную секцию
-        const currentPath = window.location.pathname;
-        const sections = {
-            '/manager': 'main',
-            '/manager/inventory': 'inventory',
-            '/manager/menu': 'menu',
-            '/manager/finances': 'finances',
-            '/manager/staff': 'staff',
-            '/manager/settings': 'settings',
-            '/manager/analytics': 'analytics'
-        };
-        
-        const activeSection = sections[currentPath] || 'main';
-        showSection(activeSection);
-        
-        // Подсвечиваем активный пункт меню
-        document.querySelectorAll('.sidebar nav ul li').forEach(li => {
-            const route = li.getAttribute('data-route');
-            li.classList.toggle('active', route === currentPath);
-        });
-        
-        if (activeSection === 'inventory') {
-            showInventoryTab('stock');
-        }
-    } catch (e) {
-        console.error('Auth check failed:', e);
-        localStorage.removeItem('token');
-        localStorage.removeItem('role');
-        document.cookie = 'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        window.location.href = '/';
-    }
-});
-
-function setupEventListeners() {
-    // Sidebar toggle
-    document.querySelector('.logo').addEventListener('click', toggleSidebar);
-    
-    // Navigation menu
-    document.querySelectorAll('.sidebar nav ul li').forEach(item => {
-        item.addEventListener('click', function() {
-            const route = this.getAttribute('data-route');
-            if (route) {
-                window.location.href = route;
-            }
-        });
-    });
-
-    // ... остальные обработчики событий ...
-}
-
-// ... остальной код ...
-</script>
 </body>
 </html>
 

@@ -293,7 +293,7 @@ async function filterDishesByCategory(category) {
         // Show error notification to user
         const dishesList = document.querySelector('.dishes-list');
         dishesList.innerHTML = '<div class="error-message">Ошибка фильтрации меню. Пожалуйста, попробуйте позже.</div>';
-    }
+        }
 }
 
 // Поиск блюд
@@ -309,7 +309,7 @@ async function searchDishes(query) {
         // Show error notification to user
         const dishesList = document.querySelector('.dishes-list');
         dishesList.innerHTML = '<div class="error-message">Ошибка поиска блюд. Пожалуйста, попробуйте позже.</div>';
-    }
+        }
 }
 
 function showConfirmOrderModal() {
@@ -384,7 +384,7 @@ async function createOrder() {
         
         // Перенаправляем на страницу заказов
         setTimeout(() => {
-            window.location.href = 'orders.html';
+        window.location.href = 'orders.html';
         }, 1500);
         
     } catch (error) {

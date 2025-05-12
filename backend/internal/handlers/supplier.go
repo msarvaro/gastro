@@ -24,7 +24,7 @@ func (h *SupplierHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to get suppliers", http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(suppliers)
+	json.NewEncoder(w).Encode(map[string]interface{}{"suppliers": suppliers})
 }
 
 func (h *SupplierHandler) GetByID(w http.ResponseWriter, r *http.Request) {

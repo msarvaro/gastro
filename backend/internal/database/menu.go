@@ -16,8 +16,8 @@ func NewMenuRepository(db *sql.DB) *MenuRepository {
 
 func (r *MenuRepository) GetMenuItems(ctx context.Context, categoryID *int) ([]models.MenuItem, error) {
 	query := `
-		SELECT id, name, description, price, category_id, image_url, is_available, created_at, updated_at
-		FROM menu_items
+		SELECT id, name, price, category_id, image_url, is_available, created_at, updated_at
+		FROM dishes
 		WHERE ($1::int IS NULL OR category_id = $1)
 		ORDER BY category_id, name`
 
@@ -33,7 +33,6 @@ func (r *MenuRepository) GetMenuItems(ctx context.Context, categoryID *int) ([]m
 		if err := rows.Scan(
 			&item.ID,
 			&item.Name,
-			&item.Description,
 			&item.Price,
 			&item.CategoryID,
 			&item.ImageURL,
@@ -50,15 +49,14 @@ func (r *MenuRepository) GetMenuItems(ctx context.Context, categoryID *int) ([]m
 
 func (r *MenuRepository) GetMenuItemByID(ctx context.Context, id int) (*models.MenuItem, error) {
 	query := `
-		SELECT id, name, description, price, category_id, image_url, is_available, created_at, updated_at
-		FROM menu_items
+		SELECT id, name, price, category_id, image_url, is_available, created_at, updated_at
+		FROM dishes
 		WHERE id = $1`
 
 	var item models.MenuItem
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&item.ID,
 		&item.Name,
-		&item.Description,
 		&item.Price,
 		&item.CategoryID,
 		&item.ImageURL,
@@ -77,14 +75,13 @@ func (r *MenuRepository) GetMenuItemByID(ctx context.Context, id int) (*models.M
 
 func (r *MenuRepository) CreateMenuItem(ctx context.Context, item models.MenuItemCreate) (*models.MenuItem, error) {
 	query := `
-		INSERT INTO menu_items (name, description, price, category_id, image_url, is_available, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-		RETURNING id, name, description, price, category_id, image_url, is_available, created_at, updated_at`
+		INSERT INTO dishes (name, price, category_id, image_url, is_available, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+		RETURNING id, name, price, category_id, image_url, is_available, created_at, updated_at`
 
 	var created models.MenuItem
 	err := r.db.QueryRowContext(ctx, query,
 		item.Name,
-		item.Description,
 		item.Price,
 		item.CategoryID,
 		item.ImageURL,
@@ -92,7 +89,6 @@ func (r *MenuRepository) CreateMenuItem(ctx context.Context, item models.MenuIte
 	).Scan(
 		&created.ID,
 		&created.Name,
-		&created.Description,
 		&created.Price,
 		&created.CategoryID,
 		&created.ImageURL,
@@ -108,21 +104,19 @@ func (r *MenuRepository) CreateMenuItem(ctx context.Context, item models.MenuIte
 
 func (r *MenuRepository) UpdateMenuItem(ctx context.Context, id int, item models.MenuItemUpdate) (*models.MenuItem, error) {
 	query := `
-		UPDATE menu_items
+		UPDATE dishes
 		SET name = COALESCE($1, name),
-			description = COALESCE($2, description),
-			price = COALESCE($3, price),
-			category_id = COALESCE($4, category_id),
-			image_url = COALESCE($5, image_url),
-			is_available = COALESCE($6, is_available),
+			price = COALESCE($2, price),
+			category_id = COALESCE($3, category_id),
+			image_url = COALESCE($4, image_url),
+			is_available = COALESCE($5, is_available),
 			updated_at = NOW()
-		WHERE id = $7
-		RETURNING id, name, description, price, category_id, image_url, is_available, created_at, updated_at`
+		WHERE id = $6
+		RETURNING id, name, price, category_id, image_url, is_available, created_at, updated_at`
 
 	var updated models.MenuItem
 	err := r.db.QueryRowContext(ctx, query,
 		item.Name,
-		item.Description,
 		item.Price,
 		item.CategoryID,
 		item.ImageURL,
@@ -131,7 +125,6 @@ func (r *MenuRepository) UpdateMenuItem(ctx context.Context, id int, item models
 	).Scan(
 		&updated.ID,
 		&updated.Name,
-		&updated.Description,
 		&updated.Price,
 		&updated.CategoryID,
 		&updated.ImageURL,
@@ -149,7 +142,7 @@ func (r *MenuRepository) UpdateMenuItem(ctx context.Context, id int, item models
 }
 
 func (r *MenuRepository) DeleteMenuItem(ctx context.Context, id int) error {
-	query := `DELETE FROM menu_items WHERE id = $1`
+	query := `DELETE FROM dishes WHERE id = $1`
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return err
@@ -166,7 +159,7 @@ func (r *MenuRepository) DeleteMenuItem(ctx context.Context, id int) error {
 
 func (r *MenuRepository) GetCategories(ctx context.Context) ([]models.Category, error) {
 	query := `
-		SELECT id, name, description, created_at, updated_at
+		SELECT id, name, created_at, updated_at
 		FROM categories
 		ORDER BY name`
 
@@ -182,7 +175,6 @@ func (r *MenuRepository) GetCategories(ctx context.Context) ([]models.Category, 
 		if err := rows.Scan(
 			&category.ID,
 			&category.Name,
-			&category.Description,
 			&category.CreatedAt,
 			&category.UpdatedAt,
 		); err != nil {
@@ -195,18 +187,16 @@ func (r *MenuRepository) GetCategories(ctx context.Context) ([]models.Category, 
 
 func (r *MenuRepository) CreateCategory(ctx context.Context, category models.CategoryCreate) (*models.Category, error) {
 	query := `
-		INSERT INTO categories (name, description, created_at, updated_at)
-		VALUES ($1, $2, NOW(), NOW())
-		RETURNING id, name, description, created_at, updated_at`
+		INSERT INTO categories (name, created_at, updated_at)
+		VALUES ($1, NOW(), NOW())
+		RETURNING id, name, created_at, updated_at`
 
 	var created models.Category
 	err := r.db.QueryRowContext(ctx, query,
 		category.Name,
-		category.Description,
 	).Scan(
 		&created.ID,
 		&created.Name,
-		&created.Description,
 		&created.CreatedAt,
 		&created.UpdatedAt,
 	)
@@ -220,20 +210,17 @@ func (r *MenuRepository) UpdateCategory(ctx context.Context, id int, category mo
 	query := `
 		UPDATE categories
 		SET name = COALESCE($1, name),
-			description = COALESCE($2, description),
 			updated_at = NOW()
-		WHERE id = $3
-		RETURNING id, name, description, created_at, updated_at`
+		WHERE id = $2
+		RETURNING id, name, created_at, updated_at`
 
 	var updated models.Category
 	err := r.db.QueryRowContext(ctx, query,
 		category.Name,
-		category.Description,
 		id,
 	).Scan(
 		&updated.ID,
 		&updated.Name,
-		&updated.Description,
 		&updated.CreatedAt,
 		&updated.UpdatedAt,
 	)

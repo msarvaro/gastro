@@ -129,8 +129,28 @@ func main() {
 		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
 	}).Methods("GET")
 
+	htmlRouter.HandleFunc("/manager/inventory", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
+	}).Methods("GET")
+
 	htmlRouter.HandleFunc("/manager/menu", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "menu-management.html"))
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
+	}).Methods("GET")
+
+	htmlRouter.HandleFunc("/manager/finances", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
+	}).Methods("GET")
+
+	htmlRouter.HandleFunc("/manager/staff", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
+	}).Methods("GET")
+
+	htmlRouter.HandleFunc("/manager/settings", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
+	}).Methods("GET")
+
+	htmlRouter.HandleFunc("/manager/analytics", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
 	}).Methods("GET")
 
 	// Страницы для официантов
