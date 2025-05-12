@@ -59,8 +59,13 @@ func HTMLAuthMiddleware(jwtKey string) func(http.Handler) http.Handler {
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			case strings.HasPrefix(r.URL.Path, "/manager") && role != "manager":
-				// Разрешаем доступ к статическим файлам менеджера
+				// Разрешаем доступ к статическим файлам
 				if strings.HasPrefix(r.URL.Path, "/static/") {
+					next.ServeHTTP(w, r)
+					return
+				}
+				// Разрешаем доступ к файлам менеджера
+				if strings.HasPrefix(r.URL.Path, "/manager/") {
 					next.ServeHTTP(w, r)
 					return
 				}
@@ -97,21 +102,13 @@ func AuthMiddleware(jwtKey string) func(http.Handler) http.Handler {
 			// Проверка токена
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
-				if strings.Contains(r.Header.Get("Accept"), "text/html") {
-					http.Redirect(w, r, "/", http.StatusFound)
-				} else {
-					http.Error(w, "Authorization header required", http.StatusUnauthorized)
-				}
+				http.Error(w, "Authorization header required", http.StatusUnauthorized)
 				return
 			}
 
 			bearerToken := strings.Split(authHeader, " ")
 			if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
-				if strings.Contains(r.Header.Get("Accept"), "text/html") {
-					http.Redirect(w, r, "/", http.StatusFound)
-				} else {
-					http.Error(w, "Invalid token format", http.StatusUnauthorized)
-				}
+				http.Error(w, "Invalid token format", http.StatusUnauthorized)
 				return
 			}
 
@@ -120,51 +117,27 @@ func AuthMiddleware(jwtKey string) func(http.Handler) http.Handler {
 			})
 
 			if err != nil || !token.Valid {
-				if strings.Contains(r.Header.Get("Accept"), "text/html") {
-					http.Redirect(w, r, "/", http.StatusFound)
-				} else {
-					http.Error(w, "Invalid token", http.StatusUnauthorized)
-				}
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
 				return
 			}
 
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
-				if strings.Contains(r.Header.Get("Accept"), "text/html") {
-					http.Redirect(w, r, "/", http.StatusFound)
-				} else {
-					http.Error(w, "Invalid token claims", http.StatusUnauthorized)
-				}
+				http.Error(w, "Invalid token claims", http.StatusUnauthorized)
 				return
 			}
 
-			// Проверка роли (если нужно ограничить доступ только для админов)
-			if r.URL.Path[:11] == "/api/admin" && claims["role"] != "admin" {
-				if strings.Contains(r.Header.Get("Accept"), "text/html") {
-					http.Redirect(w, r, "/", http.StatusFound)
-				} else {
-					http.Error(w, "Unauthorized: admin access required", http.StatusForbidden)
-				}
+			// Проверка роли
+			if strings.HasPrefix(r.URL.Path, "/api/admin") && claims["role"] != "admin" {
+				http.Error(w, "Unauthorized: admin access required", http.StatusForbidden)
 				return
 			}
-
-			// Проверка роли для доступа к API официанта
-			if r.URL.Path[:11] == "/api/waiter" && claims["role"] != "waiter" {
-				if strings.Contains(r.Header.Get("Accept"), "text/html") {
-					http.Redirect(w, r, "/", http.StatusFound)
-				} else {
-					http.Error(w, "Unauthorized: waiter access required", http.StatusForbidden)
-				}
+			if strings.HasPrefix(r.URL.Path, "/api/waiter") && claims["role"] != "waiter" {
+				http.Error(w, "Unauthorized: waiter access required", http.StatusForbidden)
 				return
 			}
-
-			// Проверка роли для доступа к API менеджера
-			if r.URL.Path[:11] == "/api/manager" && claims["role"] != "manager" {
-				if strings.Contains(r.Header.Get("Accept"), "text/html") {
-					http.Redirect(w, r, "/", http.StatusFound)
-				} else {
-					http.Error(w, "Unauthorized: manager access required", http.StatusForbidden)
-				}
+			if strings.HasPrefix(r.URL.Path, "/api/manager") && claims["role"] != "manager" {
+				http.Error(w, "Unauthorized: manager access required", http.StatusForbidden)
 				return
 			}
 

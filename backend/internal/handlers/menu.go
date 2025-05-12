@@ -30,6 +30,7 @@ func (h *MenuHandler) RegisterRoutes(r *mux.Router) {
 	menu.HandleFunc("/categories", h.CreateCategory).Methods("POST")
 	menu.HandleFunc("/categories/{id:[0-9]+}", h.UpdateCategory).Methods("PUT")
 	menu.HandleFunc("/categories/{id:[0-9]+}", h.DeleteCategory).Methods("DELETE")
+	menu.HandleFunc("", h.GetMenuSummary).Methods("GET")
 }
 
 func (h *MenuHandler) GetMenuItems(w http.ResponseWriter, r *http.Request) {
@@ -161,4 +162,26 @@ func (h *MenuHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *MenuHandler) GetMenuSummary(w http.ResponseWriter, r *http.Request) {
+	categories, err := h.repo.GetCategories(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	items, err := h.repo.GetMenuItems(r.Context(), nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resp := struct {
+		Categories []models.Category `json:"categories"`
+		Items      []models.MenuItem `json:"items"`
+	}{
+		Categories: categories,
+		Items:      items,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }

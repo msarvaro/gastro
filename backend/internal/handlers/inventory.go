@@ -24,7 +24,7 @@ func (h *InventoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to get inventory", http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(items)
+	json.NewEncoder(w).Encode(map[string]interface{}{"items": items})
 }
 
 func (h *InventoryHandler) GetByID(w http.ResponseWriter, r *http.Request) {

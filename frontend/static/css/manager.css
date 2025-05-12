@@ -166,11 +166,11 @@ body {
     width: 0;
     overflow: hidden;
 }
-.sidebar .logout:hover, .sidebar .logout:focus {
+.sidebar .logout:hover {
     background: #EAF2FF;
     color: #006FFD;
 }
-.sidebar .logout:hover .icon img, .sidebar .logout:focus .icon img {
+.sidebar .logout:hover .icon img{
     filter: invert(32%) sepia(99%) saturate(7492%) hue-rotate(202deg) brightness(97%) contrast(101%);
 }
 .main-content {
@@ -363,4 +363,149 @@ tr:nth-child(even) {
     text-align: center;
     margin-top: 12px;
     color: #888;
+}
+/* Menu Management */
+.menu-actions {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.menu-actions button {
+    padding: 8px 16px;
+    background: #006FFD;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.menu-actions button:hover {
+    background: #0056b3;
+}
+
+.menu-content {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+}
+
+.categories {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.category-card {
+    padding: 12px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.category-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+}
+
+.category-card p {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #666;
+}
+
+.category-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.category-actions button {
+    padding: 4px 8px;
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.menu-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 16px;
+}
+
+.menu-item-card {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.menu-item-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.item-details {
+    padding: 16px;
+}
+
+.item-details h4 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+}
+
+.item-details p {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #666;
+}
+
+.item-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.item-meta .price {
+    font-weight: bold;
+    color: #006FFD;
+}
+
+.item-meta .prep-time {
+    color: #666;
+}
+
+.item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.item-actions button {
+    padding: 4px 8px;
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Modal styles for menu forms */
+.modal-content form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.modal-content textarea {
+    min-height: 100px;
+    resize: vertical;
 }

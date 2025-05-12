@@ -24,7 +24,7 @@ func (h *RequestHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to get requests", http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(requests)
+	json.NewEncoder(w).Encode(map[string]interface{}{"requests": requests})
 }
 
 func (h *RequestHandler) GetByID(w http.ResponseWriter, r *http.Request) {
