@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"restaurant-management/internal/database"
 	"time"
-	"user-management/internal/database"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -23,8 +23,9 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Token string `json:"token"`
-	Role  string `json:"role"`
+	Token    string `json:"token"`
+	Role     string `json:"role"`
+	Redirect string `json:"redirect"`
 }
 
 func NewAuthHandler(db *database.DB, jwtKey string) *AuthHandler {
@@ -52,8 +53,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Found user - ID: %d, Username: %s, Role: %s", user.ID, user.Username, user.Role)
-	log.Printf("Stored password hash: %s", user.Password)
-	log.Printf("Comparing password: %s with hash", req.Password)
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		log.Printf("Password comparison failed: %v", err)
@@ -84,9 +83,32 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Generated token successfully")
 
+	// Устанавливаем куки для HTML страниц
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    tokenString,
+		Expires:  expirationTime,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	// Определяем страницу для перенаправления в зависимости от роли
+	redirect := "/"
+	switch user.Role {
+	case "admin":
+		redirect = "/admin"
+	case "manager":
+		redirect = "/manager"
+	case "waiter":
+		redirect = "/waiter"
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(LoginResponse{
-		Token: tokenString,
-		Role:  user.Role,
+		Token:    tokenString,
+		Role:     user.Role,
+		Redirect: redirect,
 	})
 }

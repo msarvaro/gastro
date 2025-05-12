@@ -110,7 +110,23 @@
         </div>
     </div>
 
-    <!-- Подключаем основной скрипт -->
+    <!-- Подключаем скрипты -->
+    <script src="../static/js/menu-api.js"></script>
     <script src="../static/js/create-order.js"></script>
+
+    <!-- Добавляем обработчик для кнопки "Назад" -->
+    <script>
+    const backBtn = document.querySelector('.back-btn');
+    backBtn.addEventListener('click', () => {
+        // Если есть несохраненные изменения, показываем подтверждение
+        if (currentOrderData.items.length > 0) {
+            if (confirm('Вы уверены, что хотите вернуться? Несохраненные изменения будут потеряны.')) {
+                window.location.href = '/waiter/orders';
+            }
+        } else {
+            window.location.href = '/waiter/orders';
+        }
+    });
+    </script>
 </body>
 </html>

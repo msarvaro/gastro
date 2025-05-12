@@ -1,206 +1,254 @@
+/* Standalone CSS for login page */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Inter", -apple-system, Roboto, Helvetica, sans-serif;
+  display: flex;
+  background-color: rgba(255, 255, 255, 1);
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 0;
+}
+
+.form-container {
+  width: 100%;
+  max-width: 375px;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* App Info Header */
+.app-info {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.app-id {
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 4px;
+}
+
+.app-name {
+  font-size: 14px;
+  color: #1F2937;
+  font-weight: 500;
+}
+
+/* Form Title */
+.form-title {
+  color: #000000;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.24px;
+  margin-bottom: 24px;
+}
+
+/* Form Styles */
+.signup-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 14px;
+  color: #010101;
+  font-weight: 400;
+}
+
+.form-group {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 14px 16px;
+  border: 1px solid #c5c6cc;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #010101;
+}
+
+.form-input::placeholder {
+  color: #9CA3AF;
+}
+
+/* Password Field */
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toggle-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.5;
+}
+
+.password-toggle:hover .toggle-icon {
+  opacity: 0.8;
+}
+
+/* Forgot Password */
+.forgot-password {
+  text-align: left;
+  margin-top: 8px;
+  margin-bottom: 24px;
+}
+
+.link-primary {
+  color: #006ffd;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.link-primary:hover {
+  text-decoration: underline;
+}
+
+/* Submit Button */
+.submit-button {
+  width: 100%;
+  min-height: 48px;
+  background-color: #006ffd;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 14px 16px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  transition: background-color 0.2s ease;
+}
+
+.submit-button:hover {
+  background-color: #0056c7;
+}
+
+/* Register Prompt */
+.register-prompt {
+  text-align: center;
+  margin: 16px 0;
+  font-size: 14px;
+}
+
+.prompt-text {
+  color: #6B7280;
+  margin-right: 5px;
+}
+
+.register-link {
+  color: #006FFD;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.register-link:hover {
+  text-decoration: underline;
+}
+
+/* Remember Me */
+.remember-me {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.remember-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #006FFD;
+}
+
+.remember-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #006FFD;
+}
+
+/* Error Message */
+.error-message {
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  text-align: center;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
   }
-  
-  body {
-    font-family:
-      "Inter",
-      -apple-system,
-      Roboto,
-      Helvetica,
-      sans-serif;
-    display: flex;
-    background-color: rgba(255, 255, 255, 1);
-    justify-content: center;
-    align-items: center;
-    padding: 249px 80px;
-    min-height: 100vh;
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
   }
-  
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+/* Notification styles */
+.notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  color: white;
+  font-size: 14px;
+  z-index: 1000;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.notification.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.notification-success {
+  background-color: #10B981;
+}
+
+.notification-error {
+  background-color: #EF4444;
+}
+
+.notification-info {
+  background-color: #3B82F6;
+}
+
+/* Responsive styles */
+@media (max-width: 480px) {
   .form-container {
-    width: 375px;
-    padding: 40px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
+    padding: 30px 20px;
   }
-  
-  .form-title {
-    color: #000000;
-    font-size: 24px;
-    font-weight: 800;
-    letter-spacing: 0.24px;
-  }
-  
-  .signup-form {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    font-size: 14px;
-    color: #010101;
-    font-weight: 400;
-  }
-  
-  .form-group {
-    width: 100%;
-  }
-  
-  .form-input {
-    width: 100%;
-    min-height: 48px;
-    padding: 14px 16px;
-    border: 1px solid #c5c6cc;
-    border-radius: 12px;
-    font-family: inherit;
-    font-size: 14px;
-    color: #010101;
-  }
-  
-  .password-field {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-  
-  .password-toggle {
-    position: absolute;
-    right: 16px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-  }
-  
-  .toggle-icon {
-    width: 16px;
-    height: 16px;
-    object-fit: contain;
-  }
-  
-  .forgot-password {
-    margin-top: 0;
-  }
-  
-  .forgot-password a {
-    color: #006ffd;
-    text-decoration: none;
-    font-weight: 600;
-  }
-  
-  .forgot-password a:hover {
-    text-decoration: underline;
-  }
-  
-  .submit-button {
-    width: 100%;
-    min-height: 48px;
-    background-color: #006ffd;
-    color: #ffffff;
-    border: none;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    padding: 17px 16px;
-    transition: background-color 0.2s ease;
-  }
-  
-  .submit-button:hover {
-    background-color: #0056c7;
-  }
-  
-  .additional-options {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    font-size: 12px;
-    color: #000001;
-  }
-  
-  .register-prompt {
-    text-align: center;
-    letter-spacing: 0.12px;
-  }
-  
-  .prompt-text {
-    font-weight: 400;
-    line-height: 16px;
-    letter-spacing: 0.12px;
-    color: rgba(113, 114, 122, 1);
-  }
-  
-  .register-link {
-    color: #006ffd;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  
-  .register-link:hover {
-    text-decoration: underline;
-  }
-  
-  .remember-me {
-    text-align: center;
-    font-weight: 600;
-    color: #006ffd;
-  }
-  
-  .remember-label {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    cursor: pointer;
-  }
-  
-  .remember-checkbox {
-    margin: 0;
-    accent-color: #006ffd;
-    width: 16px;
-    height: 16px;
-  }
-  
-  .error-message {
-    background-color: #ffebee;
-    color: #d32f2f;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    font-size: 14px;
-    text-align: center;
-    animation: shake 0.5s ease-in-out;
-  }
-  
-  @keyframes shake {
-    0%,
-    100% {
-      transform: translateX(0);
-    }
-    10%,
-    30%,
-    50%,
-    70%,
-    90% {
-      transform: translateX(-5px);
-    }
-    20%,
-    40%,
-    60%,
-    80% {
-      transform: translateX(5px);
-    }
-  }
-  
-  @media (max-width: 991px) {
-    body {
-      padding: 100px 20px;
-    }
-  
-    .form-container {
-      padding: 40px 20px;
-    }
-  }
-  
+}

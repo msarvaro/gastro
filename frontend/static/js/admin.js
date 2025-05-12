@@ -292,6 +292,10 @@ function showAddUserModal() {
             status: 'active'
         };
 
+        alert('submit!');
+
+        console.log('Создание пользователя:', userData);
+
         try {
             const response = await fetch('/api/admin/users', {
                 method: 'POST',

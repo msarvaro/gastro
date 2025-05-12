@@ -1,8 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Проверка авторизации
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (!currentUser || currentUser.role !== 'waiter') {
-        window.location.href = 'login.html';
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    
+    if (!token || role !== 'waiter') {
+        window.location.href = '/';
         return;
     }
 
@@ -10,16 +12,15 @@ document.addEventListener('DOMContentLoaded', function() {
     updateOrdersStatus();
 });
 
-function loadOrders() {
+async function loadOrders() {
     try {
-        const ordersData = JSON.parse(localStorage.getItem('orders') || '{"orders":[]}');
-        const orders = ordersData.orders || [];
+        const orders = await waiterApi.getOrders();
         
         // Обновляем статистику
         updateOrdersStatus();
 
         const ordersList = document.getElementById('ordersList');
-        if (!orders.length) {
+        if (!orders || !orders.length) {
             ordersList.innerHTML = '<div class="no-orders">Нет активных заказов</div>';
             return;
         }
@@ -33,11 +34,11 @@ function loadOrders() {
                     <div class="order-card__id">#${order.id}</div>
                     <div class="order-card__info">
                         <div class="order-card__table">Стол ${order.tableId}</div>
-                        <div class="order-card__time">${formatOrderTime(order.createdAt)}</div>
+                        <div class="order-card__time">${waiterApi.formatOrderTime(order.createdAt)}</div>
                     </div>
                 </div>
                 <div class="order-card__items">
-                    ${formatOrderItems(order.items)}
+                    ${waiterApi.formatOrderItems(order.items)}
                 </div>
                 ${order.comment ? `
                     <div class="order-card__comment">
@@ -46,21 +47,17 @@ function loadOrders() {
                     </div>
                 ` : ''}
                 <div class="order-card__footer">
-                    <div class="order-card__total">${formatMoney(order.total)} KZT</div>
+                    <div class="order-card__total">${waiterApi.formatMoney(order.total)} KZT</div>
                     <div class="order-actions">
                         ${getActionButtons(order)}
-                        ${order.status !== 'served' ? `
-                            <button onclick="cancelOrder(${order.id})" class="status-badge status-badge--cancel">
-                                Отменить
-                            </button>
-                        ` : ''}
                     </div>
                 </div>
             </div>
         `).join('');
-
     } catch (error) {
         console.error('Error loading orders:', error);
+        const ordersList = document.getElementById('ordersList');
+        ordersList.innerHTML = '<div class="error-message">Ошибка загрузки заказов. Пожалуйста, попробуйте позже.</div>';
     }
 }
 
@@ -142,99 +139,50 @@ function getActionButtons(order) {
     `;
 }
 
-function updateOrderStatus(orderId, newStatus) {
+async function updateOrderStatus(orderId, newStatus) {
     try {
-        const ordersData = JSON.parse(localStorage.getItem('orders') || '{"orders":[]}');
-        const orderIndex = ordersData.orders.findIndex(order => order.id === orderId);
-        
-        if (orderIndex !== -1) {
-            ordersData.orders[orderIndex].status = newStatus;
-            localStorage.setItem('orders', JSON.stringify(ordersData));
-            
-            // Обновляем статистику при изменении статуса
-            updateOrdersStatus();
-            loadOrders();
-        }
+        await waiterApi.updateOrder(orderId, { status: newStatus });
+        loadOrders(); // Reload orders after update
     } catch (error) {
         console.error('Error updating order status:', error);
+        alert('Ошибка при обновлении статуса заказа. Пожалуйста, попробуйте позже.');
     }
 }
 
-function cancelOrder(orderId) {
+async function cancelOrder(orderId) {
     try {
-        const ordersData = JSON.parse(localStorage.getItem('orders') || '{"orders":[]}');
-        const orderIndex = ordersData.orders.findIndex(order => order.id === orderId);
-        
-        if (orderIndex !== -1) {
-            const cancelledOrder = ordersData.orders[orderIndex];
-            cancelledOrder.status = 'cancelled';
-            cancelledOrder.cancelledAt = new Date().toISOString();
-            
-            // Добавляем в историю
-            const historyData = JSON.parse(localStorage.getItem('orderHistory') || '{"orders":[]}');
-            historyData.orders.push(cancelledOrder);
-            localStorage.setItem('orderHistory', JSON.stringify(historyData));
-            
-            // Удаляем из активных заказов
-            ordersData.orders.splice(orderIndex, 1);
-            localStorage.setItem('orders', JSON.stringify(ordersData));
-            
-            // Обновляем статистику после отмены
-            updateOrdersStatus();
-            loadOrders();
-        }
+        await waiterApi.updateOrder(orderId, { status: 'cancelled' });
+        loadOrders(); // Reload orders after cancellation
     } catch (error) {
         console.error('Error cancelling order:', error);
+        alert('Ошибка при отмене заказа. Пожалуйста, попробуйте позже.');
     }
 }
 
-function completeOrder(orderId) {
+async function completeOrder(orderId) {
     try {
-        const ordersData = JSON.parse(localStorage.getItem('orders') || '{"orders":[]}');
-        const orderIndex = ordersData.orders.findIndex(order => order.id === orderId);
-        
-        if (orderIndex !== -1) {
-            const completedOrder = ordersData.orders[orderIndex];
-            completedOrder.status = 'completed';
-            completedOrder.completedAt = new Date().toISOString();
-            
-            // Добавляем в историю
-            const historyData = JSON.parse(localStorage.getItem('orderHistory') || '{"orders":[]}');
-            historyData.orders.push(completedOrder);
-            localStorage.setItem('orderHistory', JSON.stringify(historyData));
-            
-            // Удаляем из активных заказов
-            ordersData.orders.splice(orderIndex, 1);
-            localStorage.setItem('orders', JSON.stringify(ordersData));
-            
-            // Перенаправляем на страницу истории
-            window.location.href = 'history.html';
-        }
+        await waiterApi.updateOrder(orderId, { status: 'completed' });
+        // Перенаправляем на страницу истории
+        window.location.href = '/waiter/history';
     } catch (error) {
         console.error('Error completing order:', error);
+        alert('Ошибка при завершении заказа. Пожалуйста, попробуйте позже.');
     }
 }
 
-function updateOrdersStatus() {
+async function updateOrdersStatus() {
     try {
-        const ordersData = JSON.parse(localStorage.getItem('orders') || '{"orders":[]}');
-        const orders = ordersData.orders || [];
-        
-        // Подсчитываем статистику по статусам
-        const stats = {
-            total: orders.length,
-            new: orders.filter(order => order.status === 'new').length,
-            preparing: orders.filter(order => ['accepted', 'preparing'].includes(order.status)).length,
-            ready: orders.filter(order => order.status === 'ready').length
-        };
+        const status = await waiterApi.getOrderStatus();
         
         // Обновляем заголовок
         document.querySelector('.orders-status__title').textContent = 
-            `${stats.total} активных заказов`;
+            `${status.total} активных заказов`;
         document.querySelector('.orders-status__subtitle').textContent = 
-            `Новых: ${stats.new} | В работе: ${stats.preparing} | Готовых: ${stats.ready}`;
+            `Новых: ${status.new} | В работе: ${status.accepted + status.preparing} | Готовых: ${status.ready}`;
     } catch (error) {
         console.error('Error updating orders status:', error);
+        document.querySelector('.orders-status__title').textContent = 'Ошибка загрузки статуса';
+        document.querySelector('.orders-status__subtitle').textContent = '';
     }
 }
 
@@ -260,7 +208,7 @@ function viewOrderDetails(orderId) {
 
 // Функция для создания нового заказа
 function createNewOrder() {
-    window.location.href = 'create-order.html';
+    window.location.href = '/waiter/create-order';
 }
 
 // Добавляем форматирование денег как в history.js
@@ -269,25 +217,20 @@ function formatMoney(amount) {
 }
 
 // Обновляем обработчик создания заказа
-function createOrder(orderData) {
+async function createOrder(orderData) {
     try {
-        const ordersData = JSON.parse(localStorage.getItem('orders') || '{"orders":[]}');
-        
-        // Добавляем новый заказ
-        const newOrder = {
-            ...orderData,
-            id: Date.now(),
-            status: 'new',
-            createdAt: new Date().toISOString()
-        };
-        
-        ordersData.orders.push(newOrder);
-        localStorage.setItem('orders', JSON.stringify(ordersData));
-        
+        await waiterApi.createOrder(orderData);
         // Обновляем статистику сразу после создания заказа
         updateOrdersStatus();
         loadOrders();
     } catch (error) {
         console.error('Error creating order:', error);
+        alert('Ошибка при создании заказа: ' + error.message);
     }
+}
+
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    window.location.href = '/';
 }
