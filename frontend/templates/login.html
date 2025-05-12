@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up</title>
-    <link rel="stylesheet" href="../static/css/login.css">
-    <!-- Add Inter font -->
+    <title>Вход</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../static/css/login.css">
 </head>
 <body>
     <div class="form-container">
+
         <h1 class="form-title">Вход</h1>
         <form class="signup-form">
             <div class="form-group">
-                <input type="text" id="username" class="form-input" placeholder="Имя пользователя" required>
+                <input type="text" id="username" class="form-input" placeholder="email/имя" required>
             </div>
             <div class="form-group">
                 <div class="password-field">
@@ -23,13 +23,22 @@
                     </button>
                 </div>
             </div>
+            <div class="forgot-password">
+                <a href="#" class="link-primary">Забыли пароль?</a>
+            </div>
+            <button type="submit" class="submit-button">Вход</button>
+            
+            <div class="register-prompt">
+                <span class="prompt-text">Вас тут нет?</span>
+                <a href="register.html" class="register-link">Регистрируйтесь сейчас</a>
+            </div>
+            
             <div class="remember-me">
                 <label class="remember-label">
                     <input type="checkbox" class="remember-checkbox">
-                    Запомнить меня
+                    <span>Запомнить меня</span>
                 </label>
             </div>
-            <button type="submit" class="submit-button">Войти</button>
         </form>
     </div>
     <script src="../static/js/auth.js"></script>

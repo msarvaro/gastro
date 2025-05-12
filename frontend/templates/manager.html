@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Markiz Manager Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="../static/css/manager.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+</head>
+<body>
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <div class="logo" onclick="toggleSidebar()">
+        <img src="../static/images/logo.svg" alt="Logo">
+        <span class="sidebar-label">Markiz</span>
+    </div>
+    <nav>
+        <ul>
+            <li data-section="main" data-route="/manager">
+                <span class="icon"><img src="../static/images/home.svg"></span>
+                <span class="sidebar-label">Главная</span>
+            </li>
+            <li data-section="finances" data-route="/manager/finances">
+                <span class="icon"><img src="../static/images/finance.svg"></span>
+                <span class="sidebar-label">Финансы</span>
+            </li>
+            <li data-section="menu" data-route="/manager/menu">
+                <span class="icon"><img src="../static/images/menu.svg"></span>
+                <span class="sidebar-label">Меню</span>
+            </li>
+            <li data-section="inventory" data-route="/manager/inventory">
+                <span class="icon"><img src="../static/images/stocks.svg"></span>
+                <span class="sidebar-label">Запасы</span>
+            </li>
+            <li data-section="staff" data-route="/manager/staff">
+                <span class="icon"><img src="../static/images/staff.svg"></span>
+                <span class="sidebar-label">Персонал</span>
+            </li>
+            <li data-section="settings" data-route="/manager/settings">
+                <span class="icon"><img src="../static/images/settings.svg"></span>
+                <span class="sidebar-label">Настройки</span>
+            </li>
+            <li data-section="analytics" data-route="/manager/analytics">
+                <span class="icon"><img src="../static/images/analytics.svg"></span>
+                <span class="sidebar-label">Аналитика</span>
+            </li>
+        </ul>
+    </nav>
+    <button class="logout" onclick="logout()">
+        <span class="icon"><img src="../static/images/logout.svg"></span>
+        <span class="sidebar-label">Выйти</span>
+    </button>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+    <!-- Главная страница -->
+    <section id="main-section">
+        <div class="header">Главная страница</div>
+        <div class="cards">
+            <div class="card">
+                <div class="desc">Дневная выручка<br><div class="value"></div><span></span></div>               
+            </div>
+            <div class="card">         
+                <div class="desc">Посетителей<br><div class="value"></div><span></span></div>
+            </div>
+            <div class="card">
+                <div class="desc">Средний чек<br><div class="value"></div><span></span></div>
+            </div>
+        </div>
+        <div class="notifications">
+            <h3>Уведомления</h3>
+            <div class="notification-item"><a href="#">Низкий запас: Рис</a> — Требуется пополнение. | Текущий остаток: 2.3 кг. | Минимальный уровень: 10 кг</div>
+            <div class="notification-item"><a href="#">Новая заявка на найм</a> — От: Аскар Ахметов, администратор | Должность: Официант | Опыт работы: 6 мес. | Coffee Boom, Мангилик ел 17</div>
+            <div class="notification-item">Отчет за неделю готов — Показатели выше плановых на 12% | Основные метрики: выручка +15%, посещаемость +8%</div>
+            <div class="notification-item"><a href="#">Новая заявка на найм</a> — От: Нургуль Науканова, шеф повар | Должность: Соус мейкер | Опыт работы: 2 года. | Coffee Boom, Мангилик ел 57</div>
+            <div class="pagination">1 из 1 страниц</div>
+        </div>
+    </section>
+
+    <!-- Управление запасами -->
+    <section id="inventory-section" style="display:none;">
+        <div class="header">Управление запасами</div>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showInventoryTab('stock')">Склад</button>
+            <button class="tab-btn" onclick="showInventoryTab('requests')">Заявки</button>
+            <button class="tab-btn" onclick="showInventoryTab('suppliers')">Поставщики</button>
+            <button class="tab-btn" onclick="showInventoryTab('history')">История</button>
+        </div>
+        <!-- Склад -->
+        <div id="inventory-stock-tab">
+            <div class="filters">
+                <input type="text" id="productSearch" placeholder="Поиск продукта...">
+                <select id="productCategoryFilter"><option value="">Категория</option><option value="Кофе">Кофе</option><option value="Молочные продукты">Молочные продукты</option><option value="Сиропы">Сиропы</option><option value="Расходники">Расходники</option><option value="Чай">Чай</option></select>
+                <select id="productBranchFilter"><option value="">Филиал</option><option value="Достык">Достык</option><option value="Мангилик">Мангилик</option><option value="Керуен">Керуен</option><option value="Mega">Mega</option></select>
+                <button id="addProductBtn">Добавить</button>
+            </div>
+            <div class="cards">
+                <div class="card">Всего позиций<br><span class="value"></span></div>
+                <div class="card">Низкий запас<br><span class="value"></span></div>
+                <div class="card">Ожидают поставки<br><span class="value"></span></div>
+            </div>
+            <div class="table-section">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Наименование</th>
+                            <th>Категория</th>
+                            <th>Количество</th>
+                            <th>Мин. запас</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Динамические строки -->
+                    </tbody>
+                </table>
+                <div class="pagination"></div>
+            </div>
+        </div>
+        <!-- Заявки -->
+        <div id="inventory-requests-tab" style="display:none;">
+            <div class="filters">
+                <input type="text" id="requestSearch" placeholder="Поиск заявки...">
+                <select id="requestStatusFilter"><option value="">Статус</option><option value="pending">Ожидает одобрения</option><option value="active">В обработке</option><option value="completed">Выполнено</option><option value="rejected">Отклонено</option></select>
+                <select id="requestBranchFilter"><option value="">Филиал</option><option value="Достык">Достык</option><option value="Мангилик">Мангилик</option><option value="Керуен">Керуен</option><option value="Mega">Mega</option></select>
+                <button id="addRequestBtn">Создать</button>
+            </div>
+            <div class="cards">
+                <div class="card">Активные заявки<br><span class="value"></span></div>
+                <div class="card">Ожидают одобрения<br><span class="value"></span></div>
+                <div class="card">Выполнено в этом месяце<br><span class="value">L</span></div>
+            </div>
+            <div class="table-section">
+                <table>
+                    <thead>
+                        <tr><th>Товары</th><th>Филиал</th><th>Создана</th><th>Статус</th><th>Действия</th></tr>
+                    </thead>
+                    <tbody>
+                        <!-- Динамические строки -->
+                    </tbody>
+                </table>
+                <div class="pagination">1 из 3 страниц</div>
+            </div>
+        </div>
+        <!-- Поставщики -->
+        <div id="inventory-suppliers-tab" style="display:none;">
+            <div class="filters">
+                <input type="text" id="supplierSearch" placeholder="Поиск поставщика...">
+                <select id="supplierCategoryFilter"><option value="">Категория</option><option value="Кофе, чай">Кофе, чай</option><option value="Молочные продукты">Молочные продукты</option><option value="Сиропы">Сиропы</option><option value="Расходные материалы">Расходные материалы</option><option value="Выпечка, кондитерские изделия">Выпечка, кондитерские изделия</option><option value="Фрукты, ягоды">Фрукты, ягоды</option></select>
+                <button id="addSupplierBtn">Добавить поставщика</button>
+            </div>
+            <div class="table-section">
+                <table id="suppliersTable">
+                    <thead>
+                        <tr><th>Компания</th><th>Категории</th><th>Контакты</th><th>Статус</th><th>Действия</th></tr>
+                    </thead>
+                    <tbody>
+                        <!-- Динамические строки -->
+                    </tbody>
+                </table>
+                <div class="pagination">1 из 1 страниц</div>
+            </div>
+        </div>
+        <!-- История (заглушка) -->
+        <div id="inventory-history-tab" style="display:none;">
+            <div class="table-section">
+                <p>История операций (заглушка)</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Модальные окна -->
+    <!-- Добавить продукт -->
+    <div class="modal" id="addProductModal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Добавление нового продукта</h3>
+            <form id="addProductForm">
+                <input type="text" name="productName" placeholder="Наименование*" required>
+                <select name="productCategory" required>
+                    <option value="">Категория*</option>
+                    <option value="Кофе">Кофе</option>
+                    <option value="Молочные продукты">Молочные продукты</option>
+                    <option value="Сиропы">Сиропы</option>
+                    <option value="Расходники">Расходники</option>
+                    <option value="Чай">Чай</option>
+                </select>
+                <div style="display:flex; gap:8px;">
+                    <input type="number" name="productQuantity" placeholder="Количество*" required step="0.1" min="0">
+                    <select name="productUnit" required>
+                        <option value="кг">кг</option>
+                        <option value="л">л</option>
+                        <option value="шт">шт</option>
+                        <option value="уп.">уп.</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <input type="number" name="productMinQuantity" placeholder="Минимальный запас*" required step="0.1" min="0">
+                    <select name="productMinUnit" required>
+                        <option value="кг">кг</option>
+                        <option value="л">л</option>
+                        <option value="шт">шт</option>
+                        <option value="уп.">уп.</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="cancel">Отмена</button>
+                    <button type="submit">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Создать заявку -->
+    <div class="modal" id="addRequestModal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Создание новой заявки</h3>
+            <form id="addRequestForm">
+                <select name="requestBranch" required>
+                    <option value="">Филиал*</option>
+                    <option value="Coffee Boom, Достык">Coffee Boom, Достык</option>
+                    <option value="Coffee Boom, Мангилик">Coffee Boom, Мангилик</option>
+                    <option value="Coffee Boom, Керуен">Coffee Boom, Керуен</option>
+                    <option value="Coffee Boom, Mega">Coffee Boom, Mega</option>
+                </select>
+                <select name="requestSupplier" id="requestSupplierSelect" required>
+                    <option value="">Поставщик*</option>
+                    <!-- Динамически -->
+                </select>
+                <div>
+                    <select name="requestItems" id="requestItemsSelect" multiple required style="width:100%; min-height:60px;"></select>
+                    <a href="#" style="font-size:13px;">+ Добавить товар</a>
+                </div>
+                <select name="requestPriority" required>
+                    <option value="">Приоритет</option>
+                    <option value="normal">Обычный</option>
+                    <option value="high">Высокий</option>
+                </select>
+                <input type="text" name="requestComment" placeholder="Комментарий">
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="cancel">Отмена</button>
+                    <button type="submit">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Добавить поставщика -->
+    <div class="modal" id="addSupplierModal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Добавить нового поставщика</h3>
+            <form id="addSupplierForm">
+                <input type="text" name="supplierName" placeholder="Название компании*" required>
+                <select name="supplierCategory" required>
+                    <option value="">Категория товаров*</option>
+                    <option value="Кофе, чай">Кофе, чай</option>
+                    <option value="Молочные продукты">Молочные продукты</option>
+                    <option value="Сиропы">Сиропы</option>
+                    <option value="Расходные материалы">Расходные материалы</option>
+                    <option value="Выпечка, кондитерские изделия">Выпечка, кондитерские изделия</option>
+                    <option value="Фрукты, ягоды">Фрукты, ягоды</option>
+                </select>
+                <input type="tel" name="supplierPhone" placeholder="Телефон*" required>
+                <input type="email" name="supplierEmail" placeholder="Email">
+                <input type="text" name="supplierAddress" placeholder="Адрес">
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="cancel">Отмена</button>
+                    <button type="submit">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Редактировать поставщика -->
+    <div class="modal" id="editSupplierModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('editSupplierModal')">&times;</span>
+            <h3>Редактировать поставщика</h3>
+            <form onsubmit="handleEditSupplier(event)">
+                <input type="text" required>
+                <select required>
+                    <option value="Кофе, чай">Кофе, чай</option>
+                    <option value="Молочные продукты">Молочные продукты</option>
+                    <option value="Сиропы">Сиропы</option>
+                    <option value="Расходные материалы">Расходные материалы</option>
+                    <option value="Выпечка, кондитерские изделия">Выпечка, кондитерские изделия</option>
+                    <option value="Фрукты, ягоды">Фрукты, ягоды</option>
+                </select>
+                <input type="tel" required>
+                <input type="email">
+                <input type="text">
+                <select required>
+                    <option value="active">Активный</option>
+                    <option value="paused">На паузе</option>
+                    <option value="archived">Архивный</option>
+                </select>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="cancel" onclick="closeModal('editSupplierModal')">Отмена</button>
+                    <button type="submit">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Другие секции (заглушки) -->
+    <section id="finances-section" style="display:none;"><div class="header">Финансы (заглушка)</div></section>
+    <section id="menu-section" style="display:none;"><div class="header">Меню (заглушка)</div></section>
+    <section id="staff-section" style="display:none;"><div class="header">Персонал (заглушка)</div></section>
+    <section id="settings-section" style="display:none;"><div class="header">Настройки (заглушка)</div></section>
+    <section id="analytics-section" style="display:none;"><div class="header">Аналитика (заглушка)</div></section>
+</div>
+<script src="../static/js/manager.js"></script>
+<script src="../static/js/inventory.js"></script>
+<script src="../static/js/admin-api.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    
+    if (!token || role !== 'manager') {
+        window.location.href = '/';
+        return;
+    }
+
+    // Проверяем токен через API
+    try {
+        const resp = await fetch('/api/manager/stats', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!resp.ok) {
+            console.error('Auth check failed:', resp.status);
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            document.cookie = 'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+            window.location.href = '/';
+            return;
+        }
+
+        // Если авторизация успешна, загружаем данные
+        await loadDashboardData();
+        setupEventListeners();
+        
+        // Показываем основную секцию
+        const currentPath = window.location.pathname;
+        const sections = {
+            '/manager': 'main',
+            '/manager/inventory': 'inventory',
+            '/manager/menu': 'menu',
+            '/manager/finances': 'finances',
+            '/manager/staff': 'staff',
+            '/manager/settings': 'settings',
+            '/manager/analytics': 'analytics'
+        };
+        
+        const activeSection = sections[currentPath] || 'main';
+        showSection(activeSection);
+        
+        // Подсвечиваем активный пункт меню
+        document.querySelectorAll('.sidebar nav ul li').forEach(li => {
+            const route = li.getAttribute('data-route');
+            li.classList.toggle('active', route === currentPath);
+        });
+        
+        if (activeSection === 'inventory') {
+            showInventoryTab('stock');
+        }
+    } catch (e) {
+        console.error('Auth check failed:', e);
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        document.cookie = 'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        window.location.href = '/';
+    }
+});
+
+function setupEventListeners() {
+    // Sidebar toggle
+    document.querySelector('.logo').addEventListener('click', toggleSidebar);
+    
+    // Navigation menu
+    document.querySelectorAll('.sidebar nav ul li').forEach(item => {
+        item.addEventListener('click', function() {
+            const route = this.getAttribute('data-route');
+            if (route) {
+                window.location.href = route;
+            }
+        });
+    });
+
+    // ... остальные обработчики событий ...
+}
+
+// ... остальной код ...
+</script>
+</body>
+</html>
+
+

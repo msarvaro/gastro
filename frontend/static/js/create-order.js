@@ -5,7 +5,16 @@ let currentOrderData = {
     total: 0
 };
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // Проверка авторизации
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    
+    if (!token || role !== 'waiter') {
+        window.location.href = '/';
+        return;
+    }
+
     // Код для выбора стола
     const selectTableBtn = document.getElementById('selectTableBtn');
     const tableModal = document.getElementById('tableModal');
@@ -135,25 +144,39 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Загружаем статус столов
+    try {
+        const tableStatus = await waiterApi.getTableStatus();
+        const tables = await waiterApi.getTables();
+        
+        // Обновляем статус столов в модальном окне
+        tables.forEach(table => {
+            const tableEl = document.querySelector(`.table-option[data-table-id="${table.id}"]`);
+            if (tableEl) {
+                if (tableStatus[table.id] === 'occupied') {
+                    tableEl.classList.add('occupied');
+                } else {
+                    tableEl.classList.remove('occupied');
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading table status:', error);
+    }
 });
 
 // Загрузка меню
 async function loadMenu() {
-    // В будущем здесь будет запрос к API
-    const mockMenu = [
-        { id: 1, name: 'Стейк из говядины', category: 'Горячие блюда', price: 5000 },
-        { id: 2, name: 'Цезарь с курицей', category: 'Салаты', price: 2500 },
-        { id: 3, name: 'Борщ', category: 'Супы', price: 1800 },
-        { id: 4, name: 'Том Ям', category: 'Супы', price: 2300 },
-        { id: 5, name: 'Греческий салат', category: 'Салаты', price: 1900 },
-        { id: 6, name: 'Паста Карбонара', category: 'Горячие блюда', price: 3200 },
-        { id: 7, name: 'Coca-Cola', category: 'Напитки', price: 500 },
-        { id: 8, name: 'Свежевыжатый апельсиновый сок', category: 'Напитки', price: 1200 },
-        { id: 9, name: 'Куриные крылышки', category: 'Горячие блюда', price: 2800 },
-        { id: 10, name: 'Грибной крем-суп', category: 'Супы', price: 1700 }
-    ];
-
-    renderMenu(mockMenu);
+    try {
+        const dishes = await menuApi.getMenuItems();
+        renderMenu(dishes);
+    } catch (error) {
+        console.error('Error loading menu:', error);
+        // Show error notification to user
+        const dishesList = document.querySelector('.dishes-list');
+        dishesList.innerHTML = '<div class="error-message">Ошибка загрузки меню. Пожалуйста, попробуйте позже.</div>';
+    }
 }
 
 // Отрисовка меню
@@ -259,28 +282,34 @@ function updateOrder() {
 }
 
 // Фильтрация по категориям
-function filterDishesByCategory(category) {
-    const dishes = document.querySelectorAll('.dish-card');
-    dishes.forEach(dish => {
-        if (category === 'Все' || dish.dataset.category === category) {
-            dish.style.display = '';
-        } else {
-            dish.style.display = 'none';
-        }
-    });
+async function filterDishesByCategory(category) {
+    try {
+        const dishes = category === 'Все' 
+            ? await menuApi.getMenuItems()
+            : await menuApi.getMenuItemsByCategory(category);
+        renderMenu(dishes);
+    } catch (error) {
+        console.error('Error filtering dishes:', error);
+        // Show error notification to user
+        const dishesList = document.querySelector('.dishes-list');
+        dishesList.innerHTML = '<div class="error-message">Ошибка фильтрации меню. Пожалуйста, попробуйте позже.</div>';
+    }
 }
 
 // Поиск блюд
-function searchDishes(query) {
-    const dishes = document.querySelectorAll('.dish-card');
-    dishes.forEach(dish => {
-        const title = dish.querySelector('.dish-card__title').textContent.toLowerCase();
-        if (title.includes(query.toLowerCase())) {
-            dish.style.display = '';
-        } else {
-            dish.style.display = 'none';
-        }
-    });
+async function searchDishes(query) {
+    try {
+        const dishes = await menuApi.getMenuItems();
+        const filteredDishes = dishes.filter(dish => 
+            dish.name.toLowerCase().includes(query.toLowerCase())
+        );
+        renderMenu(filteredDishes);
+    } catch (error) {
+        console.error('Error searching dishes:', error);
+        // Show error notification to user
+        const dishesList = document.querySelector('.dishes-list');
+        dishesList.innerHTML = '<div class="error-message">Ошибка поиска блюд. Пожалуйста, попробуйте позже.</div>';
+    }
 }
 
 function showConfirmOrderModal() {
@@ -339,35 +368,24 @@ async function createOrder() {
         
         // Создаем новый заказ
         const newOrder = {
-            id: Date.now(),
             tableId: tableId,
-            waiterId: 1,
+            waiterId: parseInt(localStorage.getItem('userId')),
             status: 'new',
             items: currentOrderData.items,
             comment: currentOrderData.comment || '',
-            total: currentOrderData.total,
-            createdAt: new Date().toISOString()
+            total: currentOrderData.total
         };
 
-        // Получаем существующие заказы из localStorage
-        let ordersData = JSON.parse(localStorage.getItem('orders') || '{"orders":[]}');
-        
-        // Если ordersData не имеет свойства orders, создаем его
-        if (!ordersData.orders) {
-            ordersData = { orders: [] };
-        }
-        
-        // Добавляем новый заказ
-        ordersData.orders.push(newOrder);
-        
-        // Сохраняем обновленный список заказов
-        localStorage.setItem('orders', JSON.stringify(ordersData));
+        // Отправляем заказ на сервер
+        await waiterApi.createOrder(newOrder);
         
         // Показываем уведомление об успехе
-        alert('Заказ успешно создан!');
+        showSuccessNotification();
         
         // Перенаправляем на страницу заказов
-        window.location.href = 'orders.html';
+        setTimeout(() => {
+            window.location.href = 'orders.html';
+        }, 1500);
         
     } catch (error) {
         console.error('Error creating order:', error);

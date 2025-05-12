@@ -1,0 +1,164 @@
+package handlers
+
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+
+	"restaurant-management/internal/database"
+	"restaurant-management/internal/models"
+
+	"github.com/gorilla/mux"
+)
+
+type MenuHandler struct {
+	repo *database.MenuRepository
+}
+
+func NewMenuHandler(repo *database.MenuRepository) *MenuHandler {
+	return &MenuHandler{repo: repo}
+}
+
+func (h *MenuHandler) RegisterRoutes(r *mux.Router) {
+	menu := r.PathPrefix("/api/menu").Subrouter()
+	menu.HandleFunc("/items", h.GetMenuItems).Methods("GET")
+	menu.HandleFunc("/items/{id:[0-9]+}", h.GetMenuItem).Methods("GET")
+	menu.HandleFunc("/items", h.CreateMenuItem).Methods("POST")
+	menu.HandleFunc("/items/{id:[0-9]+}", h.UpdateMenuItem).Methods("PUT")
+	menu.HandleFunc("/items/{id:[0-9]+}", h.DeleteMenuItem).Methods("DELETE")
+	menu.HandleFunc("/categories", h.GetCategories).Methods("GET")
+	menu.HandleFunc("/categories", h.CreateCategory).Methods("POST")
+	menu.HandleFunc("/categories/{id:[0-9]+}", h.UpdateCategory).Methods("PUT")
+	menu.HandleFunc("/categories/{id:[0-9]+}", h.DeleteCategory).Methods("DELETE")
+}
+
+func (h *MenuHandler) GetMenuItems(w http.ResponseWriter, r *http.Request) {
+	items, err := h.repo.GetMenuItems(r.Context(), nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(items)
+}
+
+func (h *MenuHandler) GetMenuItem(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid menu item ID", http.StatusBadRequest)
+		return
+	}
+	item, err := h.repo.GetMenuItemByID(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	json.NewEncoder(w).Encode(item)
+}
+
+func (h *MenuHandler) CreateMenuItem(w http.ResponseWriter, r *http.Request) {
+	var item models.MenuItemCreate
+	if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	created, err := h.repo.CreateMenuItem(r.Context(), item)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(created)
+}
+
+func (h *MenuHandler) UpdateMenuItem(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid menu item ID", http.StatusBadRequest)
+		return
+	}
+	var item models.MenuItemUpdate
+	if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	updated, err := h.repo.UpdateMenuItem(r.Context(), id, item)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(updated)
+}
+
+func (h *MenuHandler) DeleteMenuItem(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid menu item ID", http.StatusBadRequest)
+		return
+	}
+	if err := h.repo.DeleteMenuItem(r.Context(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *MenuHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
+	categories, err := h.repo.GetCategories(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(categories)
+}
+
+func (h *MenuHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
+	var category models.CategoryCreate
+	if err := json.NewDecoder(r.Body).Decode(&category); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	created, err := h.repo.CreateCategory(r.Context(), category)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(created)
+}
+
+func (h *MenuHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid category ID", http.StatusBadRequest)
+		return
+	}
+	var category models.CategoryUpdate
+	if err := json.NewDecoder(r.Body).Decode(&category); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	updated, err := h.repo.UpdateCategory(r.Context(), id, category)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(updated)
+}
+
+func (h *MenuHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid category ID", http.StatusBadRequest)
+		return
+	}
+	if err := h.repo.DeleteCategory(r.Context(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
