@@ -2,9 +2,26 @@ document.addEventListener('DOMContentLoaded', async function() {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     
-    if (!token || role !== 'manager') {
+    if (!token || role !== 'manager' ) {
         window.location.href = '/';
         return;
+    }
+
+    // Initialize sidebar state
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
+    const state = localStorage.getItem('sidebarState') || 'open';
+
+    if (sidebar && mainContent) {
+        // Set initial state without transitions
+        if (state === 'closed') {
+            sidebar.classList.add('closed');
+            mainContent.style.marginLeft = '88px';
+        } else {
+            sidebar.classList.remove('closed');
+            mainContent.style.marginLeft = '279px';
+        }
+
     }
 
     // Инициализация обработчиков событий
@@ -34,10 +51,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             '/manager': 'main',
             '/manager/inventory': 'inventory',
             '/manager/menu': 'menu',
-            '/manager/finances': 'finances',
             '/manager/staff': 'staff',
-            '/manager/settings': 'settings',
-            '/manager/analytics': 'analytics'
+            
         };
         
         const activeSection = sections[currentPath] || 'main';
@@ -144,14 +159,17 @@ async function handleAddRequest(event) {
         return;
     }
 
+    // Преобразуем массив объектов в массив строк
+    const itemsAsStrings = items.map(item => `${item.name} ${item.qty} ${item.unit}`);
+
     const newRequest = {
         branch: form.requestBranch.value,
-        supplier: form.requestSupplier.value,
-        items: items, // теперь это массив объектов {id, name, qty, unit}
+        supplier_id: parseInt(form.requestSupplier.value, 10),
+        items: itemsAsStrings, // теперь массив строк
         priority: form.requestPriority.value,
         comment: form.requestComment.value,
         status: 'pending',
-        createdAt: new Date().toISOString()
+        created_at: new Date().toISOString()
     };
     try {
         const response = await fetch('/api/manager/requests', {
@@ -191,7 +209,7 @@ async function loadDashboardData() {
         const averageCheck = visitorCount > 0 ? totalRevenue / visitorCount : 0;
 
         // Update dashboard cards
-        const cards = document.querySelectorAll('.card .value');
+        const cards = document.querySelectorAll('#main-section .card .value');
         if (cards.length >= 3) {
             cards[0].textContent = `${formatMoney(totalRevenue)}₸`;
             cards[1].textContent = `${visitorCount}`;
@@ -220,7 +238,7 @@ async function loadDashboardData() {
             ((todayAvgCheck - yesterdayAvgCheck) / yesterdayAvgCheck * 100).toFixed(0) : 0;
 
         // Update comparison indicators
-        const indicators = document.querySelectorAll('.card .desc span');
+        const indicators = document.querySelectorAll('#main-section .card .desc span');
         if (indicators.length >= 3) {
             updateComparisonIndicator(1, revenueChange);
             updateComparisonIndicator(2, visitorChange);
@@ -230,11 +248,11 @@ async function loadDashboardData() {
     } catch (error) {
         console.error('Error loading dashboard data:', error);
         // Show error message to user
-        const cards = document.querySelectorAll('.card .value');
+        const cards = document.querySelectorAll('#main-section .card .value');
         cards.forEach(card => {
             card.textContent = '—';
         });
-        const indicators = document.querySelectorAll('.card .desc span');
+        const indicators = document.querySelectorAll('#main-section .card .desc span');
         indicators.forEach(indicator => {
             indicator.textContent = '';
         });
@@ -256,13 +274,28 @@ function formatMoney(amount) {
 }
 
 function setupEventListeners() {
-    // Sidebar toggle
-    const logo = document.querySelector('.logo');
-    if (logo) {
-        logo.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleSidebar();
+    // Sidebar click handler
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
+
+    if (sidebar && mainContent) {
+        // Open sidebar when clicking on it (if closed)
+        sidebar.addEventListener('click', function(e) {
+            if (sidebar.classList.contains('closed')) {
+                sidebar.classList.remove('closed');
+                mainContent.style.marginLeft = '279px';
+                localStorage.setItem('sidebarState', 'open');
+                e.stopPropagation();
+            }
+        });
+
+        // Close sidebar when clicking on main content (if open)
+        mainContent.addEventListener('click', function() {
+            if (!sidebar.classList.contains('closed')) {
+                sidebar.classList.add('closed');
+                mainContent.style.marginLeft = '88px';
+                localStorage.setItem('sidebarState', 'closed');
+            }
         });
     }
     
@@ -398,6 +431,16 @@ function setupEventListeners() {
             showModal('addMenuItemModal');
         });
     }
+
+    // Inventory tab switching (JS only, no inline onclick)
+    document.querySelectorAll('#inventory-section .tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tab = this.getAttribute('data-tab');
+            if (tab) {
+                showInventoryTab(tab);
+            }
+        });
+    });
 }
 
 // Sidebar toggle
@@ -405,26 +448,22 @@ function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     if (sidebar) {
         sidebar.classList.toggle('closed');
-        console.log('Sidebar toggled:', sidebar.classList.contains('closed')); // Debug log
-        
-        // Обновляем отступ основного контента
+        // Save state
+        localStorage.setItem('sidebarState', sidebar.classList.contains('closed') ? 'closed' : 'open');
+        // Update main content margin
         const mainContent = document.querySelector('.main-content');
         if (mainContent) {
-            if (sidebar.classList.contains('closed')) {
-                mainContent.style.marginLeft = '88px';
-            } else {
-                mainContent.style.marginLeft = '260px';
-            }
+            mainContent.style.marginLeft = sidebar.classList.contains('closed') ? '88px' : '279px';
         }
     }
 }
 
 // Section switching
 function showSection(section) {
-    const sections = ['main', 'finances', 'menu', 'inventory', 'staff', 'settings', 'analytics'];
+    const sections = ['main', 'menu', 'inventory', 'staff'];
     sections.forEach(s => {
         const el = document.getElementById(s + '-section');
-        if (el) el.style.display = (s === section) ? '' : 'none';
+        if (el) el.style.display = (s === section) ? 'block' : 'none';
     });
     
     // Highlight active menu
@@ -462,10 +501,6 @@ function closeModal(id) {
     }
 }
 
-// Initialize default view
-showSection('main');
-showInventoryTab('stock');
-
 // Inventory Management
 async function loadInventoryData() {
     try {
@@ -495,9 +530,6 @@ async function loadInventoryData() {
         if (category) filteredItems = filteredItems.filter(i => i.category === category);
         if (branch) filteredItems = filteredItems.filter(i => i.branch === branch);
 
-        console.log('Загружено позиций:', filteredItems.length);
-        console.log('Карточки:', document.querySelectorAll('#inventory-stock-tab .card .value'));
-
         // Update inventory cards
         const cards = document.querySelectorAll('#inventory-stock-tab .card .value');
         if (cards.length >= 3) {
@@ -516,7 +548,7 @@ async function loadInventoryData() {
                         <td>${item.name}</td>
                         <td>${item.category}</td>
                         <td>${item.quantity} ${item.unit}</td>
-                        <td>${item.minQuantity} ${item.unit}</td>
+                        <td>${item.min_quantity} ${item.unit}</td>
                         <td><span class="status-${getStatusClass(item)}">${getStatusText(item)}</span></td>
                     </tr>
                 `).join('');
@@ -537,14 +569,14 @@ async function loadInventoryData() {
 }
 
 function getStatusClass(item) {
-    if (item.quantity < item.minQuantity/2) return 'critical';
-    if (item.quantity < item.minQuantity) return 'low';
+    if (item.quantity < item.min_quantity/2) return 'critical';
+    if (item.quantity < item.min_quantity) return 'low';
     return 'ok';
 }
 
 function getStatusText(item) {
-    if (item.quantity < item.minQuantity/2) return 'Критично';
-    if (item.quantity < item.minQuantity) return 'Низкий';
+    if (item.quantity < item.min_quantity/2) return 'Критично';
+    if (item.quantity < item.min_quantity) return 'Низкий';
     return 'В норме';
 }
 
@@ -590,7 +622,7 @@ async function loadRequestsData() {
                     <tr>
                         <td>${request.items.join(', ')}</td>
                         <td>${request.branch}</td>
-                        <td>${formatDate(request.createdAt)}</td>
+                        <td>${formatDate(request.created_at)}</td>
                         <td><span class="status-${request.status}">${getRequestStatusText(request.status)}</span></td>
                         <td>
                             ${request.status === 'pending' ? 

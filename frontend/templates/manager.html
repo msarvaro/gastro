@@ -8,9 +8,9 @@
     <link rel="stylesheet" href="../static/css/manager.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class>
 <!-- Sidebar -->
-<div class="sidebar" id="sidebar">
+<div class="sidebar closed" id="sidebar">
     <div class="logo">
         <img src="../static/images/logo.svg" alt="Logo">
         <span class="sidebar-label">Markiz</span>
@@ -20,10 +20,6 @@
             <li data-section="main" data-route="/manager">
                 <span class="icon"><img src="../static/images/home.svg"></span>
                 <span class="sidebar-label">Главная</span>
-            </li>
-            <li data-section="finances" data-route="/manager/finances">
-                <span class="icon"><img src="../static/images/finance.svg"></span>
-                <span class="sidebar-label">Финансы</span>
             </li>
             <li data-section="menu" data-route="/manager/menu">
                 <span class="icon"><img src="../static/images/menu.svg"></span>
@@ -37,17 +33,10 @@
                 <span class="icon"><img src="../static/images/staff.svg"></span>
                 <span class="sidebar-label">Персонал</span>
             </li>
-            <li data-section="settings" data-route="/manager/settings">
-                <span class="icon"><img src="../static/images/settings.svg"></span>
-                <span class="sidebar-label">Настройки</span>
-            </li>
-            <li data-section="analytics" data-route="/manager/analytics">
-                <span class="icon"><img src="../static/images/analytics.svg"></span>
-                <span class="sidebar-label">Аналитика</span>
-            </li>
+          
         </ul>
     </nav>
-    <button class="logout" onclick="logout()">
+    <button class="logout">
         <span class="icon"><img src="../static/images/logout.svg"></span>
         <span class="sidebar-label">Выйти</span>
     </button>
@@ -83,10 +72,10 @@
     <section id="inventory-section" class="section" style="display:none;">
         <div class="header">Управление запасами</div>
         <div class="tabs">
-            <button class="tab-btn active" onclick="showInventoryTab('stock')">Склад</button>
-            <button class="tab-btn" onclick="showInventoryTab('requests')">Заявки</button>
-            <button class="tab-btn" onclick="showInventoryTab('suppliers')">Поставщики</button>
-            <button class="tab-btn" onclick="showInventoryTab('history')">История</button>
+            <button class="tab-btn active" data-tab="stock">Склад</button>
+            <button class="tab-btn" data-tab="requests">Заявки</button>
+            <button class="tab-btn" data-tab="suppliers">Поставщики</button>
+            <button class="tab-btn" data-tab="history">История</button>
         </div>
         <!-- Склад -->
         <div id="inventory-stock-tab" class="tab-content">
@@ -124,7 +113,7 @@
             <div class="filters">
                 <input type="text" id="requestSearch" placeholder="Поиск заявки...">
                 <select id="requestStatusFilter"><option value="">Статус</option><option value="pending">Ожидает одобрения</option><option value="active">В обработке</option><option value="completed">Выполнено</option><option value="rejected">Отклонено</option></select>
-                <select id="requestBranchFilter"><option value="">Филиал</option><option value="Достык">Достык</option><option value="Мангилик">Мангилик</option><option value="Керуен">Керуен</option><option value="Mega">Mega</option></select>
+                <select id="requestBranchFilter"><option value="">Филиал</option><option value="Coffee Boom, Достык">Достык</option><option value="Coffee Boom, Мангилик">Мангилик</option><option value="Coffee Boom, Керуен">Керуен</option><option value="Coffee Boom, Mega">Mega</option></select>
                 <button id="addRequestBtn">Создать</button>
             </div>
             <div class="cards">
@@ -172,7 +161,6 @@
     </section>
 
     <!-- Другие секции -->
-    <section id="finances-section" class="section" style="display:none;"><div class="header">Финансы (заглушка)</div></section>
     <section id="menu-section" class="section" style="display:none;">
         <div class="header">Управление меню</div>
         <div class="menu-actions">
@@ -185,8 +173,6 @@
         </div>
     </section>
     <section id="staff-section" class="section" style="display:none;"><div class="header">Персонал (заглушка)</div></section>
-    <section id="settings-section" class="section" style="display:none;"><div class="header">Настройки (заглушка)</div></section>
-    <section id="analytics-section" class="section" style="display:none;"><div class="header">Аналитика (заглушка)</div></section>
 
     <!-- Модальные окна -->
     <!-- Добавить продукт -->

@@ -5,8 +5,8 @@ body {
 }
 .sidebar {
     position: fixed;
-    top: 0;
-    left: 0;
+    margin: 0;
+    padding: 0;
     width: 293px;
     height: 100vh;
     background: #fff;
@@ -15,8 +15,7 @@ body {
     flex-direction: column;
     z-index: 1000;
     transition: width 0.2s, box-shadow 0.2s;
-    overflow: hidden;
-   
+
 }
 .sidebar.closed {
     width: 102px;
@@ -174,14 +173,12 @@ body {
     filter: invert(32%) sepia(99%) saturate(7492%) hue-rotate(202deg) brightness(97%) contrast(101%);
 }
 .main-content {
-    margin-left: 260px;
+    margin-left: 88px;
     padding: 32px 40px;
     min-height: 100vh;
     transition: margin-left 0.2s;
 }
-.sidebar.closed ~ .main-content {
-    margin-left: 88px;
-}
+
 .header {
     background: #fff;
     padding: 16px 24px;
