@@ -285,7 +285,7 @@ function setupEventListeners() {
                 sidebar.classList.remove('closed');
                 mainContent.style.marginLeft = '279px';
                 localStorage.setItem('sidebarState', 'open');
-                e.stopPropagation();
+            e.stopPropagation();
             }
         });
 
