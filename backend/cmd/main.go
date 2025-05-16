@@ -52,11 +52,10 @@ func main() {
 	inventoryHandler := handlers.NewInventoryHandler(db)
 	supplierHandler := handlers.NewSupplierHandler(db)
 	requestHandler := handlers.NewRequestHandler(db)
-	tableHandler := handlers.NewTableHandler(db)
-	orderHandler := handlers.NewOrderHandler(db)
 	menuRepo := database.NewMenuRepository(db.DB)
 	menuHandler := handlers.NewMenuHandler(menuRepo)
 	managerHandler := handlers.NewManagerHandler(db)
+	waiterHandler := handlers.NewWaiterHandler(db)
 
 	// Публичные API
 	r.HandleFunc("/api/login", authHandler.Login).Methods("POST")
@@ -98,20 +97,13 @@ func main() {
 	admin.HandleFunc("/users/{id}", adminHandler.DeleteUser).Methods("DELETE")
 	admin.HandleFunc("/stats", adminHandler.GetStats).Methods("GET")
 
-	// API маршруты для столов (доступны для официантов)
+	// API маршруты для официанта
 	waiter := api.PathPrefix("/waiter").Subrouter()
-	waiter.HandleFunc("/tables", tableHandler.GetAll).Methods("GET")
-	waiter.HandleFunc("/tables/{id}", tableHandler.GetByID).Methods("GET")
-	waiter.HandleFunc("/tables/status", tableHandler.GetStatus).Methods("GET")
-	waiter.HandleFunc("/tables/{id}/status", tableHandler.UpdateStatus).Methods("PUT")
-
-	// API маршруты для заказов (доступны для официантов)
-	waiter.HandleFunc("/orders", orderHandler.GetAll).Methods("GET")
-	waiter.HandleFunc("/orders/{id}", orderHandler.GetByID).Methods("GET")
-	waiter.HandleFunc("/orders", orderHandler.Create).Methods("POST")
-	waiter.HandleFunc("/orders/{id}", orderHandler.Update).Methods("PUT")
-	waiter.HandleFunc("/orders/status", orderHandler.GetStatus).Methods("GET")
-	waiter.HandleFunc("/orders/history", orderHandler.GetHistory).Methods("GET")
+	waiter.HandleFunc("/tables", waiterHandler.GetTables).Methods("GET")
+	waiter.HandleFunc("/orders", waiterHandler.GetOrders).Methods("GET")
+	waiter.HandleFunc("/history", waiterHandler.GetOrderHistory).Methods("GET")
+	waiter.HandleFunc("/orders", waiterHandler.CreateOrder).Methods("POST")
+	waiter.HandleFunc("/orders/{id}/status", waiterHandler.UpdateOrderStatus).Methods("PUT")
 
 	// API маршруты для меню
 	menuHandler.RegisterRoutes(r)
@@ -137,37 +129,25 @@ func main() {
 		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
 	}).Methods("GET")
 
-	htmlRouter.HandleFunc("/manager/finances", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
-	}).Methods("GET")
-
 	htmlRouter.HandleFunc("/manager/staff", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
-	}).Methods("GET")
-
-	htmlRouter.HandleFunc("/manager/settings", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
-	}).Methods("GET")
-
-	htmlRouter.HandleFunc("/manager/analytics", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "manager.html"))
 	}).Methods("GET")
 
 	// Страницы для официантов
 	htmlRouter.HandleFunc("/waiter", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "index.html"))
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "waiter.html"))
 	}).Methods("GET")
 
 	htmlRouter.HandleFunc("/waiter/orders", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "orders.html"))
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "waiter.html"))
 	}).Methods("GET")
 
 	htmlRouter.HandleFunc("/waiter/history", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "history.html"))
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "waiter.html"))
 	}).Methods("GET")
 
-	htmlRouter.HandleFunc("/waiter/create-order", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "create-order.html"))
+	htmlRouter.HandleFunc("/waiter/profile", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "waiter.html"))
 	}).Methods("GET")
 
 	// Логируем пути для отладки
@@ -177,7 +157,6 @@ func main() {
 	log.Printf("Static dir: %s", config.Paths.Static)
 	log.Printf("Templates dir: %s", config.Paths.Templates)
 
-	serverAddr := fmt.Sprintf(":%d", config.Server.Port)
-	log.Printf("Server starting on http://localhost%s", serverAddr)
-	log.Fatal(http.ListenAndServe(serverAddr, r))
+	log.Printf("Server starting on http://127.0.0.1:%s", config.Server.Port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%s", config.Server.Port), r))
 }

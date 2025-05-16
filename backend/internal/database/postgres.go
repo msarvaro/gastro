@@ -75,6 +75,35 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 	return user, nil
 }
 
+func (db *DB) GetUserByID(id int) (*models.User, error) {
+	user := &models.User{}
+	var createdAt, updatedAt, lastActive sql.NullTime // Use NullTime for nullable timestamps
+
+	err := db.QueryRow(`
+        SELECT id, username, email, role, status, created_at, updated_at, last_active 
+        FROM users 
+        WHERE id = $1`,
+		id,
+	).Scan(
+		&user.ID, &user.Username, &user.Email, &user.Role, &user.Status,
+		&createdAt, &updatedAt, &lastActive, // &user.Name, // Temporarily commented out
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user with ID %d not found", id)
+		}
+		log.Printf("Database error fetching user by ID %d: %v", id, err)
+		return nil, err
+	}
+
+	user.CreatedAt = createdAt.Time
+	user.UpdatedAt = updatedAt.Time
+	user.LastActive = lastActive.Time
+
+	return user, nil
+}
+
 func (db *DB) GetUsers(page, limit int, status, role, search string) ([]models.User, int, error) {
 	// Базовый запрос
 	query := `
@@ -433,9 +462,9 @@ func (db *DB) DeleteRequest(id int) error {
 
 // Table methods
 func (db *DB) GetAllTables() ([]models.Table, error) {
-	query := `SELECT id, number, seats, status, created_at, updated_at FROM tables`
-	rows, err := db.Query(query)
+	rows, err := db.Query("SELECT id, number, seats, status, reserved_at, occupied_at FROM tables ORDER BY number ASC")
 	if err != nil {
+		log.Printf("Error GetAllTables - querying tables: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -443,235 +472,407 @@ func (db *DB) GetAllTables() ([]models.Table, error) {
 	var tables []models.Table
 	for rows.Next() {
 		var t models.Table
-		if err := rows.Scan(&t.ID, &t.Number, &t.Seats, &t.Status, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.Number, &t.Seats, &t.Status, &t.ReservedAt, &t.OccupiedAt); err != nil {
+			log.Printf("Error GetAllTables - scanning table row: %v", err)
 			return nil, err
 		}
+
+		// Fetch active orders for this table
+		orderRows, err := db.Query(`
+            SELECT id, created_at, comment 
+            FROM orders 
+            WHERE table_id = $1 AND status NOT IN ('completed', 'cancelled') 
+            ORDER BY created_at ASC`,
+			t.ID,
+		)
+		if err != nil {
+			log.Printf("Error GetAllTables - querying active orders for table %d: %v", t.ID, err)
+			tables = append(tables, t)
+			continue
+		}
+		defer orderRows.Close()
+
+		var tableOrders []models.TableOrderInfo
+		for orderRows.Next() {
+			var toi models.TableOrderInfo
+			var comment sql.NullString
+			if err := orderRows.Scan(&toi.ID, &toi.Time, &comment); err != nil {
+				log.Printf("Error GetAllTables - scanning order row for table %d: %v", t.ID, err)
+				continue
+			}
+			if comment.Valid {
+				toi.Comment = &comment.String
+			}
+			tableOrders = append(tableOrders, toi)
+		}
+		orderRows.Close()
+
+		if err := orderRows.Err(); err != nil {
+			log.Printf("Error GetAllTables - iterating order rows for table %d: %v", t.ID, err)
+		}
+
+		t.Orders = tableOrders
 		tables = append(tables, t)
 	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error GetAllTables - iterating table rows: %v", err)
+		return nil, err
+	}
+
 	return tables, nil
 }
 
 func (db *DB) GetTableByID(id int) (*models.Table, error) {
-	query := `SELECT id, number, seats, status, created_at, updated_at FROM tables WHERE id = $1`
+	query := `SELECT id, number, seats, status, reserved_at, occupied_at FROM tables WHERE id = $1`
 	var t models.Table
-	err := db.QueryRow(query, id).Scan(&t.ID, &t.Number, &t.Seats, &t.Status, &t.CreatedAt, &t.UpdatedAt)
+	err := db.QueryRow(query, id).Scan(&t.ID, &t.Number, &t.Seats, &t.Status, &t.ReservedAt, &t.OccupiedAt)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("table with ID %d not found", id)
+		}
+		log.Printf("Error GetTableByID - scanning table %d: %v", id, err)
 		return nil, err
 	}
 	return &t, nil
 }
 
-func (db *DB) GetTableStatus() (*models.TableStatus, error) {
+func (db *DB) GetTableStats() (*models.TableStats, error) {
+	stats := &models.TableStats{}
 	query := `
-        SELECT 
-            COUNT(*) as total,
-            COUNT(CASE WHEN status = 'free' THEN 1 END) as free,
-            COUNT(CASE WHEN status = 'occupied' THEN 1 END) as occupied,
-            COUNT(CASE WHEN status = 'reserved' THEN 1 END) as reserved
-        FROM tables`
-	var status models.TableStatus
-	err := db.QueryRow(query).Scan(&status.Total, &status.Free, &status.Occupied, &status.Reserved)
+        SELECT
+            COUNT(*) as total_tables,
+            SUM(CASE WHEN status = 'free' THEN 1 ELSE 0 END) as free_tables,
+            SUM(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) as occupied_tables,
+            SUM(CASE WHEN status = 'reserved' THEN 1 ELSE 0 END) as reserved_tables,
+            (SUM(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) * 100.0 / CASE WHEN COUNT(*) = 0 THEN 1 ELSE COUNT(*) END) as occupancy_percentage
+        FROM tables
+    `
+	err := db.QueryRow(query).Scan(
+		&stats.Total,
+		&stats.Free,
+		&stats.Occupied,
+		&stats.Reserved,
+		&stats.Occupancy,
+	)
 	if err != nil {
+		log.Printf("Error GetTableStats query: %v", err)
 		return nil, err
 	}
-	return &status, nil
+	return stats, nil
 }
 
-func (db *DB) UpdateTableStatus(table *models.Table) error {
-	query := `
-        UPDATE tables 
-        SET status = $1, updated_at = NOW()
-        WHERE id = $2`
-	_, err := db.Exec(query, table.Status, table.ID)
-	return err
+func (db *DB) UpdateTableStatus(tableID int, status string) error {
+	var occupiedAt sql.NullTime
+	var reservedAt sql.NullTime
+	now := time.Now()
+
+	switch models.TableStatus(status) { // Assuming models.TableStatus is defined for status constants
+	case models.TableStatusOccupied:
+		occupiedAt.Time = now
+		occupiedAt.Valid = true
+		reservedAt.Valid = false // Clear reservation if it becomes occupied
+	case models.TableStatusReserved:
+		reservedAt.Time = now
+		reservedAt.Valid = true
+		occupiedAt.Valid = false // Clear occupation if it becomes reserved (e.g. future reservation)
+	case models.TableStatusFree:
+		occupiedAt.Valid = false
+		reservedAt.Valid = false
+	default:
+		// For any other status, don't explicitly change occupied_at or reserved_at
+		// or handle as an error if status is unexpected
+		log.Printf("Warning: UpdateTableStatus called with unhandled status '%s' for table %d. occupied_at and reserved_at will not be changed.", status, tableID)
+		// Depending on strictness, you might want to return an error here or just update status and updated_at
+		// For now, let's proceed to update only status and updated_at for unhandled cases.
+		_, err := db.Exec("UPDATE tables SET status = $1, updated_at = $2 WHERE id = $3", status, time.Now(), tableID)
+		if err != nil {
+			log.Printf("Ошибка обновления статуса (без occupied_at/reserved_at) стола для ID %d: %v", tableID, err)
+			return err
+		}
+		return nil
+	}
+
+	// updated_at is always set
+	// Note: The original query used `updated_at = $2`. If `updated_at` is a specific column,
+	// it should be explicitly part of the SET clause.
+	// Assuming table `tables` also has an `updated_at` column that needs updating.
+	result, err := db.Exec(`UPDATE tables 
+						   SET status = $1, occupied_at = $2, reserved_at = $3, updated_at = $4 
+						   WHERE id = $5`,
+		status, occupiedAt, reservedAt, now, tableID)
+
+	if err != nil {
+		log.Printf("Ошибка обновления статуса стола для ID %d: %v", tableID, err)
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Ошибка получения количества затронутых строк для обновления статуса стола ID %d: %v", tableID, err)
+		return err
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("стол с ID %d для обновления статуса не найден", tableID)
+	}
+	return nil
+}
+
+// Dish methods
+// GetDishByID retrieves a specific dish by its ID.
+func (db *DB) GetDishByID(id int) (*models.Dish, error) {
+	dish := &models.Dish{}
+	err := db.QueryRow("SELECT id, name, price, is_available FROM dishes WHERE id = $1", id).Scan(&dish.ID, &dish.Name, &dish.Price, &dish.IsAvailable)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("dish with ID %d not found", id)
+		}
+		log.Printf("Error fetching dish by ID %d: %v", id, err)
+		return nil, err
+	}
+	return dish, nil
 }
 
 // Order methods
-func (db *DB) GetAllOrders() ([]models.Order, error) {
+// GetActiveOrdersWithItems retrieves all active orders along with their items.
+func (db *DB) GetActiveOrdersWithItems() ([]models.Order, error) {
 	query := `
-        SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total, 
+        SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total_amount, 
                o.created_at, o.updated_at, o.completed_at, o.cancelled_at,
-               json_agg(json_build_object(
-                   'id', oi.id,
-                   'name', oi.name,
-                   'quantity', oi.quantity,
-                   'price', oi.price,
-                   'total', oi.total
-               )) as items
+               COALESCE(
+                   json_agg(
+                       json_build_object(
+                           'id', oi.id,
+                           'dish_id', oi.dish_id,
+                           'name', d.name,
+                           'quantity', oi.quantity,
+                           'price', oi.price,
+                           'total', (oi.quantity * oi.price),
+                           'notes', oi.notes
+                       )
+                   ) FILTER (WHERE oi.id IS NOT NULL), '[]'::json
+               ) as items
         FROM orders o
         LEFT JOIN order_items oi ON o.id = oi.order_id
-        WHERE o.status NOT IN ('completed', 'cancelled')
+        LEFT JOIN dishes d ON oi.dish_id = d.id
+        WHERE o.status IN ('new', 'accepted', 'preparing', 'ready', 'served')
         GROUP BY o.id
-        ORDER BY o.created_at DESC`
-
+        ORDER BY o.created_at DESC
+    `
 	rows, err := db.Query(query)
 	if err != nil {
+		log.Printf("Error in GetActiveOrdersWithItems query: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
 
 	var orders []models.Order
 	for rows.Next() {
-		var o models.Order
-		var items []byte
-		if err := rows.Scan(&o.ID, &o.TableID, &o.WaiterID, &o.Status, &o.Comment, &o.Total,
-			&o.CreatedAt, &o.UpdatedAt, &o.CompletedAt, &o.CancelledAt, &items); err != nil {
+		var order models.Order
+		var itemsJSON []byte
+		var completedAt pq.NullTime
+		var cancelledAt pq.NullTime
+
+		err := rows.Scan(
+			&order.ID, &order.TableID, &order.WaiterID, &order.Status, &order.Comment, &order.TotalAmount,
+			&order.CreatedAt, &order.UpdatedAt, &completedAt, &cancelledAt, &itemsJSON,
+		)
+		if err != nil {
+			log.Printf("Error scanning active order row: %v", err)
 			return nil, err
 		}
-		if err := json.Unmarshal(items, &o.Items); err != nil {
+
+		if completedAt.Valid {
+			order.CompletedAt = &completedAt.Time
+		}
+		if cancelledAt.Valid {
+			order.CancelledAt = &cancelledAt.Time
+		}
+
+		if err := json.Unmarshal(itemsJSON, &order.Items); err != nil {
+			log.Printf("Error unmarshalling order items for order %d: %v", order.ID, err)
 			return nil, err
 		}
-		orders = append(orders, o)
+		orders = append(orders, order)
+	}
+	if err = rows.Err(); err != nil {
+		log.Printf("Error after iterating active order rows: %v", err)
+		return nil, err
 	}
 	return orders, nil
 }
 
+// GetOrderByID retrieves a specific order by its ID, including its items.
 func (db *DB) GetOrderByID(id int) (*models.Order, error) {
 	query := `
-        SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total, 
+        SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total_amount, 
                o.created_at, o.updated_at, o.completed_at, o.cancelled_at,
-               json_agg(json_build_object(
-                   'id', oi.id,
-                   'name', oi.name,
-                   'quantity', oi.quantity,
-                   'price', oi.price,
-                   'total', oi.total
-               )) as items
+               COALESCE(
+                   json_agg(
+                       json_build_object(
+                           'id', oi.id,
+						   'dish_id', oi.dish_id,
+                           'name', oi.name,
+                           'quantity', oi.quantity,
+                           'price', oi.price,
+                           'total', oi.total,
+						   'notes', oi.notes
+                       )
+                   ) FILTER (WHERE oi.id IS NOT NULL), '[]'::json
+               ) as items
         FROM orders o
         LEFT JOIN order_items oi ON o.id = oi.order_id
         WHERE o.id = $1
         GROUP BY o.id`
 
 	var o models.Order
-	var items []byte
-	err := db.QueryRow(query, id).Scan(&o.ID, &o.TableID, &o.WaiterID, &o.Status, &o.Comment, &o.Total,
-		&o.CreatedAt, &o.UpdatedAt, &o.CompletedAt, &o.CancelledAt, &items)
+	var itemsJSON []byte
+	var completedAt, cancelledAt pq.NullTime
+
+	err := db.QueryRow(query, id).Scan(
+		&o.ID, &o.TableID, &o.WaiterID, &o.Status, &o.Comment, &o.TotalAmount,
+		&o.CreatedAt, &o.UpdatedAt, &completedAt, &cancelledAt, &itemsJSON,
+	)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("order with ID %d not found", id)
+		}
+		log.Printf("Error fetching order by ID %d: %v", id, err)
 		return nil, err
 	}
-	if err := json.Unmarshal(items, &o.Items); err != nil {
+
+	if completedAt.Valid {
+		o.CompletedAt = &completedAt.Time
+	}
+	if cancelledAt.Valid {
+		o.CancelledAt = &cancelledAt.Time
+	}
+
+	if err := json.Unmarshal(itemsJSON, &o.Items); err != nil {
+		log.Printf("Error unmarshalling items for order %d: %v", o.ID, err)
 		return nil, err
 	}
 	return &o, nil
 }
 
-func (db *DB) CreateOrder(order *models.Order) error {
+// CreateOrderAndItems creates a new order and its associated items in a transaction.
+// It updates the order.ID and order.Items[i].ID upon successful creation.
+func (db *DB) CreateOrderAndItems(order *models.Order) (*models.Order, error) {
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		log.Printf("Error starting transaction for creating order: %v", err)
+		return nil, err
 	}
-	defer tx.Rollback()
 
-	// Insert order
-	query := `
-        INSERT INTO orders (table_id, waiter_id, status, comment, total, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-        RETURNING id`
-	err = tx.QueryRow(query, order.TableID, order.WaiterID, order.Status, order.Comment, order.Total).Scan(&order.ID)
+	now := time.Now()
+	order.CreatedAt = now
+	order.UpdatedAt = now
+
+	orderSQL := `INSERT INTO orders (table_id, waiter_id, status, comment, total_amount, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at, updated_at`
+	err = tx.QueryRow(orderSQL, order.TableID, order.WaiterID, order.Status, order.Comment, order.TotalAmount, order.CreatedAt, order.UpdatedAt).Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
 	if err != nil {
-		return err
+		tx.Rollback()
+		log.Printf("Error inserting order: %v", err)
+		return nil, err
 	}
 
-	// Insert order items
-	for _, item := range order.Items {
-		_, err = tx.Exec(`
-            INSERT INTO order_items (order_id, name, quantity, price, total)
-            VALUES ($1, $2, $3, $4, $5)`,
-			order.ID, item.Name, item.Quantity, item.Price, item.Total)
+	itemSQL := `INSERT INTO order_items (order_id, dish_id, name, quantity, price, total, notes)
+                VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+	for i := range order.Items {
+		item := &order.Items[i]
+		err = tx.QueryRow(itemSQL, order.ID, item.DishID, item.Name, item.Quantity, item.Price, item.Total, item.Notes).Scan(&item.ID)
 		if err != nil {
-			return err
+			tx.Rollback()
+			log.Printf("Error inserting order item for dish %d (name: %s): %v", item.DishID, item.Name, err)
+			return nil, err
 		}
 	}
 
-	return tx.Commit()
+	if err = tx.Commit(); err != nil {
+		log.Printf("Error committing transaction for creating order: %v", err)
+		return nil, err
+	}
+	return order, nil
 }
 
+// UpdateOrder updates an existing order's status and relevant timestamps.
+// It expects order.Status, and potentially order.CompletedAt or order.CancelledAt to be set.
+// order.ID must be valid.
 func (db *DB) UpdateOrder(order *models.Order) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	// Update order
 	query := `
         UPDATE orders 
-        SET status = $1, comment = $2, total = $3, updated_at = NOW(),
-            completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE completed_at END,
-            cancelled_at = CASE WHEN $1 = 'cancelled' THEN NOW() ELSE cancelled_at END
-        WHERE id = $4`
-	_, err = tx.Exec(query, order.Status, order.Comment, order.Total, order.ID)
+        SET status = $1, comment = $2, total_amount = $3, 
+            updated_at = $4, completed_at = $5, cancelled_at = $6
+        WHERE id = $7`
+
+	order.UpdatedAt = time.Now()
+
+	_, err := db.Exec(query,
+		order.Status, order.Comment, order.TotalAmount,
+		order.UpdatedAt, order.CompletedAt, order.CancelledAt,
+		order.ID,
+	)
 	if err != nil {
+		log.Printf("Error updating order ID %d: %v", order.ID, err)
 		return err
 	}
-
-	// Update order items if provided
-	if len(order.Items) > 0 {
-		// Delete existing items
-		_, err = tx.Exec("DELETE FROM order_items WHERE order_id = $1", order.ID)
-		if err != nil {
-			return err
-		}
-
-		// Insert new items
-		for _, item := range order.Items {
-			_, err = tx.Exec(`
-                INSERT INTO order_items (order_id, name, quantity, price, total)
-                VALUES ($1, $2, $3, $4, $5)`,
-				order.ID, item.Name, item.Quantity, item.Price, item.Total)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return tx.Commit()
+	return nil
 }
 
-func (db *DB) GetOrderStatus() (*models.OrderStatus, error) {
+func (db *DB) GetOrderStatus() (*models.OrderStats, error) {
 	query := `
         SELECT 
-            COUNT(*) as total,
+            COUNT(CASE WHEN status NOT IN ('completed', 'cancelled') THEN 1 END) as total_active_orders,
             COUNT(CASE WHEN status = 'new' THEN 1 END) as new,
             COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted,
             COUNT(CASE WHEN status = 'preparing' THEN 1 END) as preparing,
             COUNT(CASE WHEN status = 'ready' THEN 1 END) as ready,
             COUNT(CASE WHEN status = 'served' THEN 1 END) as served,
-            COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
-            COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
-            COALESCE(SUM(CASE WHEN status = 'completed' THEN total ELSE 0 END), 0) as total_amount
+            COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_total,
+            COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_total,
+            COALESCE(SUM(CASE WHEN status = 'completed' THEN total_amount ELSE 0 END), 0) as total_amount_all
         FROM orders`
 
-	var status models.OrderStatus
+	var stats models.OrderStats
 	err := db.QueryRow(query).Scan(
-		&status.Total, &status.New, &status.Accepted, &status.Preparing,
-		&status.Ready, &status.Served, &status.Completed, &status.Cancelled,
-		&status.TotalAmount)
+		&stats.TotalActiveOrders, &stats.New, &stats.Accepted, &stats.Preparing,
+		&stats.Ready, &stats.Served, &stats.CompletedTotal, &stats.CancelledTotal,
+		&stats.TotalAmountAll)
 	if err != nil {
+		log.Printf("Error fetching order stats: %v", err)
 		return nil, err
 	}
-	return &status, nil
+	return &stats, nil
 }
 
-func (db *DB) GetOrderHistory() ([]models.Order, error) {
+// GetOrderHistoryWithItems retrieves completed or cancelled orders along with their items.
+func (db *DB) GetOrderHistoryWithItems() ([]models.Order, error) {
 	query := `
-        SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total, 
-               o.created_at, o.updated_at, o.completed_at, o.cancelled_at,
-               json_agg(json_build_object(
+    	SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total_amount, 
+       o.created_at, o.updated_at, o.completed_at, o.cancelled_at,
+       COALESCE(
+           json_agg(
+               json_build_object(
                    'id', oi.id,
-                   'name', oi.name,
+                   'dish_id', oi.dish_id,
+                   'name', d.name,     
                    'quantity', oi.quantity,
                    'price', oi.price,
-                   'total', oi.total
-               )) as items
-        FROM orders o
-        LEFT JOIN order_items oi ON o.id = oi.order_id
-        WHERE o.status IN ('completed', 'cancelled')
-        GROUP BY o.id
-        ORDER BY COALESCE(o.completed_at, o.cancelled_at) DESC`
+                   'total', oi.quantity * oi.price,
+                   'notes', oi.notes
+               )
+           ) FILTER (WHERE oi.id IS NOT NULL), '[]'::json
+       ) as items
+		FROM orders o
+		LEFT JOIN order_items oi ON o.id = oi.order_id
+		LEFT JOIN dishes d ON oi.dish_id = d.id 
+		WHERE o.status IN ('completed', 'cancelled')
+		GROUP BY o.id 
+		ORDER BY COALESCE(o.completed_at, o.cancelled_at, o.updated_at) DESC`
 
 	rows, err := db.Query(query)
 	if err != nil {
+		log.Printf("Error in GetOrderHistoryWithItems query: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -679,15 +880,53 @@ func (db *DB) GetOrderHistory() ([]models.Order, error) {
 	var orders []models.Order
 	for rows.Next() {
 		var o models.Order
-		var items []byte
-		if err := rows.Scan(&o.ID, &o.TableID, &o.WaiterID, &o.Status, &o.Comment, &o.Total,
-			&o.CreatedAt, &o.UpdatedAt, &o.CompletedAt, &o.CancelledAt, &items); err != nil {
+		var itemsJSON []byte
+		var completedAt, cancelledAt pq.NullTime
+
+		err := rows.Scan(
+			&o.ID, &o.TableID, &o.WaiterID, &o.Status, &o.Comment, &o.TotalAmount,
+			&o.CreatedAt, &o.UpdatedAt, &completedAt, &cancelledAt, &itemsJSON,
+		)
+		if err != nil {
+			log.Printf("Error scanning historical order: %v", err)
 			return nil, err
 		}
-		if err := json.Unmarshal(items, &o.Items); err != nil {
+
+		if completedAt.Valid {
+			o.CompletedAt = &completedAt.Time
+		}
+		if cancelledAt.Valid {
+			o.CancelledAt = &cancelledAt.Time
+		}
+
+		if err := json.Unmarshal(itemsJSON, &o.Items); err != nil {
+			log.Printf("Error unmarshalling items for historical order %d: %v", o.ID, err)
 			return nil, err
 		}
 		orders = append(orders, o)
 	}
+	if err = rows.Err(); err != nil {
+		log.Printf("Error after iterating historical order rows: %v", err)
+		return nil, err
+	}
 	return orders, nil
+}
+
+// IsLastActiveOrderForTable checks if the given orderID is the last active order for the tableID.
+func (db *DB) IsLastActiveOrderForTable(tableID, currentOrderID int) (bool, error) {
+	var count int
+	err := db.QueryRow(`
+        SELECT COUNT(*) 
+        FROM orders 
+        WHERE table_id = $1 
+          AND id != $2 
+          AND status NOT IN ('completed', 'cancelled')`,
+		tableID, currentOrderID,
+	).Scan(&count)
+
+	if err != nil {
+		log.Printf("Error checking for other active orders for table %d (excluding order %d): %v", tableID, currentOrderID, err)
+		return false, err
+	}
+	return count == 0, nil
 }

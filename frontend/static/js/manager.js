@@ -1,11 +1,19 @@
 document.addEventListener('DOMContentLoaded', async function() {
+    // const token = localStorage.getItem('token'); // Problematic immediate check
+    // const role = localStorage.getItem('role');   // Problematic immediate check
+    
+    // if (!token || role !== 'manager' ) {         // Problematic immediate check
+    //     window.location.href = '/';
+    //     return;
+    // }
+
+    // Retrieve token and role for API calls, assuming HTMLAuthMiddleware did its job for page access
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
-    
-    if (!token || role !== 'manager' ) {
-        window.location.href = '/';
-        return;
-    }
+
+    // It's still a good idea to have a fallback if manager.js is somehow loaded directly 
+    // without proper auth, or if localStorage is cleared, before making API calls.
+    // The API call to /api/manager/dashboard will act as the next auth check.
 
     // Initialize sidebar state
     const sidebar = document.getElementById('sidebar');
@@ -29,36 +37,36 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Проверяем токен через API
     try {
+        const token = localStorage.getItem('token'); // Ensure token is fetched here if not already available
         const resp = await fetch('/api/manager/dashboard', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (!resp.ok) {
-            console.error('Auth check failed:', resp.status);
+            console.error('Auth check failed (dashboard API call):', resp.status, await resp.text().catch(() => 'Could not get error text')); 
             localStorage.removeItem('token');
             localStorage.removeItem('role');
             document.cookie = 'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+            alert("DEBUG: Redirecting because /api/manager/dashboard call failed. Status: " + resp.status); 
             window.location.href = '/';
             return;
         }
 
-        // Если авторизация успешна, загружаем данные
-        await loadDashboardData();
+        console.log("manager.js: /api/manager/dashboard call OK. Calling loadDashboardData...");
+        await loadDashboardData(); 
+        console.log("manager.js: loadDashboardData completed without throwing to outer catch.");
         
-        // Показываем основную секцию
         const currentPath = window.location.pathname;
         const sections = {
             '/manager': 'main',
             '/manager/inventory': 'inventory',
             '/manager/menu': 'menu',
             '/manager/staff': 'staff',
-            
         };
         
         const activeSection = sections[currentPath] || 'main';
         showSection(activeSection);
         
-        // Подсвечиваем активный пункт меню
         document.querySelectorAll('.sidebar nav ul li').forEach(li => {
             const route = li.getAttribute('data-route');
             li.classList.toggle('active', route === currentPath);
@@ -67,12 +75,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (activeSection === 'inventory') {
             showInventoryTab('stock');
         }
-    } catch (e) {
-        console.error('Auth check failed:', e);
+    } catch (e) { 
+        console.error('manager.js: OUTER CATCH BLOCK triggered. Error:', e.message, e.stack);
+        alert(`DEBUG: OUTER CATCH in manager.js. Error: ${e.message}\n\nStack: ${e.stack}`);
         localStorage.removeItem('token');
         localStorage.removeItem('role');
         document.cookie = 'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        window.location.href = '/';
+        window.location.href = '/'; 
     }
 });
 
@@ -189,84 +198,103 @@ async function handleAddRequest(event) {
 }
 
 async function loadDashboardData() {
+    console.log("loadDashboardData: Attempting to load data...");
     try {
         const token = localStorage.getItem('token');
-        // Fetch orders history from API
+        
+        console.log("loadDashboardData: Fetching /api/manager/orders/history...");
         const response = await fetch('/api/manager/orders/history', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        console.log("loadDashboardData: /api/manager/orders/history response status:", response.status);
 
         if (!response.ok) {
-            throw new Error('Failed to load dashboard data');
+            const errorText = await response.text();
+            console.error("loadDashboardData: /api/manager/orders/history failed. Status:", response.status, "Response text:", errorText);
+            throw new Error(`Failed to load order history. Status: ${response.status}. Details: ${errorText}`);
         }
 
         const orders = await response.json();
+        console.log("loadDashboardData: Successfully fetched and parsed orders:", orders);
         
-        // Calculate statistics
         const completedOrders = orders.filter(order => order.status === 'completed');
-        const totalRevenue = completedOrders.reduce((sum, order) => sum + order.total, 0);
+        
+        const totalRevenue = completedOrders.reduce((sum, order) => sum + (order.total || 0), 0);
         const visitorCount = completedOrders.length;
         const averageCheck = visitorCount > 0 ? totalRevenue / visitorCount : 0;
 
-        // Update dashboard cards
         const cards = document.querySelectorAll('#main-section .card .value');
         if (cards.length >= 3) {
             cards[0].textContent = `${formatMoney(totalRevenue)}₸`;
             cards[1].textContent = `${visitorCount}`;
             cards[2].textContent = `${formatMoney(Math.round(averageCheck))}₸`;
+        } else {
+            console.warn("loadDashboardData: Could not find all dashboard cards to update values.");
         }
 
-        // Calculate daily comparison
         const today = new Date().toDateString();
         const yesterday = new Date(Date.now() - 86400000).toDateString();
         
         const todayOrders = completedOrders.filter(order => 
-            new Date(order.completed_at).toDateString() === today);
+            order.completed_at && new Date(order.completed_at).toDateString() === today);
         const yesterdayOrders = completedOrders.filter(order => 
-            new Date(order.completed_at).toDateString() === yesterday);
+            order.completed_at && new Date(order.completed_at).toDateString() === yesterday);
 
-        const todayRevenue = todayOrders.reduce((sum, order) => sum + order.total, 0);
-        const yesterdayRevenue = yesterdayOrders.reduce((sum, order) => sum + order.total, 0);
-        const revenueChange = yesterdayRevenue ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100).toFixed(0) : 0;
+        const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+        const yesterdayRevenue = yesterdayOrders.reduce((sum, order) => sum + (order.total || 0), 0);
         
-        const visitorChange = yesterdayOrders.length ? 
-            ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length * 100).toFixed(0) : 0;
+        let revenueChange = 0;
+        if (yesterdayRevenue !== 0) {
+            revenueChange = ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100);
+        }
+
+        let visitorChange = 0;
+        if (yesterdayOrders.length !== 0) {
+            visitorChange = ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length * 100);
+        }
         
         const todayAvgCheck = todayOrders.length ? todayRevenue / todayOrders.length : 0;
         const yesterdayAvgCheck = yesterdayOrders.length ? yesterdayRevenue / yesterdayOrders.length : 0;
-        const avgCheckChange = yesterdayAvgCheck ? 
-            ((todayAvgCheck - yesterdayAvgCheck) / yesterdayAvgCheck * 100).toFixed(0) : 0;
-
-        // Update comparison indicators
-        const indicators = document.querySelectorAll('#main-section .card .desc span');
-        if (indicators.length >= 3) {
-            updateComparisonIndicator(1, revenueChange);
-            updateComparisonIndicator(2, visitorChange);
-            updateComparisonIndicator(3, avgCheckChange);
+        let avgCheckChange = 0;
+        if (yesterdayAvgCheck !== 0) {
+            avgCheckChange = ((todayAvgCheck - yesterdayAvgCheck) / yesterdayAvgCheck * 100);
         }
 
-    } catch (error) {
-        console.error('Error loading dashboard data:', error);
-        // Show error message to user
-        const cards = document.querySelectorAll('#main-section .card .value');
-        cards.forEach(card => {
-            card.textContent = '—';
-        });
         const indicators = document.querySelectorAll('#main-section .card .desc span');
-        indicators.forEach(indicator => {
-            indicator.textContent = '';
-        });
+        if (indicators.length >= 3) {
+            updateComparisonIndicator(indicators[0], revenueChange);
+            updateComparisonIndicator(indicators[1], visitorChange);
+            updateComparisonIndicator(indicators[2], avgCheckChange);
+        } else {
+            console.warn("loadDashboardData: Could not find all dashboard indicator spans to update.");
+        }
+
+        console.log("loadDashboardData: Successfully updated dashboard UI.");
+
+    } catch (error) {
+        console.error('loadDashboardData: CRITICAL ERROR caught inside loadDashboardData:', error.message, error.stack);
+        throw error; 
     }
 }
 
-function updateComparisonIndicator(cardIndex, change) {
-    const indicator = document.querySelector(`.card:nth-child(${cardIndex}) .desc span`);
-    if (!indicator) return;
+function updateComparisonIndicator(indicatorElement, change) {
+    if (!indicatorElement) return;
     
-    const color = change > 0 ? '#006FFD' : '#5D7285';
-    const sign = change > 0 ? '+' : '';
-    indicator.textContent = `${sign}${change}% от вчера`;
-    indicator.style.color = color;
+    const roundedChange = Math.round(change);
+    let color = '#5D7285';
+    let sign = '';
+
+    if (roundedChange > 0) {
+        color = '#006FFD';
+        sign = '+';
+    } else if (roundedChange < 0) {
+        // Negative change, color already set to default, sign is handled by number itself
+    } else {
+        // Default color and no sign is fine
+    }
+    
+    indicatorElement.textContent = `${sign}${roundedChange}% от вчера`;
+    indicatorElement.style.color = color;
 }
 
 function formatMoney(amount) {
@@ -459,17 +487,20 @@ function toggleSidebar() {
 }
 
 // Section switching
-function showSection(section) {
-    const sections = ['main', 'menu', 'inventory', 'staff'];
-    sections.forEach(s => {
-        const el = document.getElementById(s + '-section');
-        if (el) el.style.display = (s === section) ? 'block' : 'none';
+function showSection(sectionName) { 
+    const knownSectionNames = ['main', 'menu', 'inventory', 'staff']; 
+
+    knownSectionNames.forEach(s_name => {
+        const el = document.getElementById(s_name + '-section');
+        if (el) {
+            el.style.display = (s_name === sectionName) ? 'block' : 'none';
+        } else {
+            console.warn(`showSection: Element with ID '${s_name}-section' not found.`);
+        }
     });
-    
-    // Highlight active menu
-    document.querySelectorAll('.sidebar nav ul li').forEach((li, idx) => {
-        li.classList.toggle('active', idx === sections.indexOf(section));
-    });
+
+    // The active menu item highlighting is handled in the DOMContentLoaded scope
+    // based on currentPath, so it's removed from here to avoid the ReferenceError.
 }
 
 // Inventory tabs
@@ -712,21 +743,7 @@ function formatDate(dateString) {
 }
 
 // Обновляем функцию навигации
-function navigateTo(section) {
-    const routes = {
-        'main': '/manager',
-        'inventory': '/manager/inventory',
-        'menu': '/manager/menu',
-        'finances': '/manager/finances',
-        'staff': '/manager/staff',
-        'settings': '/manager/settings',
-        'analytics': '/manager/analytics'
-    };
 
-    if (routes[section]) {
-        window.location.href = routes[section];
-    }
-}
 
 // Utility functions
 function debounce(func, wait) {

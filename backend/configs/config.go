@@ -16,7 +16,7 @@ type Config struct {
 		SSLMode  string
 	}
 	Server struct {
-		Port   int
+		Port   string
 		JWTKey string
 	}
 	Paths struct {
@@ -39,7 +39,7 @@ func LoadConfig() (*Config, error) {
 	config.Database.SSLMode = "disable"
 
 	// Server configuration
-	config.Server.Port = 8080
+	config.Server.Port = "8080"
 	config.Server.JWTKey = "your-secret-key" // В продакшене использовать безопасный ключ
 
 	// Paths configuration

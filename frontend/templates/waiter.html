@@ -2,238 +2,263 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Markiz Waiter Panel</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель официанта</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../static/css/waiter.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 </head>
 <body>
-<!-- Sidebar -->
-<div class="sidebar" id="sidebar">
-    <div class="logo">
-        <img src="../static/images/logo.svg" alt="Logo">
-        <span class="sidebar-label">Markiz</span>
+    <div class="waiter">
+        <!-- Секция: Столы -->
+        <section id="section-tables">
+            <div class="occupancy-status">
+                <div class="occupancy-status__title" id="tablesStatusInfo"></div>
+            </div>
+            <div class="content-wrapper">
+                <div class="tables-section">
+                    <h1 class="tables-section__title">Столы</h1>
+                    <div class="tables-section__legend">
+                        <span class="legend-item legend-item--occupied">Занят</span> |
+                        <span class="legend-item legend-item--reserved">Забронирован</span> |
+                        <span class="legend-item legend-item--free">Свободен</span>
+                    </div>
+                    <button class="filter-button">
+                        <img src="https://cdn.builder.io/api/v1/image/assets/TEMP/ed42cdbb473f00b449d35cb2404685a76c4498c27226c51b6405a7639d3f6e1f" alt="Filter icon" class="filter-button__icon" />
+                        <span class="filter-button__text">Фильтр</span>
+                        <span class="filter-button__badge">2</span>
+                    </button>
+                    <div class="tables-grid" id="tablesGrid">
+                        <!-- Столы будут добавлены динамически -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Секция: Заказы -->
+        <section id="section-orders" style="display:none">
+            <div class="orders-status">
+                <div class="orders-status__title">Заказы</div>
+                <div class="orders-status__subtitle" id="ordersStatusInfo"></div>
+            </div>
+            <div class="content-wrapper">
+                <div class="orders-section">
+                    <div class="orders-header">
+                        <h1 class="orders-header__title">Заказы</h1>
+                        <div class="orders-filters">
+                            <button class="filter-button filter-button--time">
+                                <img src="../static/images/sort.svg" alt="Time filter" class="filter-button__icon" />
+                                <span class="filter-button__text">Время заказа</span>
+                                <img src="../static/images/arrow-down.svg" alt="Arrow" class="filter-button__arrow" />
+                            </button>
+                            <button class="filter-button filter-button--filter">
+                                <img src="../static/images/filter.svg" alt="Filter" class="filter-button__icon" />
+                                <span class="filter-button__text">Фильтр</span>
+                                <span class="filter-button__badge">2</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="orders-list" id="ordersList">
+                        <!-- Заказы будут добавлены динамически -->
+                    </div>
+                    <button class="add-order-button" id="showCreateOrderBtn">Добавить заказ</button>
+                </div>
+                <!-- Секция создания заказа (скрыта по умолчанию) -->
+                <div id="create-order-section" style="display:none">
+                    <div class="orders-status">
+                        <div class="orders-status__header">
+                            <button class="back-btn" id="backToOrdersBtn">
+                                <img src="../static/images/arrow-left.svg" alt="Назад">
+                            </button>
+                            <div class="orders-status__title">Создание заказа</div>
+                        </div>
+                        <div class="orders-status__subtitle">
+                            <button id="selectTableBtn" class="select-table-btn">
+                                <span id="selectedTableText">Выберите стол</span>
+                                <img src="../static/images/arrow-down.svg" alt="Выбрать" class="select-table-icon">
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Модальное окно для выбора стола -->
+                    <div id="tableModal" class="table-modal">
+                        <div class="table-modal__content">
+                            <div class="table-modal__header">
+                                <h2>Выберите стол</h2>
+                                <button class="close-modal-btn">&times;</button>
+                            </div>
+                            <div class="table-modal__grid">
+                                <!-- Столы будут добавляться динамически -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Модальное окно подтверждения заказа -->
+                    <div id="confirmOrderModal" class="modal">
+                        <div class="modal__content">
+                            <div class="modal__header">
+                                <h2>Подтверждение заказа</h2>
+                                <button class="close-modal-btn">&times;</button>
+                            </div>
+                            <div class="modal__body">
+                                <div class="order-summary">
+                                    <div class="order-summary__table"></div>
+                                    <div class="order-summary__comment"></div>
+                                    <div class="order-summary__total"></div>
+                                </div>
+                            </div>
+                            <div class="modal__footer">
+                                <button class="modal-btn modal-btn--secondary" id="cancelOrderBtn">Отменить</button>
+                                <button class="modal-btn modal-btn--primary" id="confirmOrderBtn">Подтвердить</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Уведомление об успешном создании заказа -->
+                    <div id="successNotification" class="notification">
+                        <div class="notification__content">
+                            <img src="../static/images/success.svg" alt="Успешно" class="notification__icon">
+                            <span>Заказ успешно создан!</span>
+                        </div>
+                    </div>
+                    <div class="content-wrapper">
+                        <div class="create-order-section">
+                            <div id="menu-categories-container" class="categories-scroll">
+                                <button class="category-btn active">Все</button>
+                                <button class="category-btn">Горячие блюда</button>
+                                <button class="category-btn">Салаты</button>
+                                <button class="category-btn">Супы</button>
+                                <button class="category-btn">Напитки</button>
+                            </div>
+                            <div class="search-container">
+                                <input type="text" class="search-input" placeholder="Поиск блюд...">
+                                <img src="../static/images/search.svg" alt="Поиск" class="search-icon">
+                            </div>
+                            <div id="menu-dishes-container" class="dishes-list">
+                                <!-- Блюда будут добавляться динамически -->
+                            </div>
+                        </div>
+                        <div class="current-order">
+                            <div class="current-order__header">
+                                <h2>Текущий заказ</h2>
+                                <button class="clear-order-btn" id="clearOrderBtn">
+                                    <img src="../static/images/delete.svg" alt="Очистить">
+                                </button>
+                                <span id="current-order-total" class="current-order__total">0 KZT</span>
+                            </div>
+                            <div id="current-order-items" class="current-order__items">
+                                <!-- Сюда будут добавляться выбранные блюда -->
+                            </div>
+                            <div class="current-order__comment">
+                                <textarea id="order-comment-input" placeholder="Комментарий к заказу..."></textarea>
+                            </div>
+                            <button class="create-order-btn">Создать заказ</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Секция: История заказов -->
+        <section id="section-history" style="display:none">
+            <div class="orders-status">
+                <div class="orders-status__title"></div>
+                <div class="orders-status__subtitle"></div>
+            </div>
+            <div class="content-wrapper">
+                <div class="orders-section">
+                    <div class="orders-header">
+                        <h1 class="orders-header__title">Заказы</h1>
+                        <div class="orders-filters">
+                            <button class="filter-button filter-button--time">
+                                <img src="../static/images/sort.svg" alt="Time filter" class="filter-button__icon" />
+                                <span class="filter-button__text">Время заказа</span>
+                                <img src="../static/images/arrow-down.svg" alt="Arrow" class="filter-button__arrow" />
+                            </button>
+                            <button class="filter-button filter-button--filter">
+                                <img src="../static/images/filter.svg" alt="Filter" class="filter-button__icon" />
+                                <span class="filter-button__text">Фильтр</span>
+                                <span class="filter-button__badge">2</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="orders-list" id="historyList">
+                        <!-- Заказы будут добавлены динамически -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Секция: Профиль -->
+        <section id="section-profile" style="display:none">
+            <div class="profile-status" style="background:#1976FF;color:#fff;">
+                <div>Смена #658305</div>
+                <div>11.02.2025,14:00</div>
+            </div>
+            <div class="content-wrapper">
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+                    <div style="width:64px;height:64px;background:#E5E5E5;border-radius:50%;"></div>
+                    <div>
+                        <div style="font-size:20px;font-weight:600;">Лукас Скотт</div>
+                        <div style="font-size:15px;color:#888;">Официант</div>
+                    </div>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <div style="font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;"><img src="../static/images/history.svg" style="width:20px;vertical-align:middle;"> Информация о смене</div>
+                    <div style="display:flex;justify-content:space-between;font-size:15px;">
+                        <span>Начало смены<br><b>14:00</b></span>
+                        <span>Окончание<br><b>23:00</b></span>
+                        <span>До конца смены<br><b>5 часов 45 минут</b></span>
+                        <span>Менеджер<br><b>Анна К.</b></span>
+                    </div>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <div style="font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;"><img src="../static/images/tables.svg" style="width:20px;vertical-align:middle;"> Назначенные столы</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <div class="profile-table">#1<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
+                        <div class="profile-table">#2<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
+                        <div class="profile-table">#3<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
+                        <div class="profile-table">#4<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
+                        <div class="profile-table">#5<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
+                        <div class="profile-table">#6<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
+                    </div>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <div style="font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;"><img src="../static/images/orders.svg" style="width:20px;vertical-align:middle;"> Активные заказы</div>
+                    <div style="display:flex;gap:24px;font-size:15px;">
+                        <span>Новые<br><b>2 заказа</b></span>
+                        <span>Готовятся<br><b>3 заказа</b></span>
+                        <span>Готовы<br><b>1 заказ</b></span>
+                        <span>Поданы<br><b>4 заказа</b></span>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;"><img src="../static/images/star.svg" style="width:20px;vertical-align:middle;"> Показатели эффективности</div>
+                    <div style="display:flex;gap:24px;font-size:15px;">
+                        <span>Обслужено столов<br><b>12</b></span>
+                        <span>Среднее время<br><b>45 минут</b></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Нижнее таб-меню -->
+        <nav class="tab-bar">
+            <a href="#" class="tab-item tab-item--active" data-section="tables">
+                <img src="../static/images/tables.svg" alt="Tables" class="tab-item__icon" />
+                <span class="tab-item__text">Столы</span>
+            </a>
+            <a href="#" class="tab-item" data-section="orders">
+                <img src="../static/images/orders.svg" alt="Orders" class="tab-item__icon" />
+                <span class="tab-item__text">Заказы</span>
+            </a>
+            <a href="#" class="tab-item" data-section="history">
+                <img src="../static/images/history.svg" alt="History" class="tab-item__icon" />
+                <span class="tab-item__text">История</span>
+            </a>
+            <a href="#" class="tab-item" data-section="profile">
+                <img src="../static/images/profile.svg" alt="Profile" class="tab-item__icon" />
+                <span class="tab-item__text">Профиль</span>
+            </a>
+        </nav>
     </div>
-    <nav>
-        <ul>
-            <li data-section="tables" data-route="/waiter">
-                <span class="icon"><img src="../static/images/tables.svg"></span>
-                <span class="sidebar-label">Столы</span>
-            </li>
-            <li data-section="orders" data-route="/waiter/orders">
-                <span class="icon"><img src="../static/images/orders.svg"></span>
-                <span class="sidebar-label">Заказы</span>
-            </li>
-            <li data-section="history" data-route="/waiter/history">
-                <span class="icon"><img src="../static/images/history.svg"></span>
-                <span class="sidebar-label">История</span>
-            </li>
-            <li data-section="profile" data-route="/waiter/profile">
-                <span class="icon"><img src="../static/images/profile.svg"></span>
-                <span class="sidebar-label">Профиль</span>
-            </li>
-        </ul>
-    </nav>
-    <button class="logout">
-        <span class="icon"><img src="../static/images/logout.svg"></span>
-        <span class="sidebar-label">Выйти</span>
-    </button>
-</div>
 
-<!-- Main Content -->
-<div class="main-content">
-    <!-- Tables Section -->
-    <section id="tables-section" class="section">
-        <div class="header">
-            <h1>Столы</h1>
-            <div class="stats">
-                <div class="stat-item">
-                    <span class="label">Свободно:</span>
-                    <span class="value" id="free-tables">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="label">Занятость:</span>
-                    <span class="value" id="occupancy">0%</span>
-                </div>
-            </div>
-        </div>
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">Все</button>
-            <button class="filter-btn" data-filter="free">Свободные</button>
-            <button class="filter-btn" data-filter="occupied">Занятые</button>
-            <button class="filter-btn" data-filter="reserved">Забронированные</button>
-        </div>
-        <div class="tables-grid" id="tables-grid">
-            <!-- Tables will be dynamically added here -->
-        </div>
-    </section>
-
-    <!-- Orders Section -->
-    <section id="orders-section" class="section" style="display:none;">
-        <div class="header">
-            <h1>Заказы</h1>
-            <div class="stats">
-                <div class="stat-item">
-                    <span class="label">Активные:</span>
-                    <span class="value" id="active-orders">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="label">Новые:</span>
-                    <span class="value" id="new-orders">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="label">В работе:</span>
-                    <span class="value" id="in-progress-orders">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="label">Готовые:</span>
-                    <span class="value" id="ready-orders">0</span>
-                </div>
-            </div>
-        </div>
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">Все</button>
-            <button class="filter-btn" data-filter="new">Новые</button>
-            <button class="filter-btn" data-filter="in-progress">В работе</button>
-            <button class="filter-btn" data-filter="ready">Готовые</button>
-        </div>
-        <div class="orders-list" id="orders-list">
-            <!-- Orders will be dynamically added here -->
-        </div>
-        <button class="add-order-btn" id="add-order-btn">
-            <span class="icon">+</span>
-            <span>Новый заказ</span>
-        </button>
-    </section>
-
-    <!-- History Section -->
-    <section id="history-section" class="section" style="display:none;">
-        <div class="header">
-            <h1>История заказов</h1>
-            <div class="stats">
-                <div class="stat-item">
-                    <span class="label">Выполнено:</span>
-                    <span class="value" id="completed-orders">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="label">Отменено:</span>
-                    <span class="value" id="cancelled-orders">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="label">Сумма:</span>
-                    <span class="value" id="total-amount">0 ₸</span>
-                </div>
-            </div>
-        </div>
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">Все</button>
-            <button class="filter-btn" data-filter="completed">Выполненные</button>
-            <button class="filter-btn" data-filter="cancelled">Отмененные</button>
-        </div>
-        <div class="history-list" id="history-list">
-            <!-- History items will be dynamically added here -->
-        </div>
-    </section>
-
-    <!-- Profile Section -->
-    <section id="profile-section" class="section" style="display:none;">
-        <div class="header">
-            <h1>Профиль</h1>
-        </div>
-        <div class="profile-content">
-            <div class="profile-info">
-                <div class="avatar">
-                    <img src="../static/images/default-avatar.svg" alt="Avatar" id="profile-avatar">
-                </div>
-                <div class="info">
-                    <h2 id="profile-name">Имя Фамилия</h2>
-                    <p id="profile-role">Официант</p>
-                </div>
-            </div>
-            <div class="profile-stats">
-                <div class="stat-card">
-                    <span class="label">Заказов сегодня</span>
-                    <span class="value" id="orders-today">0</span>
-                </div>
-                <div class="stat-card">
-                    <span class="label">Средний чек</span>
-                    <span class="value" id="average-check">0 ₸</span>
-                </div>
-                <div class="stat-card">
-                    <span class="label">Рейтинг</span>
-                    <span class="value" id="rating">0.0</span>
-                </div>
-            </div>
-            <div class="profile-settings">
-                <h3>Настройки</h3>
-                <form id="profile-form">
-                    <div class="form-group">
-                        <label>Имя</label>
-                        <input type="text" id="profile-firstname" name="firstname">
-                    </div>
-                    <div class="form-group">
-                        <label>Фамилия</label>
-                        <input type="text" id="profile-lastname" name="lastname">
-                    </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="profile-email" name="email">
-                    </div>
-                    <div class="form-group">
-                        <label>Телефон</label>
-                        <input type="tel" id="profile-phone" name="phone">
-                    </div>
-                    <button type="submit" class="save-btn">Сохранить изменения</button>
-                </form>
-            </div>
-        </div>
-    </section>
-</div>
-
-<!-- Create Order Modal -->
-<div class="modal" id="create-order-modal">
-    <div class="modal-content">
-        <span class="close-modal">&times;</span>
-        <h2>Новый заказ</h2>
-        <form id="create-order-form">
-            <div class="form-group">
-                <label>Стол</label>
-                <select name="table_id" required>
-                    <option value="">Выберите стол</option>
-                </select>
-            </div>
-            <div class="menu-section">
-                <div class="search-bar">
-                    <input type="text" placeholder="Поиск блюд..." id="menu-search">
-                    <div class="categories">
-                        <button type="button" class="category-btn active" data-category="all">Все</button>
-                        <!-- Categories will be dynamically added here -->
-                    </div>
-                </div>
-                <div class="menu-items" id="menu-items">
-                    <!-- Menu items will be dynamically added here -->
-                </div>
-            </div>
-            <div class="order-summary">
-                <h3>Заказ</h3>
-                <div class="selected-items" id="selected-items">
-                    <!-- Selected items will be dynamically added here -->
-                </div>
-                <div class="total">
-                    <span>Итого:</span>
-                    <span id="order-total">0 ₸</span>
-                </div>
-                <div class="form-group">
-                    <label>Комментарий к заказу</label>
-                    <textarea name="comment" placeholder="Например: аллергия на орехи"></textarea>
-                </div>
-                <button type="submit" class="create-btn">Создать заказ</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script src="../static/js/waiter.js"></script>
+    <script src="../static/js/waiter.js"></script>
 </body>
 </html> 

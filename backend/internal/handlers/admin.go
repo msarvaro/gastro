@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"restaurant-management/internal/database"
 	"restaurant-management/internal/models"
@@ -87,8 +86,6 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	log.Printf("Создание пользователя: username=%s, password=%s", user.Username, user.Password)
 
 	if err := h.db.CreateUser(&user); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

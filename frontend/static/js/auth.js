@@ -40,8 +40,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('role', data.role);
                     
+                    console.log("Auth.js: Login successful. Role:", data.role, "Token:", data.token);
+                    console.log("Auth.js: Server wants to redirect to:", data.redirect);
+                    
                     // Перенаправляем на соответствующую страницу
                     if (data.redirect) {
+                        console.log("Auth.js: DEBUG: About to redirect. data.redirect is:", data.redirect, "data.role is:", data.role);
+                        alert("DEBUG: Check console. About to redirect to: " + data.redirect + " with role: " + data.role); // Temporary alert
+                        debugger; // PAUSE EXECUTION HERE
                         window.location.href = data.redirect;
                     } else {
                         // Если redirect не указан, перенаправляем по роли
@@ -114,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // Get form values
+            // Get form valuesimage.png
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
