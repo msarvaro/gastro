@@ -2,253 +2,318 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
-	"strconv"
-
 	"restaurant-management/internal/database"
+	"restaurant-management/internal/middleware"
 	"restaurant-management/internal/models"
+	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 )
 
-// GetTables returns all tables with their current status
-func GetTables(w http.ResponseWriter, r *http.Request) {
-	rows, err := database.DB.Query("SELECT id, number, seats, status, created_at, updated_at FROM tables ORDER BY number")
+// Helper function to send JSON error responses
+func respondWithError(w http.ResponseWriter, code int, message string) {
+	respondWithJSON(w, code, map[string]string{"error": message})
+}
+
+// Helper function to send JSON responses
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	response, err := json.Marshal(payload)
 	if err != nil {
-		http.Error(w, "Failed to fetch tables", http.StatusInternalServerError)
+		log.Printf("Error marshalling JSON: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Internal server error during JSON marshalling"}`)) // Fallback
 		return
 	}
-	defer rows.Close()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	w.Write(response)
+}
 
-	var tables []models.Table
-	for rows.Next() {
-		var t models.Table
-		err := rows.Scan(&t.ID, &t.Number, &t.Seats, &t.Status, &t.CreatedAt, &t.UpdatedAt)
-		if err != nil {
-			http.Error(w, "Failed to scan table", http.StatusInternalServerError)
-			return
-		}
-		tables = append(tables, t)
+type WaiterHandler struct {
+	db *database.DB
+}
+
+func NewWaiterHandler(db *database.DB) *WaiterHandler {
+	return &WaiterHandler{db: db}
+}
+
+// GetTables returns all tables with their current status
+func (h *WaiterHandler) GetTables(w http.ResponseWriter, r *http.Request) {
+	tables, err := h.db.GetAllTables()
+	if err != nil {
+		log.Printf("Error GetTables - fetching tables: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to fetch tables")
+		return
 	}
 
-	var stats struct {
-		Total     int     `json:"total"`
-		Free      int     `json:"free"`
-		Occupied  int     `json:"occupied"`
-		Reserved  int     `json:"reserved"`
-		Occupancy float64 `json:"occupancy_percentage"`
-	}
-	for _, table := range tables {
-		stats.Total++
-		switch table.Status {
-		case models.TableStatusFree:
-			stats.Free++
-		case models.TableStatusOccupied:
-			stats.Occupied++
-		case models.TableStatusReserved:
-			stats.Reserved++
-		}
-	}
-	if stats.Total > 0 {
-		stats.Occupancy = float64(stats.Occupied+stats.Reserved) / float64(stats.Total) * 100
+	stats, err := h.db.GetTableStats()
+	if err != nil {
+		log.Printf("Error GetTables - fetching table stats: %v", err)
+		// Continue with empty stats if fetching stats fails, but log it
+		stats = &models.TableStats{}
 	}
 
 	response := struct {
-		Tables []models.Table `json:"tables"`
-		Stats  interface{}    `json:"stats"`
+		Tables []models.Table     `json:"tables"`
+		Stats  *models.TableStats `json:"stats"`
 	}{
 		Tables: tables,
 		Stats:  stats,
 	}
-	json.NewEncoder(w).Encode(response)
+	respondWithJSON(w, http.StatusOK, response)
 }
 
 // GetOrders returns all active orders with items
-func GetOrders(w http.ResponseWriter, r *http.Request) {
-	rows, err := database.DB.Query("SELECT id, table_id, waiter_id, status, total_amount, comment, created_at, updated_at FROM orders WHERE status NOT IN ('completed', 'cancelled') ORDER BY created_at DESC")
+func (h *WaiterHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
+	orders, err := h.db.GetActiveOrdersWithItems()
 	if err != nil {
-		http.Error(w, "Failed to fetch orders", http.StatusInternalServerError)
+		log.Printf("Error GetOrders - fetching active orders: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to fetch active orders")
 		return
 	}
-	defer rows.Close()
 
-	var orders []models.Order
-	for rows.Next() {
-		var o models.Order
-		err := rows.Scan(&o.ID, &o.TableID, &o.WaiterID, &o.Status, &o.TotalAmount, &o.Comment, &o.CreatedAt, &o.UpdatedAt)
-		if err != nil {
-			http.Error(w, "Failed to scan order", http.StatusInternalServerError)
-			return
-		}
-
-		// Fetch order items
-		itemRows, err := database.DB.Query("SELECT id, order_id, dish_id, quantity, price, notes FROM order_items WHERE order_id = $1", o.ID)
-		if err != nil {
-			http.Error(w, "Failed to fetch order items", http.StatusInternalServerError)
-			return
-		}
-		var items []models.OrderItem
-		for itemRows.Next() {
-			var item models.OrderItem
-			err := itemRows.Scan(&item.ID, &item.OrderID, &item.DishID, &item.Quantity, &item.Price, &item.Notes)
-			if err != nil {
-				http.Error(w, "Failed to scan order item", http.StatusInternalServerError)
-				return
-			}
-			items = append(items, item)
-		}
-		itemRows.Close()
-		// Optionally: o.Items = items (if you add []OrderItem to Order struct)
-		orders = append(orders, o)
-	}
-
-	var stats struct {
-		Active     int `json:"active"`
-		New        int `json:"new"`
-		InProgress int `json:"in_progress"`
-		Ready      int `json:"ready"`
-	}
-	for _, order := range orders {
-		switch order.Status {
-		case models.OrderStatusNew:
-			stats.New++
-		case models.OrderStatusInProgress:
-			stats.InProgress++
-		case models.OrderStatusReady:
-			stats.Ready++
-		}
-		stats.Active++
+	stats, err := h.db.GetOrderStatus()
+	if err != nil {
+		log.Printf("Error GetOrders - fetching order stats: %v", err)
+		stats = &models.OrderStats{} // Default to empty stats on error
 	}
 
 	response := struct {
-		Orders []models.Order `json:"orders"`
-		Stats  interface{}    `json:"stats"`
+		Orders []models.Order     `json:"orders"`
+		Stats  *models.OrderStats `json:"stats"`
 	}{
 		Orders: orders,
 		Stats:  stats,
 	}
-	json.NewEncoder(w).Encode(response)
+	respondWithJSON(w, http.StatusOK, response)
 }
 
 // GetOrderHistory returns completed and cancelled orders
-func GetOrderHistory(w http.ResponseWriter, r *http.Request) {
-	rows, err := database.DB.Query("SELECT id, table_id, waiter_id, status, total_amount, comment, created_at, updated_at, completed_at FROM orders WHERE status IN ('completed', 'cancelled') ORDER BY completed_at DESC")
+func (h *WaiterHandler) GetOrderHistory(w http.ResponseWriter, r *http.Request) {
+	orders, err := h.db.GetOrderHistoryWithItems()
 	if err != nil {
-		http.Error(w, "Failed to fetch order history", http.StatusInternalServerError)
+		log.Printf("Error GetOrderHistory - fetching order history: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to fetch order history")
 		return
 	}
-	defer rows.Close()
 
-	var orders []models.Order
-	for rows.Next() {
-		var o models.Order
-		err := rows.Scan(&o.ID, &o.TableID, &o.WaiterID, &o.Status, &o.TotalAmount, &o.Comment, &o.CreatedAt, &o.UpdatedAt, &o.CompletedAt)
-		if err != nil {
-			http.Error(w, "Failed to scan order", http.StatusInternalServerError)
-			return
-		}
-		orders = append(orders, o)
-	}
-
-	var stats struct {
-		Completed   int     `json:"completed"`
-		Cancelled   int     `json:"cancelled"`
-		TotalAmount float64 `json:"total_amount"`
-	}
-	for _, order := range orders {
-		if order.Status == models.OrderStatusCompleted {
-			stats.Completed++
-			stats.TotalAmount += order.TotalAmount
-		} else {
-			stats.Cancelled++
-		}
-	}
+	// Assuming stats are not strictly necessary for history or can be defaulted
+	stats := &models.OrderStats{}
 
 	response := struct {
-		Orders []models.Order `json:"orders"`
-		Stats  interface{}    `json:"stats"`
+		Orders []models.Order     `json:"orders"`
+		Stats  *models.OrderStats `json:"stats"` // Kept for consistency if needed later
 	}{
 		Orders: orders,
 		Stats:  stats,
 	}
-	json.NewEncoder(w).Encode(response)
+	respondWithJSON(w, http.StatusOK, response)
 }
 
 // CreateOrder creates a new order
-func CreateOrder(w http.ResponseWriter, r *http.Request) {
-	var order models.Order
-	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+func (h *WaiterHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	var req models.CreateOrderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Error CreateOrder - decoding request: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
 		return
 	}
 
-	tx, err := database.DB.Begin()
+	if req.TableID < 0 { // Ensure TableID is provided
+		respondWithError(w, http.StatusBadRequest, "Table ID is required")
+		return
+	}
+
+	if len(req.Items) == 0 {
+		respondWithError(w, http.StatusBadRequest, "Order must contain at least one item")
+		return
+	}
+
+	waiterID32, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized: Waiter ID not found in token")
+		return
+	}
+	waiterID := int(waiterID32)
+
+	table, err := h.db.GetTableByID(req.TableID)
 	if err != nil {
-		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
+		log.Printf("Error CreateOrder - fetching table %d: %v", req.TableID, err)
+		respondWithError(w, http.StatusInternalServerError, "Error fetching table details")
 		return
 	}
-	defer tx.Rollback()
-
-	err = tx.QueryRow("INSERT INTO orders (table_id, waiter_id, status, total_amount, comment, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id", order.TableID, order.WaiterID, order.Status, order.TotalAmount, order.Comment).Scan(&order.ID)
-	if err != nil {
-		http.Error(w, "Failed to create order", http.StatusInternalServerError)
+	if table == nil {
+		respondWithError(w, http.StatusNotFound, fmt.Sprintf("Table with ID %d not found", req.TableID))
 		return
 	}
+	originalTableStatus := table.Status
 
-	for _, item := range order.Items {
-		_, err = tx.Exec("INSERT INTO order_items (order_id, dish_id, quantity, price, notes) VALUES ($1, $2, $3, $4, $5)", order.ID, item.DishID, item.Quantity, item.Price, item.Notes)
-		if err != nil {
-			http.Error(w, "Failed to create order item", http.StatusInternalServerError)
+	order := models.Order{
+		TableID:     req.TableID,
+		WaiterID:    waiterID,
+		Status:      models.OrderStatusNew,
+		Comment:     req.Comment,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		Items:       make([]models.OrderItem, 0, len(req.Items)),
+		TotalAmount: 0,
+	}
+
+	for _, itemInput := range req.Items {
+		if itemInput.DishID == 0 { // Basic validation for DishID
+			respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Dish ID is required for item: %v", itemInput))
 			return
+		}
+		if itemInput.Quantity <= 0 { // Basic validation for Quantity
+			respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Quantity must be positive for dish ID %d", itemInput.DishID))
+			return
+		}
+		dish, err := h.db.GetDishByID(itemInput.DishID)
+		if err != nil {
+			log.Printf("Error CreateOrder - fetching dish %d: %v", itemInput.DishID, err)
+			respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get dish details for ID %d", itemInput.DishID))
+			return
+		}
+		if dish == nil {
+			respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Dish with ID %d not found", itemInput.DishID))
+			return
+		}
+		if !dish.IsAvailable {
+			respondWithError(w, http.StatusConflict, fmt.Sprintf("Dish '%s' (ID: %d) is currently not available", dish.Name, dish.ID))
+			return
+		}
+
+		orderItem := models.OrderItem{
+			DishID:   itemInput.DishID,
+			Name:     dish.Name,
+			Quantity: itemInput.Quantity,
+			Price:    dish.Price, // Price at the time of order
+			Total:    float64(itemInput.Quantity) * dish.Price,
+			Notes:    itemInput.Notes,
+		}
+		order.Items = append(order.Items, orderItem)
+		order.TotalAmount += orderItem.Total
+	}
+
+	createdOrder, err := h.db.CreateOrderAndItems(&order)
+	if err != nil {
+		log.Printf("Error CreateOrder - saving order: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to create order in database")
+		return
+	}
+
+	if originalTableStatus == models.TableStatusFree {
+		if err := h.db.UpdateTableStatus(req.TableID, string(models.TableStatusOccupied)); err != nil {
+			log.Printf("Warning: CreateOrder - failed to update table %d status to occupied: %v. Order created, but table status might be inconsistent.", req.TableID, err)
+			// Not returning an error to the client here as the order was created.
+			// This is a warning for server logs.
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
-		return
-	}
-
-	json.NewEncoder(w).Encode(order)
+	respondWithJSON(w, http.StatusCreated, createdOrder)
 }
 
 // UpdateOrderStatus updates the status of an order
-func UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
+func (h *WaiterHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	orderID, err := strconv.Atoi(vars["id"])
+	orderIDStr, ok := vars["id"]
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Missing order ID")
+		return
+	}
+	orderID, err := strconv.Atoi(orderIDStr)
 	if err != nil {
-		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, "Invalid order ID format")
 		return
 	}
 
-	var status struct {
-		Status models.OrderStatus `json:"status"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&status); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	var reqBody models.UpdateOrderStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		log.Printf("Error UpdateOrderStatus - decoding request for order %d: %v", orderID, err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
 		return
 	}
 
-	tx, err := database.DB.Begin()
+	if reqBody.Status == "" { // Validate that status is not empty
+		respondWithError(w, http.StatusBadRequest, "Status is required")
+		return
+	}
+
+	order, err := h.db.GetOrderByID(orderID)
 	if err != nil {
-		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
+		log.Printf("Error UpdateOrderStatus - fetching order %d: %v", orderID, err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to get order details")
 		return
 	}
-	defer tx.Rollback()
+	if order == nil {
+		respondWithError(w, http.StatusNotFound, "Order not found")
+		return
+	}
 
-	_, err = tx.Exec("UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2", status.Status, orderID)
+	// Update order fields
+	order.Status = reqBody.Status
+	order.UpdatedAt = time.Now()
+
+	nilTime := (*time.Time)(nil) // Helper for setting nullable time fields to null
+
+	switch order.Status {
+	case models.OrderStatusCompleted:
+		now := time.Now()
+		order.CompletedAt = &now
+		order.CancelledAt = nilTime
+	case models.OrderStatusCancelled:
+		now := time.Now()
+		order.CancelledAt = &now
+		order.CompletedAt = nilTime
+	default:
+		// For other statuses, ensure these are null if previously set
+		order.CompletedAt = nilTime
+		order.CancelledAt = nilTime
+	}
+
+	if err := h.db.UpdateOrder(order); err != nil {
+		log.Printf("Error UpdateOrderStatus - updating order %d: %v", orderID, err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to update order status")
+		return
+	}
+
+	// If order is completed or cancelled, check if the table should be freed
+	if order.Status == models.OrderStatusCompleted || order.Status == models.OrderStatusCancelled {
+		isLast, errCheck := h.db.IsLastActiveOrderForTable(order.TableID, order.ID)
+		if errCheck != nil {
+			log.Printf("Warning: UpdateOrderStatus - failed to check if order %d was last active for table %d: %v. Order status updated, but table status may need manual check.", order.ID, order.TableID, errCheck)
+		} else if isLast {
+			if err := h.db.UpdateTableStatus(order.TableID, string(models.TableStatusFree)); err != nil {
+				log.Printf("Warning: UpdateOrderStatus - failed to update table %d status to free: %v. Order status updated, but table status might be inconsistent.", order.TableID, err)
+			}
+		}
+	}
+	respondWithJSON(w, http.StatusOK, order) // Return the updated order
+}
+
+// GetProfile returns the waiter's profile information (placeholder)
+func (h *WaiterHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
+	userID32, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized: User ID not found")
+		return
+	}
+	userID := int(userID32)
+
+	user, err := h.db.GetUserByID(userID)
 	if err != nil {
-		http.Error(w, "Failed to update order status", http.StatusInternalServerError)
+		log.Printf("Error GetProfile - fetching user %d: %v", userID, err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to fetch profile information")
 		return
 	}
-
-	if status.Status == models.OrderStatusCompleted || status.Status == models.OrderStatusCancelled {
-		// Optionally, free the table if needed
-	}
-
-	if err := tx.Commit(); err != nil {
-		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
+	if user == nil {
+		respondWithError(w, http.StatusNotFound, "User profile not found")
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
+	// For security, create a specific profile response model if not all user fields should be returned
+	respondWithJSON(w, http.StatusOK, user)
 }
