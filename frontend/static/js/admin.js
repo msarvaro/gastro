@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Check for authentication either from cookie or localStorage (backward compatibility)
     const token = localStorage.getItem('token');
-    if (!token) {
+    const hasAuthCookie = document.cookie.split(';').some(c => c.trim().startsWith('auth_token='));
+    
+    if (!token && !hasAuthCookie) {
         window.location.href = '/';
         return;
     }
@@ -11,23 +14,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Находим элемент поиска
     const searchInput = document.querySelector('.search-input');
     console.log('Search Input found:', searchInput); // Проверка наличия элемента поиска
-    
+
     if (searchInput) {
         // Добавляем обработчик события input
         searchInput.addEventListener('input', function() {
             console.log('Search event triggered'); // Проверка срабатывания события
-            
+
             // Получаем значение поиска и приводим к нижнему регистру
             const searchText = this.value.toLowerCase();
             console.log('Search text:', searchText); // Проверка поискового запроса
-            
+
             // Находим таблицу и строки
             const tbody = document.querySelector('.user-table tbody');
             const rows = tbody.querySelectorAll('tr:not(.no-results)');
             console.log('Found rows:', rows.length); // Проверка количества найденных строк
-            
+
             let visibleRows = false;
-            
+
             // Проходим по каждой строке
             rows.forEach(row => {
                 // Собираем текст для поиска
@@ -36,13 +39,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     const statusBadge = cell.querySelector('.status-badge');
                     return statusBadge ? statusBadge.textContent : cell.textContent;
                 }).join(' ').toLowerCase();
-                
+
                 console.log('Row text:', rowText); // Проверка текста строки
-                
+
                 // Проверяем совпадение
                 const isVisible = rowText.includes(searchText);
                 console.log('Is visible:', isVisible); // Проверка видимости строки
-                
+
                 // Показываем или скрываем строку
                 row.style.display = isVisible ? '' : 'none';
                 if (isVisible) visibleRows = true;
@@ -50,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Управляем сообщением "не найдено"
             const noResultsRow = tbody.querySelector('.no-results');
-            
+
             if (!visibleRows) {
                 if (!noResultsRow) {
                     const tr = document.createElement('tr');
@@ -90,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function filterRows(type, value) {
         const rows = document.querySelectorAll('.user-table tbody tr:not(.no-results)');
         let hasVisibleRows = false;
-        
+
         rows.forEach(row => {
             if (value === 'all') {
                 row.style.display = '';
@@ -103,14 +106,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Получаем значение роли из data-атрибута или из текста
                 const roleCell = row.cells[1];
                 cellValue = roleCell.getAttribute('data-role') || roleCell.textContent.toLowerCase();
-                
+
                 // Сопоставляем значения
                 const roleMatches = {
                     'manager': ['manager', 'менеджер'],
                     'waiter': ['waiter', 'официант'],
                     'cook': ['cook', 'повар']
                 };
-                
+
                 if (roleMatches[value] && roleMatches[value].includes(cellValue.toLowerCase())) {
                     row.style.display = '';
                     hasVisibleRows = true;
@@ -120,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             } else if (type === 'status') {
                 cellValue = row.querySelector('.status-badge').classList.contains('active') ? 'active' : 'inactive';
-                
+
                 if (cellValue === value) {
                     row.style.display = '';
                     hasVisibleRows = true;
@@ -176,16 +179,16 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             const type = this.closest('.filter-item').querySelector('.filter-select').dataset.type;
             const value = this.dataset.value;
-            
+
             // Обновляем визуальное состояние
             this.closest('.filter-options').querySelectorAll('.option').forEach(opt => {
                 opt.classList.remove('selected');
             });
             this.classList.add('selected');
-            
+
             // Закрываем дропдауны
             this.closest('.filter-item').querySelector('.filter-select').classList.remove('active');
-            
+
             // Применяем фильтр
             filterRows(type, value);
         });
@@ -214,13 +217,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function loadUsers() {
-    const token = localStorage.getItem('token');
     try {
         const response = await fetch('/api/admin/users', {
             method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            credentials: 'include' // Add credentials to send cookies
         });
 
         if (!response.ok) {
@@ -229,12 +229,12 @@ async function loadUsers() {
 
         const data = await response.json();
         let users = Array.isArray(data) ? data : (data.users || []);
-        
+
         const tbody = document.querySelector('.user-table tbody');
         if (!tbody) return;
 
         tbody.innerHTML = '';
-        
+
         if (users.length === 0) {
             tbody.innerHTML = `
                 <tr>
@@ -292,18 +292,16 @@ function showAddUserModal() {
             status: 'active'
         };
 
-        alert('submit!');
-
         console.log('Создание пользователя:', userData);
 
         try {
             const response = await fetch('/api/admin/users', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(userData)
+                body: JSON.stringify(userData),
+                credentials: 'include' // Add credentials to send cookies
             });
 
             const responseText = await response.text();
@@ -358,10 +356,10 @@ function editUser(id) {
             const response = await fetch(`/api/admin/users/${id}`, {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(userData)
+                body: JSON.stringify(userData),
+                credentials: 'include' // Add credentials to send cookies
             });
 
             if (response.ok) {
@@ -382,9 +380,7 @@ function deleteUser(id) {
     if (confirm('Вы уверены, что хотите удалить этого пользователя?')) {
         fetch(`/api/admin/users/${id}`, {
             method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
+            credentials: 'include' // Add credentials to send cookies
         })
         .then(response => {
             if (response.ok) {
@@ -475,19 +471,22 @@ function debounce(func, wait) {
 }
 
 function logout() {
+    // Delete the auth cookie
+    document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    
+    // Also clear localStorage for backward compatibility
     localStorage.removeItem('token');
     localStorage.removeItem('role');
+    
+    // Redirect to login page
     window.location.href = '/';
 }
 
 // Инициализация статистики
 async function loadStats() {
-    const token = localStorage.getItem('token');
     try {
         const response = await fetch('/api/admin/stats', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            credentials: 'include' // Add credentials to send cookies
         });
 
         if (response.ok) {
@@ -533,9 +532,9 @@ function filterUsers(users) {
         // Проверка на соответствие фильтрам
         const roleMatch = activeFilters.role === 'all' || user.role === activeFilters.role;
         const statusMatch = activeFilters.status === 'all' || user.status === activeFilters.status;
-        
+
         // Поиск по имени пользователя (без учета регистра)
-        const searchMatch = !activeFilters.search || 
+        const searchMatch = !activeFilters.search ||
             user.username.toLowerCase().includes(activeFilters.search.toLowerCase());
 
         return roleMatch && statusMatch && searchMatch;

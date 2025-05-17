@@ -85,6 +85,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Login handler: Token generated successfully")
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    tokenString,
+		Expires:  expirationTime,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
 	redirectPath := "/"
 	switch user.Role {
 	case "admin":

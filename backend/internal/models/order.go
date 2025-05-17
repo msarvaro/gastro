@@ -86,6 +86,7 @@ type Dish struct {
 	ID          int     `json:"id"`
 	Name        string  `json:"name"`
 	Price       float64 `json:"price"`
+	CategoryID  int     `json:"category_id"`
 	IsAvailable bool    `json:"is_available"`
 	// ... other fields like is_available, category_id etc.
 }
