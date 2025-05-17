@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,81 +13,67 @@ import (
 func HTMLAuthMiddleware(jwtKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// 1. Skip public pages (like "/")
-			if r.URL.Path == "/" { // Or any other public paths like "/login.html"
+			// 1. Skip public pages (like "/" and "/login.html")
+			if r.URL.Path == "/" || r.URL.Path == "/login.html" {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			// 2. Get token string (primarily from cookie for HTML navigation)
-			var tokenString string
-			cookie, err := r.Cookie("auth_token")
-			if err != nil || cookie.Value == "" {
-				// Optional: Fallback to Authorization header if you want, or just redirect
-				log.Println("HTMLAuthMiddleware: auth_token cookie not found or empty.")
+			// 2. Get token from Authorization header (Bearer only)
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
-			tokenString = cookie.Value
+
+			bearerToken := strings.Split(authHeader, " ")
+			if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
+				http.Redirect(w, r, "/", http.StatusFound)
+				return
+			}
+			tokenString := bearerToken[1]
 
 			// 3. Parse and validate token
 			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 				return []byte(jwtKey), nil
 			})
 			if err != nil || !token.Valid {
-				log.Printf("HTMLAuthMiddleware: Invalid token from cookie: %v", err)
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
 
-			// 4. Get claims and validated roleClaim
+			// 4. Get claims and validate roleClaim
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
-				log.Println("HTMLAuthMiddleware: Invalid token claims from cookie")
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
 			roleClaim, roleOk := claims["role"].(string)
 			if !roleOk || roleClaim == "" {
-				log.Printf("HTMLAuthMiddleware: Role claim missing/invalid in JWT (cookie) for path: %s", r.URL.Path)
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
-			log.Printf("HTMLAuth: Path='%s', Role='%s' (from cookie)", r.URL.Path, roleClaim)
 
 			// 5. Role-based access control (hierarchical)
 			switch {
-			// Admin can access all pages except login
 			case roleClaim == "admin":
 				// Allow
-				log.Printf("HTMLAuth: Admin role granted access to path '%s'", r.URL.Path)
-			// Manager can access Manager, Waiter, and Kitchen pages
 			case roleClaim == "manager":
 				if strings.HasPrefix(r.URL.Path, "/admin") {
-					log.Printf("HTMLAuth: Manager role denied access to admin path '%s'", r.URL.Path)
 					http.Redirect(w, r, "/", http.StatusFound)
 					return
 				}
-				log.Printf("HTMLAuth: Manager role granted access to path '%s'", r.URL.Path)
-			// Waiter can access Waiter and Kitchen pages
 			case roleClaim == "waiter":
 				if strings.HasPrefix(r.URL.Path, "/admin") || strings.HasPrefix(r.URL.Path, "/manager") {
-					log.Printf("HTMLAuth: Waiter role denied access to admin/manager path '%s'", r.URL.Path)
 					http.Redirect(w, r, "/", http.StatusFound)
 					return
 				}
-				log.Printf("HTMLAuth: Waiter role granted access to path '%s'", r.URL.Path)
-			// Cook can access Kitchen pages
 			case roleClaim == "cook":
 				if !strings.HasPrefix(r.URL.Path, "/kitchen") {
-					log.Printf("HTMLAuth: Cook role denied access to path '%s'", r.URL.Path)
 					http.Redirect(w, r, "/", http.StatusFound)
 					return
 				}
-				log.Printf("HTMLAuth: Cook role granted access to path '%s'", r.URL.Path)
-			// Any other role or unhandled path
 			default:
-				log.Printf("HTMLAuth: Unhandled role '%s' or path '%s', denying access.", roleClaim, r.URL.Path)
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}

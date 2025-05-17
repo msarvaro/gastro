@@ -36,31 +36,33 @@ func NewAuthHandler(db *database.DB, jwtKey string) *AuthHandler {
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Login handler: Processing login request")
+
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("Error decoding request: %v", err)
+		log.Printf("Login handler: Error decoding request: %v", err)
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("Login attempt - Username: %s, Password length: %d", req.Username, len(req.Password))
+	log.Printf("Login handler: Login attempt for username: %s", req.Username)
 
 	user, err := h.db.GetUserByUsername(req.Username)
 	if err != nil {
-		log.Printf("GetUserByUsername error: %v", err)
+		log.Printf("Login handler: GetUserByUsername error: %v", err)
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
-	log.Printf("Found user - ID: %d, Username: %s, Role: %s", user.ID, user.Username, user.Role)
+	log.Printf("Login handler: User found - ID: %d, Role: %s", user.ID, user.Role)
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		log.Printf("Password comparison failed: %v", err)
+		log.Printf("Login handler: Password comparison failed: %v", err)
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
-	log.Printf("Password comparison successful")
+	log.Printf("Login handler: Password verified successfully")
 
 	expirationTime := time.Now().Add(24 * time.Hour)
 	if req.Remember {
@@ -76,13 +78,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(h.jwtKey))
 	if err != nil {
-		log.Printf("Error signing token: %v", err)
+		log.Printf("Login handler: Error signing token: %v", err)
 		http.Error(w, "Error generating token", http.StatusInternalServerError)
 		return
 	}
 
-	// Determine redirect based on role
-	redirectPath := "/" // Default
+	log.Printf("Login handler: Token generated successfully")
+
+	redirectPath := "/"
 	switch user.Role {
 	case "admin":
 		redirectPath = "/admin"
@@ -90,13 +93,18 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		redirectPath = "/manager"
 	case "waiter":
 		redirectPath = "/waiter"
-	case "cook": // NEW: Redirect cook to kitchen
+	case "cook":
 		redirectPath = "/kitchen"
 	}
 
-	respondWithJSON(w, http.StatusOK, LoginResponse{
+	log.Printf("Login handler: Sending successful response with redirect to: %s", redirectPath)
+
+	response := LoginResponse{
 		Token:    tokenString,
 		Role:     user.Role,
 		Redirect: redirectPath,
-	})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
