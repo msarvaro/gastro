@@ -38,6 +38,12 @@ func LoadConfig() (*Config, error) {
 	envFile := ".env"
 	if _, err := os.Stat(envFile); os.IsNotExist(err) {
 		envFile = "../.env" // Try one directory up if not found in current dir
+		if _, err := os.Stat(envFile); os.IsNotExist(err) {
+			envFile = "../../.env" // Try two directories up if not found in current dir
+			if _, err := os.Stat(envFile); os.IsNotExist(err) {
+				envFile = "../../../.env" // Try three directories up if not found in current dir
+			}
+		}
 	}
 
 	err := godotenv.Load(envFile)
