@@ -56,29 +56,44 @@ func HTMLAuthMiddleware(jwtKey string) func(http.Handler) http.Handler {
 			}
 			log.Printf("HTMLAuth: Path='%s', Role='%s' (from cookie)", r.URL.Path, roleClaim)
 
-			// 5. Role-based access control (fall-through style)
+			// 5. Role-based access control (hierarchical)
 			switch {
-			case strings.HasPrefix(r.URL.Path, "/admin") && roleClaim != "admin":
-				log.Printf("HTMLAuth: Admin access denied for role '%s' to path '%s'", roleClaim, r.URL.Path)
-				http.Redirect(w, r, "/", http.StatusFound)
-				return // Only return if redirecting
-			case strings.HasPrefix(r.URL.Path, "/manager") && roleClaim != "manager":
-				// Special handling for static files if a non-manager somehow requests them via /manager path
-				if strings.HasPrefix(r.URL.Path, "/static/") {
-					log.Printf("HTMLAuth: Allowing non-manager '%s' direct access to static file: %s", roleClaim, r.URL.Path)
-					next.ServeHTTP(w, r) // Let static files pass
+			// Admin can access all pages except login
+			case roleClaim == "admin":
+				// Allow
+				log.Printf("HTMLAuth: Admin role granted access to path '%s'", r.URL.Path)
+			// Manager can access Manager, Waiter, and Kitchen pages
+			case roleClaim == "manager":
+				if strings.HasPrefix(r.URL.Path, "/admin") {
+					log.Printf("HTMLAuth: Manager role denied access to admin path '%s'", r.URL.Path)
+					http.Redirect(w, r, "/", http.StatusFound)
 					return
 				}
-				log.Printf("HTMLAuth: Manager access denied for role '%s' to path '%s'", roleClaim, r.URL.Path)
+				log.Printf("HTMLAuth: Manager role granted access to path '%s'", r.URL.Path)
+			// Waiter can access Waiter and Kitchen pages
+			case roleClaim == "waiter":
+				if strings.HasPrefix(r.URL.Path, "/admin") || strings.HasPrefix(r.URL.Path, "/manager") {
+					log.Printf("HTMLAuth: Waiter role denied access to admin/manager path '%s'", r.URL.Path)
+					http.Redirect(w, r, "/", http.StatusFound)
+					return
+				}
+				log.Printf("HTMLAuth: Waiter role granted access to path '%s'", r.URL.Path)
+			// Cook can access Kitchen pages
+			case roleClaim == "cook":
+				if !strings.HasPrefix(r.URL.Path, "/kitchen") {
+					log.Printf("HTMLAuth: Cook role denied access to path '%s'", r.URL.Path)
+					http.Redirect(w, r, "/", http.StatusFound)
+					return
+				}
+				log.Printf("HTMLAuth: Cook role granted access to path '%s'", r.URL.Path)
+			// Any other role or unhandled path
+			default:
+				log.Printf("HTMLAuth: Unhandled role '%s' or path '%s', denying access.", roleClaim, r.URL.Path)
 				http.Redirect(w, r, "/", http.StatusFound)
-				return // Only return if redirecting
-			case strings.HasPrefix(r.URL.Path, "/waiter") && roleClaim != "waiter":
-				log.Printf("HTMLAuth: Waiter access denied for role '%s' to path '%s'", roleClaim, r.URL.Path)
-				http.Redirect(w, r, "/", http.StatusFound)
-				return // Only return if redirecting
+				return
 			}
 
-			// 6. If no redirect happened, access is granted. Set context and serve.
+			// If no redirect happened, access is granted. Set context and serve.
 			ctx := context.WithValue(r.Context(), "user_id", claims["user_id"])
 			ctx = context.WithValue(ctx, "role", roleClaim)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -129,17 +144,35 @@ func AuthMiddleware(jwtKey string) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Проверка роли
-			if strings.HasPrefix(r.URL.Path, "/api/admin") && claims["role"] != "admin" {
-				http.Error(w, "Unauthorized: admin access required", http.StatusForbidden)
-				return
-			}
-			if strings.HasPrefix(r.URL.Path, "/api/waiter") && claims["role"] != "waiter" {
-				http.Error(w, "Unauthorized: waiter access required", http.StatusForbidden)
-				return
-			}
-			if strings.HasPrefix(r.URL.Path, "/api/manager") && claims["role"] != "manager" {
-				http.Error(w, "Unauthorized: manager access required", http.StatusForbidden)
+			// Проверка роли (hierarchical)
+			requestedPath := r.URL.Path
+			userRole := claims["role"].(string)
+
+			switch {
+			// Admin can access all API paths
+			case userRole == "admin":
+				// Allow
+			// Manager can access Manager, Waiter, Kitchen API paths
+			case userRole == "manager":
+				if strings.HasPrefix(requestedPath, "/api/admin") {
+					http.Error(w, "Unauthorized: admin access required", http.StatusForbidden)
+					return
+				}
+			// Waiter can access Waiter and Kitchen API paths
+			case userRole == "waiter":
+				if strings.HasPrefix(requestedPath, "/api/admin") || strings.HasPrefix(requestedPath, "/api/manager") {
+					http.Error(w, "Unauthorized: manager or admin access required", http.StatusForbidden)
+					return
+				}
+			// Cook can access Kitchen API paths
+			case userRole == "cook":
+				if !strings.HasPrefix(requestedPath, "/api/kitchen") {
+					http.Error(w, "Unauthorized: kitchen access required", http.StatusForbidden)
+					return
+				}
+			// Deny access for any other case
+			default:
+				http.Error(w, "Unauthorized: Insufficient role", http.StatusForbidden)
 				return
 			}
 

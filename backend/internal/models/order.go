@@ -17,10 +17,11 @@ const (
 // OrderItem reflects the structure of the 'order_items' table.
 // It represents a single item within an order.
 type OrderItem struct {
-	ID       int     `json:"id"`              // Corresponds to 'order_items.id'
-	OrderID  int     `json:"order_id"`        // Corresponds to 'order_items.order_id'
-	DishID   int     `json:"dish_id"`         // Corresponds to 'order_items.dish_id', which is a foreign key to 'dishes.id'
-	Name     string  `json:"name,omitempty"`  // Name of the dish, can be stored for convenience or fetched via DishID
+	ID       int     `json:"id"`       // Corresponds to 'order_items.id'
+	OrderID  int     `json:"order_id"` // Corresponds to 'order_items.order_id'
+	DishID   int     `json:"dish_id"`  // Corresponds to 'order_items.dish_id', which is a foreign key to 'dishes.id'
+	Name     string  `json:"name"`
+	Category string  `json:"category"`
 	Quantity int     `json:"quantity"`        // Corresponds to 'order_items.quantity'
 	Price    float64 `json:"price"`           // Price of one unit AT THE TIME OF ORDER. Corresponds to 'order_items.price'
 	Total    float64 `json:"total"`           // Subtotal for this item (Quantity * Price). Can be calculated or stored.
@@ -46,20 +47,20 @@ type Order struct {
 
 // OrderStats provides statistics about orders.
 type OrderStats struct {
-	TotalActiveOrders int     `json:"total_active_orders"`
-	New               int     `json:"new"`
-	Accepted          int     `json:"accepted"`
-	Preparing         int     `json:"preparing"`
-	Ready             int     `json:"ready"`
-	Served            int     `json:"served"`
-	CompletedTotal    int     `json:"completed_total,omitempty"`  // Total completed, not just today
-	CancelledTotal    int     `json:"cancelled_total,omitempty"`  // Total cancelled
-	TotalAmountAll    float64 `json:"total_amount_all,omitempty"` // Sum of total_amount for all orders (or active ones)
+	TotalActiveOrders    int     `json:"total_active_orders"`
+	New                  int     `json:"new"`
+	Accepted             int     `json:"accepted"`
+	Preparing            int     `json:"preparing"`
+	Ready                int     `json:"ready"`
+	Served               int     `json:"served"`
+	CompletedTotal       int     `json:"completed_total,omitempty"`        // Total completed, not just today
+	CancelledTotal       int     `json:"cancelled_total,omitempty"`        // Total cancelled
+	CompletedAmountTotal float64 `json:"completed_amount_total,omitempty"` // Sum of total_amount for all orders (or active ones)
 }
 
 // CreateOrderRequest defines the expected structure for creating a new order from the client.
 type CreateOrderRequest struct {
-	TableID int              `json:"table_id" binding:"required"`
+	TableID int              `json:"tableId" binding:"required"`
 	Comment string           `json:"comment,omitempty"`
 	Items   []OrderItemInput `json:"items" binding:"required,min=1"`
 	// WaiterID will be extracted from the auth token on the backend
@@ -67,7 +68,7 @@ type CreateOrderRequest struct {
 
 // OrderItemInput defines the structure for items when creating a new order.
 type OrderItemInput struct {
-	DishID   int    `json:"dish_id" binding:"required"`
+	DishID   int    `json:"dishId" binding:"required"`
 	Quantity int    `json:"quantity" binding:"required,gt=0"`
 	Notes    string `json:"notes,omitempty"`
 	// If options are selectable per item:

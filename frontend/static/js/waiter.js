@@ -169,9 +169,9 @@ async function loadOrders() {
         const resp = await fetch('/api/waiter/orders', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
         if (!resp.ok) throw new Error('Failed to load orders');
         const data = await resp.json();
-        document.getElementById('ordersStatusInfo').textContent = `${data.stats.total} активных заказов`;
+        document.getElementById('ordersStatusInfo').textContent = `${data.stats.total_active_orders || 0} активных заказов`;
         const list = document.getElementById('ordersList');
-        if (data.orders === null) {
+        if (!data.orders || data.orders.length === 0) {
             list.innerHTML = '<div class="no-orders">Нет активных заказов</div>';
             return;
         }
@@ -180,13 +180,13 @@ async function loadOrders() {
                 <div class="order-card__header">
                     <div class="order-card__id">#${order.id}</div>
                     <div class="order-card__info">
-                        <div class="order-card__table">Стол ${order.tableId}</div>
-                        <div class="order-card__time">${formatOrderTime(order.createdAt)}</div>
+                        <div class="order-card__table">Стол ${order.table_id}</div>
+                        <div class="order-card__time">${formatOrderTime(order.created_at)}</div>
                     </div>
                 </div>
                 <div class="order-card__items">${order.items.map(item => item.name).join(', ')}</div>
                 <div class="order-card__footer">
-                    <div class="order-card__total">${formatMoney(order.total)} KZT</div>
+                    <div class="order-card__total">${formatMoney(order.total_amount)} KZT</div>
                     <div class="order-actions">
                         <button class="status-badge status-badge--${order.status}" onclick="updateOrderStatus(${order.id}, '${getNextStatus(order.status)}')">${getStatusText(order.status)}</button>
                     </div>
@@ -199,9 +199,38 @@ async function loadHistory() {
         const resp = await fetch('/api/waiter/history', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
         if (!resp.ok) throw new Error('Failed to load history');
         const data = await resp.json();
+
+        const historyMainStatEl = document.getElementById('historyMainStat');
+        const historySubStatEl = document.getElementById('historySubStat');
+
+        if (data.stats && historyMainStatEl && historySubStatEl) {
+            let mainStatText = '';
+            let subStatText = '';
+
+            // Используем data.stats.completed_total для количества и data.stats.total_amount_all для суммы
+            // Замените на актуальные поля, если они другие
+            if (data.stats.completed_total !== undefined) {
+                mainStatText = `Выполнено ${data.stats.completed_total} заказов`;
+            }
+            if (data.stats.completed_amount_total !== undefined) { 
+                subStatText = `Сумма заказов: ${formatMoney(data.stats.completed_amount_total)}`;
+            }
+            console.log(data.stats.completed_total);
+            console.log(formatMoney(data.stats.completed_amount_total));
+
+            historyMainStatEl.textContent = mainStatText;
+            historySubStatEl.textContent = subStatText;
+
+        } else if (historyMainStatEl && historySubStatEl) {
+            historyMainStatEl.textContent = 'История заказов';
+            historySubStatEl.textContent = 'Статистика недоступна';
+        }
+        
         const historyList = document.getElementById('historyList');
-        if (!data.orders.length) {
+        if (!data.orders || !data.orders.length) {
             historyList.innerHTML = '<div class="no-orders">История заказов пуста</div>';
+            if (historyMainStatEl) historyMainStatEl.textContent = 'История заказов пуста';
+            if (historySubStatEl) historySubStatEl.textContent = ''; 
             return;
         }
         historyList.innerHTML = data.orders.map(order => `
@@ -209,19 +238,23 @@ async function loadHistory() {
                 <div class="order-card__header">
                     <div class="order-card__id">#${order.id}</div>
                     <div class="order-card__info">
-                        <div class="order-card__table">Стол ${order.tableId}</div>
-                        <div class="order-card__time">${formatOrderTime(order.completedAt || order.cancelledAt)}</div>
+                        <div class="order-card__table">Стол ${order.table_id}</div>
+                        <div class="order-card__time">${formatOrderTime(order.completed_at || order.cancelled_at)}</div>
                     </div>
                 </div>
                 <div class="order-card__items">${order.items.map(item => item.name).join(', ')}</div>
                 <div class="order-card__footer">
-                    <div class="order-card__total">${formatMoney(order.total)} KZT</div>
+                    <div class="order-card__total">${formatMoney(order.total_amount)} KZT</div>
                     <div class="status-badge ${order.status === 'completed' ? 'status-badge--paid' : 'status-badge--cancelled'}">${order.status === 'completed' ? 'Оплачен' : 'Отменён'}</div>
                 </div>
             </div>
         `).join('');
     } catch (e) {
         document.getElementById('historyList').innerHTML = '<div class="error-message">Ошибка загрузки истории</div>';
+        const historyMainStatEl = document.getElementById('historyMainStat');
+        const historySubStatEl = document.getElementById('historySubStat');
+        if (historyMainStatEl) historyMainStatEl.textContent = 'История заказов';
+        if (historySubStatEl) historySubStatEl.textContent = 'Ошибка загрузки статистики';
     }
 }
 async function loadProfile() {
@@ -229,7 +262,13 @@ async function loadProfile() {
 }
 
 function formatOrderTime(dateString) {
+    if (!dateString) {
+        return "Не указано"; 
+    }
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) { 
+        return "Некорректная дата";
+    }
     return date.toLocaleString('ru-RU', {
         day: '2-digit',
         month: '2-digit',
@@ -239,7 +278,15 @@ function formatOrderTime(dateString) {
     });
 }
 function formatMoney(amount) {
-    return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    if (amount === undefined || amount === null) {
+        return Number(0).toLocaleString('ru-RU'); 
+    }
+    const numberAmount = parseFloat(amount);
+    if (isNaN(numberAmount)) {
+        console.warn('formatMoney received a non-numeric value:', amount);
+        return "0"; 
+    }
+    return numberAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 function getStatusText(status) {
     const statusTexts = {
@@ -381,6 +428,7 @@ async function createOrder() {
             notes: item.notes || "" // Assuming notes might be added later
         }))
     };
+    console.log(payload);
 
     try {
         const response = await fetch('/api/waiter/orders', {
@@ -391,7 +439,6 @@ async function createOrder() {
             },
             body: JSON.stringify(payload)
         });
-
         if (!response.ok) {
             let errorMsg = `Ошибка создания заказа: ${response.status}`;
             try {
