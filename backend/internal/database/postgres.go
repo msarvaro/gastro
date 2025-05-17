@@ -1,11 +1,13 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"restaurant-management/configs"
+	"restaurant-management/internal/middleware"
 	"restaurant-management/internal/models"
 	"strconv"
 	"time"
@@ -297,15 +299,38 @@ func (db *DB) CreateInventory(item *models.Inventory) error {
 	return err
 }
 
-func (db *DB) UpdateInventory(item *models.Inventory) error {
-	_, err := db.Exec(`
-		UPDATE inventory SET name = $1, category = $2, quantity = $3, unit = $4, min_quantity = $5, branch = $6, updated_at = NOW()
-		WHERE id = $7`,
-		item.Name, item.Category, item.Quantity, item.Unit, item.MinQuantity, item.Branch, item.ID,
-	)
-	return err
+// UpdateInventory updates the quantity of an inventory item.
+// It logs the change including the user who made the change (requires user_id in context).
+func (db *DB) UpdateInventory(ctx context.Context, item *models.Inventory) error {
+	userID, ok := middleware.GetUserIDFromContext(ctx)
+	if !ok {
+		// Log error or handle case where user ID is not in context
+		log.Println("UpdateInventory: User ID not found in context for logging.")
+		// Decide if you should proceed without logging the user, or return an error.
+		// For now, let's proceed but log the absence of user ID.
+	}
+
+	// Fetch the current quantity before updating for logging purposes
+	var currentQuantity float64
+	err := db.QueryRow("SELECT quantity FROM inventory WHERE id = $1", item.ID).Scan(&currentQuantity)
+	if err != nil {
+		log.Printf("UpdateInventory: Failed to fetch current quantity for item %d: %v", item.ID, err)
+		// Decide if you should stop here or proceed with the update. Proceeding might be acceptable.
+	}
+
+	_, err = db.Exec("UPDATE inventory SET quantity = $1 WHERE id = $2", item.Quantity, item.ID)
+	if err != nil {
+		log.Printf("Ошибка обновления запаса для ID %d: %v", item.ID, err)
+		return fmt.Errorf("ошибка обновления запаса: %w", err)
+	}
+
+	// Log the change after successful update
+	log.Printf("Inventory update: Item ID %d, User ID %d (if available), Old Quantity %.2f, New Quantity %.2f", item.ID, userID, currentQuantity, item.Quantity)
+
+	return nil
 }
 
+// DeleteInventory deletes an inventory item.
 func (db *DB) DeleteInventory(id int) error {
 	_, err := db.Exec("DELETE FROM inventory WHERE id = $1", id)
 	return err
@@ -565,15 +590,14 @@ func (db *DB) GetTableStats() (*models.TableStats, error) {
 func (db *DB) UpdateTableStatus(tableID int, status string) error {
 	var occupiedAt sql.NullTime
 	var reservedAt sql.NullTime
-	now := time.Now()
 
 	switch models.TableStatus(status) { // Assuming models.TableStatus is defined for status constants
 	case models.TableStatusOccupied:
-		occupiedAt.Time = now
+		occupiedAt.Time = time.Now()
 		occupiedAt.Valid = true
 		reservedAt.Valid = false // Clear reservation if it becomes occupied
 	case models.TableStatusReserved:
-		reservedAt.Time = now
+		reservedAt.Time = time.Now()
 		reservedAt.Valid = true
 		occupiedAt.Valid = false // Clear occupation if it becomes reserved (e.g. future reservation)
 	case models.TableStatusFree:
@@ -583,9 +607,9 @@ func (db *DB) UpdateTableStatus(tableID int, status string) error {
 		// For any other status, don't explicitly change occupied_at or reserved_at
 		// or handle as an error if status is unexpected
 		log.Printf("Warning: UpdateTableStatus called with unhandled status '%s' for table %d. occupied_at and reserved_at will not be changed.", status, tableID)
-		// Depending on strictness, you might want to return an error here or just update status and updated_at
+		// Depending on strictness, you might want to return an error here or just update status and updated_at for unhandled cases.
 		// For now, let's proceed to update only status and updated_at for unhandled cases.
-		_, err := db.Exec("UPDATE tables SET status = $1, updated_at = $2 WHERE id = $3", status, time.Now(), tableID)
+		_, err := db.Exec("UPDATE tables SET status = $1 WHERE id = $2", status, tableID)
 		if err != nil {
 			log.Printf("Ошибка обновления статуса (без occupied_at/reserved_at) стола для ID %d: %v", tableID, err)
 			return err
@@ -598,9 +622,9 @@ func (db *DB) UpdateTableStatus(tableID int, status string) error {
 	// it should be explicitly part of the SET clause.
 	// Assuming table `tables` also has an `updated_at` column that needs updating.
 	result, err := db.Exec(`UPDATE tables 
-						   SET status = $1, occupied_at = $2, reserved_at = $3, updated_at = $4 
-						   WHERE id = $5`,
-		status, occupiedAt, reservedAt, now, tableID)
+						   SET status = $1, occupied_at = $2, reserved_at = $3 
+						   WHERE id = $4`,
+		status, occupiedAt, reservedAt, tableID)
 
 	if err != nil {
 		log.Printf("Ошибка обновления статуса стола для ID %d: %v", tableID, err)
@@ -621,7 +645,7 @@ func (db *DB) UpdateTableStatus(tableID int, status string) error {
 // GetDishByID retrieves a specific dish by its ID.
 func (db *DB) GetDishByID(id int) (*models.Dish, error) {
 	dish := &models.Dish{}
-	err := db.QueryRow("SELECT id, name, price, is_available FROM dishes WHERE id = $1", id).Scan(&dish.ID, &dish.Name, &dish.Price, &dish.IsAvailable)
+	err := db.QueryRow("SELECT id, name, category, price, is_available FROM dishes WHERE id = $1", id).Scan(&dish.ID, &dish.Name, &dish.Price, &dish.IsAvailable)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("dish with ID %d not found", id)
@@ -711,16 +735,17 @@ func (db *DB) GetOrderByID(id int) (*models.Order, error) {
                        json_build_object(
                            'id', oi.id,
 						   'dish_id', oi.dish_id,
-                           'name', oi.name,
+                           'name', d.name,
                            'quantity', oi.quantity,
                            'price', oi.price,
-                           'total', oi.total,
+                           'total', (oi.quantity * oi.price),
 						   'notes', oi.notes
                        )
                    ) FILTER (WHERE oi.id IS NOT NULL), '[]'::json
                ) as items
         FROM orders o
         LEFT JOIN order_items oi ON o.id = oi.order_id
+        LEFT JOIN dishes d ON oi.dish_id = d.id
         WHERE o.id = $1
         GROUP BY o.id`
 
@@ -776,14 +801,14 @@ func (db *DB) CreateOrderAndItems(order *models.Order) (*models.Order, error) {
 		return nil, err
 	}
 
-	itemSQL := `INSERT INTO order_items (order_id, dish_id, name, quantity, price, total, notes)
-                VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+	itemSQL := `INSERT INTO order_items (order_id, dish_id, quantity, price, notes)
+                VALUES ($1, $2, $3, $4, $5) RETURNING id`
 	for i := range order.Items {
 		item := &order.Items[i]
-		err = tx.QueryRow(itemSQL, order.ID, item.DishID, item.Name, item.Quantity, item.Price, item.Total, item.Notes).Scan(&item.ID)
+		err = tx.QueryRow(itemSQL, order.ID, item.DishID, item.Quantity, item.Price, item.Notes).Scan(&item.ID)
 		if err != nil {
 			tx.Rollback()
-			log.Printf("Error inserting order item for dish %d (name: %s): %v", item.DishID, item.Name, err)
+			log.Printf("Error inserting order item for dish %d (name: %s): %v", item.DishID, err)
 			return nil, err
 		}
 	}
@@ -830,14 +855,14 @@ func (db *DB) GetOrderStatus() (*models.OrderStats, error) {
             COUNT(CASE WHEN status = 'served' THEN 1 END) as served,
             COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_total,
             COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_total,
-            COALESCE(SUM(CASE WHEN status = 'completed' THEN total_amount ELSE 0 END), 0) as total_amount_all
+            COALESCE(SUM(CASE WHEN status = 'completed' THEN total_amount ELSE 0 END), 0) as completed_amount_total
         FROM orders`
 
 	var stats models.OrderStats
 	err := db.QueryRow(query).Scan(
 		&stats.TotalActiveOrders, &stats.New, &stats.Accepted, &stats.Preparing,
 		&stats.Ready, &stats.Served, &stats.CompletedTotal, &stats.CancelledTotal,
-		&stats.TotalAmountAll)
+		&stats.CompletedAmountTotal)
 	if err != nil {
 		log.Printf("Error fetching order stats: %v", err)
 		return nil, err
@@ -929,4 +954,64 @@ func (db *DB) IsLastActiveOrderForTable(tableID, currentOrderID int) (bool, erro
 		return false, err
 	}
 	return count == 0, nil
+}
+
+// GetOrdersByStatus retrieves all orders with a specific status along with their items and dish categories.
+func (db *DB) GetOrdersByStatus(status string) ([]models.Order, error) {
+	query := `
+        SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total_amount, 
+               o.created_at, o.updated_at, o.completed_at, o.cancelled_at,
+               COALESCE(
+                   json_agg(
+                       json_build_object(
+                           'id', oi.id,
+                           'dish_id', oi.dish_id,
+                           'name', d.name,
+                           'category', c.name,
+                           'quantity', oi.quantity,
+                           'price', oi.price,
+                           'total', (oi.quantity * oi.price),
+                           'notes', oi.notes
+                       )
+                   ) FILTER (WHERE oi.id IS NOT NULL), '[]'::json
+               ) as items
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        LEFT JOIN dishes d ON oi.dish_id = d.id
+        LEFT JOIN categories c ON d.category_id = c.id
+        WHERE o.status = $1
+        GROUP BY o.id
+        ORDER BY o.created_at DESC
+    `
+	rows, err := db.Query(query, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []models.Order
+	for rows.Next() {
+		var order models.Order
+		var itemsJSON []byte
+		var completedAt, cancelledAt sql.NullTime
+
+		err := rows.Scan(
+			&order.ID, &order.TableID, &order.WaiterID, &order.Status, &order.Comment, &order.TotalAmount,
+			&order.CreatedAt, &order.UpdatedAt, &completedAt, &cancelledAt, &itemsJSON,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if completedAt.Valid {
+			order.CompletedAt = &completedAt.Time
+		}
+		if cancelledAt.Valid {
+			order.CancelledAt = &cancelledAt.Time
+		}
+		if err := json.Unmarshal(itemsJSON, &order.Items); err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+	return orders, nil
 }

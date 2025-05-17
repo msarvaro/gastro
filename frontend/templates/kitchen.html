@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Panel</title>
+    <link rel="stylesheet" href="/static/css/styles.css"> <!-- Assume a general styles.css exists -->
+    <link rel="stylesheet" href="/static/css/kitchen.css"> <!-- Specific styles for kitchen -->
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Kitchen Panel</h1>
+            <div class="user-info">
+                <!-- User info will be populated by JS -->
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="queue">Order Queue</button>
+            <button class="tab-button" data-tab="history">Order History</button>
+            <button class="tab-button" data-tab="inventory">Inventory</button>
+        </nav>
+
+        <main class="tab-content">
+            <section id="queue" class="tab-pane active">
+                <h2>Order Queue</h2>
+                <div id="kitchenOrdersList" class="order-list">
+                    <!-- Orders with status 'preparing' will be loaded here -->
+                    <div class="loading">Loading orders...</div>
+                </div>
+            </section>
+
+            <section id="history" class="tab-pane">
+                <h2>Order History</h2>
+                <div id="kitchenHistoryList" class="order-list">
+                    <!-- Orders with status 'ready' will be loaded here -->
+                     <div class="loading">Loading history...</div>
+                </div>
+            </section>
+
+            <section id="inventory" class="tab-pane">
+                <h2>Inventory</h2>
+                <div id="inventoryList">
+                    <!-- Inventory items will be loaded here -->
+                    <div class="loading">Loading inventory...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/kitchen.js"></script> <!-- Kitchen specific script -->
+</body>
+</html> 

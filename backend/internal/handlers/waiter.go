@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	// "bytes" // REMOVED
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"restaurant-management/internal/database"
@@ -102,7 +104,11 @@ func (h *WaiterHandler) GetOrderHistory(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Assuming stats are not strictly necessary for history or can be defaulted
-	stats := &models.OrderStats{}
+	stats, err := h.db.GetOrderStatus()
+	if err != nil {
+		log.Printf("Error GetOrders - fetching order stats: %v", err)
+		stats = &models.OrderStats{} // Default to empty stats on error
+	}
 
 	response := struct {
 		Orders []models.Order     `json:"orders"`
@@ -117,14 +123,30 @@ func (h *WaiterHandler) GetOrderHistory(w http.ResponseWriter, r *http.Request) 
 // CreateOrder creates a new order
 func (h *WaiterHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateOrderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("Error CreateOrder - decoding request: %v", err)
+
+	// Log the raw request body
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error CreateOrder - reading body: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Cannot read request body")
+		return
+	}
+	r.Body.Close() // It's good practice to close the body.
+
+	log.Printf("Raw request body for CreateOrder: %s", string(bodyBytes))
+
+	// Decode using the bytes we read
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
+		log.Printf("Error CreateOrder - unmarshalling request body '%s': %v", string(bodyBytes), err)
 		respondWithError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
 		return
 	}
 
-	if req.TableID < 0 { // Ensure TableID is provided
-		respondWithError(w, http.StatusBadRequest, "Table ID is required")
+	log.Printf("Decoded CreateOrderRequest: %+v", req)
+	log.Printf("Decoded req.TableID for CreateOrder: %d", req.TableID)
+
+	if req.TableID <= 0 { // Table ID must be a positive integer
+		respondWithError(w, http.StatusBadRequest, "Table ID is required and must be a positive integer.")
 		return
 	}
 
@@ -141,6 +163,7 @@ func (h *WaiterHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	waiterID := int(waiterID32)
 
 	table, err := h.db.GetTableByID(req.TableID)
+	log.Println(req.TableID)
 	if err != nil {
 		log.Printf("Error CreateOrder - fetching table %d: %v", req.TableID, err)
 		respondWithError(w, http.StatusInternalServerError, "Error fetching table details")
@@ -189,7 +212,6 @@ func (h *WaiterHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 
 		orderItem := models.OrderItem{
 			DishID:   itemInput.DishID,
-			Name:     dish.Name,
 			Quantity: itemInput.Quantity,
 			Price:    dish.Price, // Price at the time of order
 			Total:    float64(itemInput.Quantity) * dish.Price,

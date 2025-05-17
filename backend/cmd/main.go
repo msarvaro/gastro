@@ -56,6 +56,7 @@ func main() {
 	menuHandler := handlers.NewMenuHandler(menuRepo)
 	managerHandler := handlers.NewManagerHandler(db)
 	waiterHandler := handlers.NewWaiterHandler(db)
+	kitchenHandler := handlers.NewKitchenHandler(db)
 
 	// Публичные API
 	r.HandleFunc("/api/login", authHandler.Login).Methods("POST")
@@ -63,6 +64,13 @@ func main() {
 	// Защищенные API маршруты
 	api := r.PathPrefix("/api").Subrouter()
 	api.Use(middleware.AuthMiddleware(config.Server.JWTKey))
+
+	// API маршруты для админа
+	admin := api.PathPrefix("/admin").Subrouter()
+	admin.HandleFunc("/users", adminHandler.GetUsers).Methods("GET")
+	admin.HandleFunc("/users", adminHandler.CreateUser).Methods("POST")
+	admin.HandleFunc("/users/{id}", adminHandler.DeleteUser).Methods("DELETE")
+	admin.HandleFunc("/stats", adminHandler.GetStats).Methods("GET")
 
 	// API маршруты для менеджера
 	manager := api.PathPrefix("/manager").Subrouter()
@@ -90,13 +98,6 @@ func main() {
 	manager.HandleFunc("/requests/{id}", requestHandler.Update).Methods("PUT")
 	manager.HandleFunc("/requests/{id}", requestHandler.Delete).Methods("DELETE")
 
-	// API маршруты для пользователей (остаются у админа)
-	admin := api.PathPrefix("/admin").Subrouter()
-	admin.HandleFunc("/users", adminHandler.GetUsers).Methods("GET")
-	admin.HandleFunc("/users", adminHandler.CreateUser).Methods("POST")
-	admin.HandleFunc("/users/{id}", adminHandler.DeleteUser).Methods("DELETE")
-	admin.HandleFunc("/stats", adminHandler.GetStats).Methods("GET")
-
 	// API маршруты для официанта
 	waiter := api.PathPrefix("/waiter").Subrouter()
 	waiter.HandleFunc("/tables", waiterHandler.GetTables).Methods("GET")
@@ -104,6 +105,14 @@ func main() {
 	waiter.HandleFunc("/history", waiterHandler.GetOrderHistory).Methods("GET")
 	waiter.HandleFunc("/orders", waiterHandler.CreateOrder).Methods("POST")
 	waiter.HandleFunc("/orders/{id}/status", waiterHandler.UpdateOrderStatus).Methods("PUT")
+
+	// API маршруты для кухни
+	kitchen := api.PathPrefix("/kitchen").Subrouter()
+	kitchen.HandleFunc("/orders", kitchenHandler.GetKitchenOrders).Methods("GET")
+	kitchen.HandleFunc("/orders/{id}/status", kitchenHandler.UpdateOrderStatusByCook).Methods("PUT")
+	kitchen.HandleFunc("/history", kitchenHandler.GetKitchenHistory).Methods("GET")
+	kitchen.HandleFunc("/inventory", kitchenHandler.GetInventory).Methods("GET")
+	kitchen.HandleFunc("/inventory/{id}", kitchenHandler.UpdateInventory).Methods("PUT")
 
 	// API маршруты для меню
 	menuHandler.RegisterRoutes(r)
@@ -148,6 +157,11 @@ func main() {
 
 	htmlRouter.HandleFunc("/waiter/profile", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "waiter.html"))
+	}).Methods("GET")
+
+	// Страница для кухни
+	htmlRouter.HandleFunc("/kitchen", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "kitchen.html"))
 	}).Methods("GET")
 
 	// Логируем пути для отладки

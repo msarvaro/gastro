@@ -1,0 +1,212 @@
+/* frontend/static/css/kitchen.css */
+
+/* Basic styling for tabs */
+.tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ccc;
+}
+
+.tab-button {
+    padding: 10px 15px;
+    border: none;
+    background-color: #f1f1f1;
+    cursor: pointer;
+    margin-right: 5px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.tab-button:hover {
+    background-color: #ddd;
+}
+
+.tab-button.active {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    position: relative;
+    bottom: -1px; /* Overlap the border */
+    font-weight: bold;
+}
+
+/* Basic styling for tab content panes */
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* Styling for order lists (queue and history) */
+.order-list {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Responsive grid */
+}
+
+/* Styling for individual order cards */
+.order-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 15px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.order-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.order-card__id {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #333;
+}
+
+.order-card__info {
+    text-align: right;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.order-card__table {
+    font-weight: bold;
+}
+
+.order-card__time {
+    font-size: 0.8em;
+}
+
+.order-card__items {
+    flex-grow: 1;
+    margin-bottom: 10px;
+    font-size: 0.95em;
+    color: #555;
+}
+
+.order-card__items div {
+    margin-bottom: 5px;
+    padding-left: 10px;
+    border-left: 2px solid #007bff;
+}
+
+.order-card__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.order-card__waiter {
+    font-size: 0.9em;
+    color: #666;
+}
+
+/* Status button styling */
+.status-button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    color: white;
+    transition: background-color 0.3s ease;
+}
+
+.status-button--ready {
+    background-color: #28a745; /* Green color */
+}
+
+.status-button--ready:hover {
+    background-color: #218838;
+}
+
+/* Status badge styling for history */
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+    color: white;
+    text-align: center;
+    min-width: 80px; /* Ensure consistent size */
+    display: inline-block; /* Align with text */
+}
+
+.status-badge--new { background-color: #007bff; } /* Blue */
+.status-badge--accepted { background-color: #ffc107; } /* Yellow */
+.status-badge--preparing { background-color: #fd7e14; } /* Orange */
+.status-badge--ready { background-color: #28a745; } /* Green */
+.status-badge--served { background-color: #6f42c1; } /* Purple */
+.status-badge--completed { background-color: #6c757d; } /* Gray */
+.status-badge--cancelled { background-color: #dc3545; } /* Red */
+
+/* Styling for Inventory List */
+.inventory-item {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 15px;
+    background-color: #fff;
+    margin-bottom: 10px; /* Space between items */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.item-name {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #333;
+    flex-basis: 40%; /* Take up 40% width, adjust as needed */
+    margin-right: 10px; /* Space between name and quantity */
+}
+
+.item-quantity {
+     font-size: 1em;
+     color: #555;
+     flex-basis: 30%; /* Take up 30% width, adjust as needed */
+     margin-right: 10px; /* Space between quantity and actions */
+}
+
+.item-actions {
+    flex-basis: 20%; /* Take up 20% width, adjust as needed */
+    text-align: right;
+}
+
+.item-actions button {
+     padding: 5px 10px;
+     border: none;
+     border-radius: 5px;
+     cursor: pointer;
+     background-color: #007bff; /* Blue */
+     color: white;
+     transition: background-color 0.3s ease;
+}
+
+.item-actions button:hover {
+     background-color: #0056b3;
+}
+
+/* Loading and No data messages */
+.loading, .no-orders, .no-inventory, .error {
+    text-align: center;
+    font-size: 1.1em;
+    color: #777;
+    margin-top: 20px;
+}
+
+.error {
+    color: #dc3545; /* Red */
+} 

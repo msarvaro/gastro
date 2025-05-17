@@ -77,38 +77,26 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	tokenString, err := token.SignedString([]byte(h.jwtKey))
 	if err != nil {
 		log.Printf("Error signing token: %v", err)
-		http.Error(w, "Could not generate token", http.StatusInternalServerError)
+		http.Error(w, "Error generating token", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Generated token successfully")
-
-	// Устанавливаем куки для HTML страниц
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth_token",
-		Value:    tokenString,
-		Expires:  expirationTime,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteStrictMode,
-	})
-
-	// Определяем страницу для перенаправления в зависимости от роли
-	redirect := "/"
+	// Determine redirect based on role
+	redirectPath := "/" // Default
 	switch user.Role {
 	case "admin":
-		redirect = "/admin"
+		redirectPath = "/admin"
 	case "manager":
-		redirect = "/manager"
+		redirectPath = "/manager"
 	case "waiter":
-		redirect = "/waiter"
+		redirectPath = "/waiter"
+	case "cook": // NEW: Redirect cook to kitchen
+		redirectPath = "/kitchen"
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(LoginResponse{
+	respondWithJSON(w, http.StatusOK, LoginResponse{
 		Token:    tokenString,
 		Role:     user.Role,
-		Redirect: redirect,
+		Redirect: redirectPath,
 	})
 }

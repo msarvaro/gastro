@@ -59,7 +59,8 @@ func (h *InventoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	item.ID = id
-	if err := h.db.UpdateInventory(&item); err != nil {
+	ctx := r.Context()
+	if err := h.db.UpdateInventory(ctx, &item); err != nil {
 		http.Error(w, "Failed to update", http.StatusInternalServerError)
 		return
 	}

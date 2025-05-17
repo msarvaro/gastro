@@ -529,26 +529,7 @@ body {
     margin-bottom: 16px;
 }
 
-.filter-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: #F5F5F5;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-}
 
-.filter-count {
-    background: #2196F3;
-    color: white;
-    padding: 2px 6px;
-    border-radius: 12px;
-    font-size: 12px;
-}
-
-/* Статус заказов */
 
 /* Карточки заказов */
 .order-card {
@@ -635,30 +616,13 @@ body {
     margin: 16px;
 }
 
-.filter-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    background: #F5F5F5;
-    border: 1px solid #E0E0E0;
-    border-radius: 8px;
-    font-size: 14px;
-    color: #333;
-}
 
 .filter-button img {
     width: 16px;
     height: 16px;
 }
 
-.filter-count {
-    background: #2196F3;
-    color: white;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-}
+
 
 /* Заголовок страницы */
 .orders-title {
@@ -917,18 +881,7 @@ body {
     gap: 12px;
 }
 
-.filter-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
-    background: #F5F5F5;
-    border: 1px solid #E0E0E0;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 500;
-    color: #333;
-}
+
 
 .filter-count {
     background: #2196F3;
