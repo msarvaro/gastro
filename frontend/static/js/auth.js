@@ -1,15 +1,47 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.querySelector('.signup-form');
 
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Auth.js script loaded");
+    
+    // Add token to all fetch requests
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        console.log("Fetch called for URL:", url);
+        const token = localStorage.getItem('token');
+        if (token) {
+            console.log("Adding token to request for:", url);
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`
+            };
+        } else {
+            console.log("No token found for request:", url);
+        }
+        return originalFetch(url, options);
+    };
+
+    // Get the login form
+    const loginForm = document.querySelector('.signup-form');
+    console.log("Login form found:", !!loginForm);
+ 
     if (loginForm) {
+        console.log("Adding submit event listener to login form");
         loginForm.addEventListener('submit', async (e) => {
+            console.log("Login form submitted");
             e.preventDefault();
             
             const usernameInput = document.getElementById('username');
             const passwordInput = document.getElementById('password');
             const rememberCheckbox = document.querySelector('.remember-checkbox');
 
+            console.log("Form elements found:", {
+                username: !!usernameInput,
+                password: !!passwordInput,
+                remember: !!rememberCheckbox
+            });
+            alert("Form elements found - Username: " + !!usernameInput + ", Password: " + !!passwordInput); // Test alert
+
             if (!usernameInput || !passwordInput) {
+                console.error("Form elements not found!");
                 alert('Ошибка: не найдены поля формы!');
                 return;
             }
@@ -18,6 +50,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const password = passwordInput.value;
             const remember = rememberCheckbox ? rememberCheckbox.checked : false;
 
+            console.log("Attempting login with username:", username);
+            alert("Attempting login with username: " + username); // Test alert
             const requestData = { 
                 username, 
                 password,
@@ -25,6 +59,8 @@ document.addEventListener('DOMContentLoaded', function() {
             };
   
             try {
+                console.log("Sending login request...");
+                alert("Sending login request..."); // Test alert
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: {
@@ -33,63 +69,47 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: JSON.stringify(requestData)
                 });
                 
+                console.log("Login response received, status:", response.status);
+                alert("Login response status: " + response.status); // Test alert
+                const data = await response.json();
+                console.log("Login response data:", data);
+                alert("Login response data: " + JSON.stringify(data)); // Test alert
+                
                 if (response.ok) {
-                    const data = await response.json();
-                    
-                    // Сохраняем токен и роль
+                    // Store token and role in localStorage only
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('role', data.role);
                     
-                    console.log("Auth.js: Login successful. Role:", data.role, "Token:", data.token);
-                    console.log("Auth.js: Server wants to redirect to:", data.redirect);
-                    
-                    // Перенаправляем на соответствующую страницу
+                    console.log("Auth.js: Login successful. Role:", data.role);
+                    console.log("Auth.js: Token stored:", data.token ? "Yes" : "No");
                     if (data.redirect) {
-                        console.log("Auth.js: DEBUG: About to redirect. data.redirect is:", data.redirect, "data.role is:", data.role);
-                        alert("DEBUG: Check console. About to redirect to: " + data.redirect + " with role: " + data.role); // Temporary alert
-                        debugger; // PAUSE EXECUTION HERE
+                        console.log(data.redirect);
+                        alert("йоу йоу йоу");
                         window.location.href = data.redirect;
                     } else {
-                        // Если redirect не указан, перенаправляем по роли
-                        switch (data.role) {
-                            case 'admin':
-                                window.location.href = '/admin';
-                                break;
-                            case 'manager':
-                                window.location.href = '/manager';
-                                break;
-                            case 'waiter':
-                                window.location.href = '/waiter';
-                                break;
-                            default:
-                                console.error('Unknown role:', data.role);
-                                alert('Неизвестная роль пользователя');
-                                window.location.href = '/';
-                        }
+                        // Optionally, handle other roles here
                     }
                 } else {
-                    const errorData = await response.json().catch(() => ({}));
-                    console.error('Login failed:', errorData);
-                    alert(errorData.message || 'Неверные учетные данные');
+                    console.error("Login failed:", data);
+                    alert("Login failed: " + (data.message || 'Неверные учетные данные'));
                 }
             } catch (error) {
-                console.error('Error during login:', error);
-                alert('Ошибка при входе в систему. Пожалуйста, попробуйте позже.');
+                console.error("Error during login:", error);
+                alert("Error during login: " + error.message);
             }
         });
     } else {
-        console.error('Login form not found');
+        console.error("Login form not found on the page!");
+        alert("Login form not found on the page!");
     }
 });
 
 // Функция для выхода
 function logout() {
-    // Удаляем куки
-    document.cookie = 'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    // Удаляем данные из localStorage
+    // Remove only localStorage items
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-    // Перенаправляем на страницу входа
+    // Redirect to login page
     window.location.href = '/';
 }
 
@@ -215,3 +235,5 @@ document.addEventListener('DOMContentLoaded', function() {
         form.insertBefore(successDiv, form.firstChild);
     }
 });
+
+
