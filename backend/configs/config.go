@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -27,29 +30,86 @@ type Config struct {
 	}
 }
 
+// LoadConfig loads configuration from .env file
 func LoadConfig() (*Config, error) {
 	config := &Config{}
 
+	// Load .env file
+	envFile := ".env"
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		envFile = "../.env" // Try one directory up if not found in current dir
+	}
+
+	err := godotenv.Load(envFile)
+	if err != nil {
+		return nil, fmt.Errorf("error loading .env file: %v", err)
+	}
+
 	// Database configuration
-	config.Database.Host = "localhost"
-	config.Database.Port = 5432
-	config.Database.User = "postgres"
-	config.Database.Password = "postgres"
-	config.Database.DBName = "user_management"
-	config.Database.SSLMode = "disable"
+	var envErr error
+	config.Database.Host, envErr = getRequiredEnv("DB_HOST")
+	if envErr != nil {
+		return nil, envErr
+	}
+
+	dbPortStr, envErr := getRequiredEnv("DB_PORT")
+	if envErr != nil {
+		return nil, envErr
+	}
+	dbPort, err := strconv.Atoi(dbPortStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB_PORT, must be an integer: %v", err)
+	}
+	config.Database.Port = dbPort
+
+	config.Database.User, envErr = getRequiredEnv("DB_USER")
+	if envErr != nil {
+		return nil, envErr
+	}
+
+	config.Database.Password, envErr = getRequiredEnv("DB_PASSWORD")
+	if envErr != nil {
+		return nil, envErr
+	}
+
+	config.Database.DBName, envErr = getRequiredEnv("DB_NAME")
+	if envErr != nil {
+		return nil, envErr
+	}
+
+	config.Database.SSLMode, envErr = getRequiredEnv("DB_SSL_MODE")
+	if envErr != nil {
+		return nil, envErr
+	}
 
 	// Server configuration
-	config.Server.Port = "8080"
-	config.Server.JWTKey = "your-secret-key" // В продакшене использовать безопасный ключ
+	config.Server.Port, envErr = getRequiredEnv("SERVER_PORT")
+	if envErr != nil {
+		return nil, envErr
+	}
+
+	config.Server.JWTKey, envErr = getRequiredEnv("JWT_KEY")
+	if envErr != nil {
+		return nil, envErr
+	}
 
 	// Paths configuration
-	projectRoot, err := filepath.Abs("../../")
+	projectRootPath, envErr := getRequiredEnv("PROJECT_ROOT")
+	if envErr != nil {
+		return nil, envErr
+	}
+	projectRoot, err := filepath.Abs(projectRootPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project root: %v", err)
 	}
 
+	frontendPath, envErr := getRequiredEnv("FRONTEND_PATH")
+	if envErr != nil {
+		return nil, envErr
+	}
+
 	config.Paths.ProjectRoot = projectRoot
-	config.Paths.Frontend = filepath.Join(projectRoot, "frontend")
+	config.Paths.Frontend = filepath.Join(projectRoot, frontendPath)
 	config.Paths.Static = filepath.Join(config.Paths.Frontend, "static")
 	config.Paths.Templates = filepath.Join(config.Paths.Frontend, "templates")
 
@@ -67,6 +127,15 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return config, nil
+}
+
+// getRequiredEnv gets an environment variable or returns an error if it's not set
+func getRequiredEnv(key string) (string, error) {
+	value := os.Getenv(key)
+	if value == "" {
+		return "", fmt.Errorf("required environment variable '%s' is not set", key)
+	}
+	return value, nil
 }
 
 func (c *Config) GetDBConnString() string {

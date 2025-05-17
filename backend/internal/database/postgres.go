@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"restaurant-management/configs"
@@ -641,13 +642,13 @@ func (db *DB) UpdateTableStatus(tableID int, status string) error {
 	return nil
 }
 
-// Dish methods
 // GetDishByID retrieves a specific dish by its ID.
 func (db *DB) GetDishByID(id int) (*models.Dish, error) {
 	dish := &models.Dish{}
-	err := db.QueryRow("SELECT id, name, category, price, is_available FROM dishes WHERE id = $1", id).Scan(&dish.ID, &dish.Name, &dish.Price, &dish.IsAvailable)
+	err := db.QueryRow("SELECT id, name, category_id, price, is_available FROM dishes WHERE id = $1", id).
+		Scan(&dish.ID, &dish.Name, &dish.CategoryID, &dish.Price, &dish.IsAvailable)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("dish with ID %d not found", id)
 		}
 		log.Printf("Error fetching dish by ID %d: %v", id, err)
@@ -656,7 +657,6 @@ func (db *DB) GetDishByID(id int) (*models.Dish, error) {
 	return dish, nil
 }
 
-// Order methods
 // GetActiveOrdersWithItems retrieves all active orders along with their items.
 func (db *DB) GetActiveOrdersWithItems() ([]models.Order, error) {
 	query := `

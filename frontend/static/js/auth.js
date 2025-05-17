@@ -1,21 +1,25 @@
-
 document.addEventListener('DOMContentLoaded', function() {
     console.log("Auth.js script loaded");
     
-    // Add token to all fetch requests
+    // Still add token from localStorage to requests in case the cookie is not there
+    // This helps with backward compatibility and cases where HttpOnly cookies aren't available
     const originalFetch = window.fetch;
     window.fetch = function(url, options = {}) {
         console.log("Fetch called for URL:", url);
+        
+        // Always include credentials to send cookies with requests
+        options.credentials = 'include';
+        
+        // As a fallback, also use localStorage token if it exists
         const token = localStorage.getItem('token');
         if (token) {
-            console.log("Adding token to request for:", url);
+            console.log("Adding token from localStorage to request for:", url);
             options.headers = {
                 ...options.headers,
                 'Authorization': `Bearer ${token}`
             };
-        } else {
-            console.log("No token found for request:", url);
         }
+        
         return originalFetch(url, options);
     };
 
@@ -38,7 +42,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 password: !!passwordInput,
                 remember: !!rememberCheckbox
             });
-            alert("Form elements found - Username: " + !!usernameInput + ", Password: " + !!passwordInput); // Test alert
 
             if (!usernameInput || !passwordInput) {
                 console.error("Form elements not found!");
@@ -51,7 +54,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const remember = rememberCheckbox ? rememberCheckbox.checked : false;
 
             console.log("Attempting login with username:", username);
-            alert("Attempting login with username: " + username); // Test alert
             const requestData = { 
                 username, 
                 password,
@@ -60,32 +62,35 @@ document.addEventListener('DOMContentLoaded', function() {
   
             try {
                 console.log("Sending login request...");
-                alert("Sending login request..."); // Test alert
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(requestData)
+                    body: JSON.stringify(requestData),
+                    credentials: 'include'  // Important to accept and send cookies
                 });
                 
                 console.log("Login response received, status:", response.status);
-                alert("Login response status: " + response.status); // Test alert
                 const data = await response.json();
                 console.log("Login response data:", data);
-                alert("Login response data: " + JSON.stringify(data)); // Test alert
-                
+
                 if (response.ok) {
-                    // Store token and role in localStorage only
+                    // Still store token in localStorage as fallback
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('role', data.role);
                     
                     console.log("Auth.js: Login successful. Role:", data.role);
                     console.log("Auth.js: Token stored:", data.token ? "Yes" : "No");
+                    
                     if (data.redirect) {
-                        console.log(data.redirect);
-                        alert("йоу йоу йоу");
-                        window.location.href = data.redirect;
+                        console.log("Attempting to redirect to:", data.redirect);
+                        try {
+                            window.location.href = data.redirect;
+                            console.log("Redirect initiated");
+                        } catch (e) {
+                            console.error("Redirect error:", e);
+                        }
                     } else {
                         // Optionally, handle other roles here
                     }
@@ -106,11 +111,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Функция для выхода
 function logout() {
-    // Remove only localStorage items
+    // Delete the auth cookie
+    document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    
+    // Also clear localStorage for backward compatibility
     localStorage.removeItem('token');
     localStorage.removeItem('role');
+    
     // Redirect to login page
     window.location.href = '/';
+}
+
+// Function to check if user is logged in
+function checkAuth() {
+    // Check both cookie and localStorage
+    const hasTokenInLocalStorage = localStorage.getItem('token') !== null;
+    const hasTokenInCookie = document.cookie.split(';').some(c => c.trim().startsWith('auth_token='));
+    
+    return hasTokenInCookie || hasTokenInLocalStorage;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -140,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function() {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // Get form valuesimage.png
+            // Get form values
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -176,7 +194,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(userData)
+                    body: JSON.stringify(userData),
+                    credentials: 'include'  // Include credentials for cookies
                 });
                 
                 if (response.ok) {

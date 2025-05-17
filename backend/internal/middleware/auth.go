@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,25 +14,38 @@ import (
 func HTMLAuthMiddleware(jwtKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// 1. Skip public pages (like "/" and "/login.html")
-			if r.URL.Path == "/" || r.URL.Path == "/login.html" {
+			if r.URL.Path == "/" {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			// 2. Get token from Authorization header (Bearer only)
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Redirect(w, r, "/", http.StatusFound)
-				return
+			// Try to get token from cookie first
+			tokenString := ""
+			cookie, err := r.Cookie("auth_token")
+			if err == nil && cookie.Value != "" {
+				tokenString = cookie.Value
+			} else {
+				// If no cookie, try Authorization header
+				authHeader := r.Header.Get("Authorization")
+				log.Println("AUTH header:", authHeader)
+				if authHeader == "" {
+					http.Redirect(w, r, "/", http.StatusFound)
+					return
+				}
+
+				bearerToken := strings.Split(authHeader, " ")
+				if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
+					http.Redirect(w, r, "/", http.StatusFound)
+					return
+				}
+				tokenString = bearerToken[1]
 			}
 
-			bearerToken := strings.Split(authHeader, " ")
-			if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
+			// No valid token found
+			if tokenString == "" {
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
-			tokenString := bearerToken[1]
 
 			// 3. Parse and validate token
 			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -94,6 +108,7 @@ func AuthMiddleware(jwtKey string) func(http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 			// Обработка preflight запросов
 			if r.Method == "OPTIONS" {
@@ -101,20 +116,34 @@ func AuthMiddleware(jwtKey string) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Проверка токена
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, "Authorization header required", http.StatusUnauthorized)
+			// Try to get token from cookie first
+			tokenString := ""
+			cookie, err := r.Cookie("auth_token")
+			if err == nil && cookie.Value != "" {
+				tokenString = cookie.Value
+			} else {
+				// If no cookie, try Authorization header
+				authHeader := r.Header.Get("Authorization")
+				if authHeader == "" {
+					http.Error(w, "Authorization required", http.StatusUnauthorized)
+					return
+				}
+
+				bearerToken := strings.Split(authHeader, " ")
+				if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
+					http.Error(w, "Invalid token format", http.StatusUnauthorized)
+					return
+				}
+				tokenString = bearerToken[1]
+			}
+
+			// No valid token found
+			if tokenString == "" {
+				http.Error(w, "Authorization required", http.StatusUnauthorized)
 				return
 			}
 
-			bearerToken := strings.Split(authHeader, " ")
-			if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
-				http.Error(w, "Invalid token format", http.StatusUnauthorized)
-				return
-			}
-
-			token, err := jwt.Parse(bearerToken[1], func(token *jwt.Token) (interface{}, error) {
+			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 				return []byte(jwtKey), nil
 			})
 
