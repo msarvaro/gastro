@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"log"
 	"restaurant-management/internal/models"
 	"time"
@@ -97,63 +98,116 @@ func (db *DB) GetWaiterProfile(waiterID int, businessID int) (*models.WaiterProf
 
 // GetWaiterCurrentAndUpcomingShifts возвращает текущую и предстоящие смены официанта
 func (db *DB) GetWaiterCurrentAndUpcomingShifts(waiterID int, businessID int) (*models.ShiftWithEmployees, []models.ShiftWithEmployees, error) {
-	// TODO: Реализовать получение смен из БД с фильтрацией по business_id
-	// В рамках текущего задания используем тестовые данные
-
 	// Текущее время для определения активной смены
 	now := time.Now()
+	currentDate := now.Format("2006-01-02")
+	currentTime := now.Format("15:04:05")
 
-	// Мок для текущей смены (если сейчас рабочее время)
+	// Запрос для получения текущей смены (сегодня и время между start_time и end_time)
+	currentShiftQuery := `
+		SELECT 
+			s.id, s.date, s.start_time, s.end_time, 
+			s.manager_id, s.notes, s.created_at, s.updated_at, s.business_id
+		FROM shifts s
+		JOIN shift_employees se ON s.id = se.shift_id
+		WHERE se.employee_id = $1
+		AND s.business_id = $2
+		AND s.date = $3::date
+		AND $4::time BETWEEN s.start_time AND s.end_time
+		LIMIT 1
+	`
+
+	// Получаем текущую смену
 	var currentShift *models.ShiftWithEmployees
+	var shift models.ShiftWithEmployees
 
-	// Проверяем рабочее время (с 9:00 до 22:00)
-	if now.Hour() >= 9 && now.Hour() < 22 {
-		shiftDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-		shiftStart := time.Date(now.Year(), now.Month(), now.Day(), 9, 0, 0, 0, now.Location())
-		shiftEnd := time.Date(now.Year(), now.Month(), now.Day(), 22, 0, 0, 0, now.Location())
+	err := db.QueryRow(currentShiftQuery, waiterID, businessID, currentDate, currentTime).Scan(
+		&shift.ID, &shift.Date, &shift.StartTime, &shift.EndTime,
+		&shift.ManagerID, &shift.Notes, &shift.CreatedAt, &shift.UpdatedAt, &shift.BusinessID,
+	)
 
-		currentShift = &models.ShiftWithEmployees{
-			ID:        1,
-			Date:      shiftDate,
-			StartTime: shiftStart,
-			EndTime:   shiftEnd,
-			ManagerID: 1,
-			Manager: &models.User{
-				ID:       1,
-				Username: "manager",
-				Name:     "Менеджер Смены",
-			},
-			Notes:     "Текущая смена",
-			CreatedAt: now.Add(-24 * time.Hour),
-			UpdatedAt: now.Add(-24 * time.Hour),
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Printf("Error getting current shift for waiter %d: %v", waiterID, err)
+			// Продолжаем работу даже если текущая смена не найдена
 		}
+	} else {
+		// Получаем данные менеджера
+		manager, err := db.GetUserByID(shift.ManagerID)
+		if err == nil {
+			shift.Manager = manager
+		} else {
+			log.Printf("Error getting manager for shift %d: %v", shift.ID, err)
+		}
+
+		// Получаем сотрудников для этой смены
+		shift.Employees, err = db.GetShiftEmployees(shift.ID)
+		if err != nil {
+			log.Printf("Warning: Could not get employees for shift %d: %v", shift.ID, err)
+		}
+
+		currentShift = &shift
 	}
 
-	// Мок для предстоящих смен
-	tomorrow := now.Add(24 * time.Hour)
-	dayAfterTomorrow := now.Add(48 * time.Hour)
+	// Запрос для получения предстоящих смен
+	upcomingShiftsQuery := `
+		SELECT 
+			s.id, s.date, s.start_time, s.end_time, 
+			s.manager_id, s.notes, s.created_at, s.updated_at, s.business_id
+		FROM shifts s
+		JOIN shift_employees se ON s.id = se.shift_id
+		WHERE se.employee_id = $1
+		AND s.business_id = $2
+		AND (
+			s.date > $3::date
+			OR 
+			(s.date = $3::date AND s.start_time > $4::time)
+		)
+		ORDER BY s.date ASC, s.start_time ASC
+		LIMIT 5
+	`
 
-	upcomingShifts := []models.ShiftWithEmployees{
-		{
-			ID:        2,
-			Date:      time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 0, 0, 0, 0, now.Location()),
-			StartTime: time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 9, 0, 0, 0, now.Location()),
-			EndTime:   time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 22, 0, 0, 0, now.Location()),
-			ManagerID: 1,
-			Notes:     "Завтрашняя смена",
-			CreatedAt: now.Add(-24 * time.Hour),
-			UpdatedAt: now.Add(-24 * time.Hour),
-		},
-		{
-			ID:        3,
-			Date:      time.Date(dayAfterTomorrow.Year(), dayAfterTomorrow.Month(), dayAfterTomorrow.Day(), 0, 0, 0, 0, now.Location()),
-			StartTime: time.Date(dayAfterTomorrow.Year(), dayAfterTomorrow.Month(), dayAfterTomorrow.Day(), 9, 0, 0, 0, now.Location()),
-			EndTime:   time.Date(dayAfterTomorrow.Year(), dayAfterTomorrow.Month(), dayAfterTomorrow.Day(), 22, 0, 0, 0, now.Location()),
-			ManagerID: 1,
-			Notes:     "Смена послезавтра",
-			CreatedAt: now.Add(-24 * time.Hour),
-			UpdatedAt: now.Add(-24 * time.Hour),
-		},
+	// Получаем предстоящие смены
+	rows, err := db.Query(upcomingShiftsQuery, waiterID, businessID, currentDate, currentTime)
+	if err != nil {
+		log.Printf("Error querying upcoming shifts for waiter %d: %v", waiterID, err)
+		return currentShift, nil, err
+	}
+	defer rows.Close()
+
+	upcomingShifts := []models.ShiftWithEmployees{}
+	for rows.Next() {
+		var upcoming models.ShiftWithEmployees
+
+		err := rows.Scan(
+			&upcoming.ID, &upcoming.Date, &upcoming.StartTime, &upcoming.EndTime,
+			&upcoming.ManagerID, &upcoming.Notes, &upcoming.CreatedAt, &upcoming.UpdatedAt, &upcoming.BusinessID,
+		)
+		if err != nil {
+			log.Printf("Error scanning upcoming shift row: %v", err)
+			continue
+		}
+
+		// Получаем данные менеджера
+		manager, err := db.GetUserByID(upcoming.ManagerID)
+		if err == nil {
+			upcoming.Manager = manager
+		} else {
+			log.Printf("Error getting manager for shift %d: %v", upcoming.ID, err)
+		}
+
+		// Получаем сотрудников для этой смены
+		upcoming.Employees, err = db.GetShiftEmployees(upcoming.ID)
+		if err != nil {
+			log.Printf("Warning: Could not get employees for shift %d: %v", upcoming.ID, err)
+		}
+
+		upcomingShifts = append(upcomingShifts, upcoming)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("Error after iterating upcoming shift rows: %v", err)
+		return currentShift, nil, err
 	}
 
 	return currentShift, upcomingShifts, nil
@@ -161,29 +215,56 @@ func (db *DB) GetWaiterCurrentAndUpcomingShifts(waiterID int, businessID int) (*
 
 // GetTablesAssignedToWaiter возвращает столы, назначенные официанту
 func (db *DB) GetTablesAssignedToWaiter(waiterID int, businessID int) ([]models.Table, error) {
-	// TODO: Реализовать получение назначенных столов из БД
-	// В рамках текущего задания используем тестовые данные
+	// Запрос для получения столов, назначенных официанту
+	query := `
+		SELECT 
+			t.id, t.number, t.seats, t.status, t.reserved_at, t.occupied_at, t.business_id
+		FROM tables t
+		WHERE t.business_id = $1
+		ORDER BY t.number ASC
+	`
 
-	// Предположим, что официанту назначены столы 1, 2 и 3
-	tables := []models.Table{
-		{
-			ID:     1,
-			Number: 1,
-			Seats:  4,
-			Status: models.TableStatusFree,
-		},
-		{
-			ID:     2,
-			Number: 2,
-			Seats:  2,
-			Status: models.TableStatusOccupied,
-		},
-		{
-			ID:     3,
-			Number: 3,
-			Seats:  6,
-			Status: models.TableStatusFree,
-		},
+	rows, err := db.Query(query, businessID)
+	if err != nil {
+		log.Printf("Error querying tables assigned to waiter %d: %v", waiterID, err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	tables := []models.Table{}
+	for rows.Next() {
+		var table models.Table
+		var reservedAt, occupiedAt sql.NullTime
+
+		var businessID int
+		err := rows.Scan(
+			&table.ID, &table.Number, &table.Seats, &table.Status,
+			&reservedAt, &occupiedAt, &businessID,
+		)
+		if err != nil {
+			log.Printf("Error scanning table row: %v", err)
+			continue
+		}
+
+		// Преобразуем NullTime в *time.Time
+		if reservedAt.Valid {
+			table.ReservedAt = &reservedAt.Time
+		}
+		if occupiedAt.Valid {
+			table.OccupiedAt = &occupiedAt.Time
+		}
+
+		tables = append(tables, table)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("Error after iterating table rows: %v", err)
+		return nil, err
+	}
+
+	// Если не удалось найти столы, возвращаем пустой слайс
+	if len(tables) == 0 {
+		return []models.Table{}, nil
 	}
 
 	return tables, nil
@@ -191,16 +272,62 @@ func (db *DB) GetTablesAssignedToWaiter(waiterID int, businessID int) ([]models.
 
 // GetWaiterOrderStats возвращает статистику по заказам официанта
 func (db *DB) GetWaiterOrderStats(waiterID int, businessID int) (models.OrderStatusCounts, error) {
-	// TODO: Реализовать получение статистики заказов из БД
-	// В рамках текущего задания используем тестовые данные
+	stats := models.OrderStatusCounts{}
 
-	stats := models.OrderStatusCounts{
-		New:       2,
-		Accepted:  1,
-		Preparing: 3,
-		Ready:     1,
-		Served:    2,
-		Total:     9,
+	// Запрос для получения количества заказов по статусам
+	query := `
+		SELECT 
+			status, 
+			COUNT(*) as count
+		FROM orders
+		WHERE waiter_id = $1 
+		AND business_id = $2
+		AND status NOT IN ('completed', 'cancelled')
+		GROUP BY status
+	`
+
+	rows, err := db.Query(query, waiterID, businessID)
+	if err != nil {
+		log.Printf("Error querying order stats for waiter %d: %v", waiterID, err)
+		return stats, err
+	}
+	defer rows.Close()
+
+	// Вычисляем общее количество
+	totalOrders := 0
+
+	for rows.Next() {
+		var status string
+		var count int
+
+		err := rows.Scan(&status, &count)
+		if err != nil {
+			log.Printf("Error scanning order stats row: %v", err)
+			continue
+		}
+
+		// Увеличиваем счетчик для соответствующего статуса
+		switch status {
+		case "new":
+			stats.New = count
+		case "accepted":
+			stats.Accepted = count
+		case "preparing":
+			stats.Preparing = count
+		case "ready":
+			stats.Ready = count
+		case "served":
+			stats.Served = count
+		}
+
+		totalOrders += count
+	}
+
+	stats.Total = totalOrders
+
+	if err := rows.Err(); err != nil {
+		log.Printf("Error after iterating order stats rows: %v", err)
+		return stats, err
 	}
 
 	return stats, nil
@@ -208,13 +335,51 @@ func (db *DB) GetWaiterOrderStats(waiterID int, businessID int) (models.OrderSta
 
 // GetWaiterPerformanceMetrics возвращает метрики эффективности официанта
 func (db *DB) GetWaiterPerformanceMetrics(waiterID int, businessID int) (models.PerformanceMetrics, error) {
-	// TODO: Реализовать получение метрик эффективности из БД
-	// В рамках текущего задания используем тестовые данные
+	metrics := models.PerformanceMetrics{}
 
-	metrics := models.PerformanceMetrics{
-		TablesServed:       24,
-		OrdersCompleted:    36,
-		AverageServiceTime: 42.5, // в минутах
+	// 1. Получаем количество обслуженных столов
+	tablesServedQuery := `
+		SELECT COUNT(DISTINCT table_id) 
+		FROM orders 
+		WHERE waiter_id = $1 
+		AND business_id = $2
+		AND status IN ('served', 'completed')
+	`
+	err := db.QueryRow(tablesServedQuery, waiterID, businessID).Scan(&metrics.TablesServed)
+	if err != nil {
+		log.Printf("Error getting tables served for waiter %d: %v", waiterID, err)
+		// Продолжаем работу, но с дефолтным значением
+	}
+
+	// 2. Получаем количество выполненных заказов
+	ordersCompletedQuery := `
+		SELECT COUNT(*) 
+		FROM orders 
+		WHERE waiter_id = $1 
+		AND business_id = $2
+		AND status = 'completed'
+	`
+	err = db.QueryRow(ordersCompletedQuery, waiterID, businessID).Scan(&metrics.OrdersCompleted)
+	if err != nil {
+		log.Printf("Error getting orders completed for waiter %d: %v", waiterID, err)
+		// Продолжаем работу, но с дефолтным значением
+	}
+
+	// 3. Получаем среднее время обслуживания (время между статусами 'new' и 'served')
+	// Это приблизительная метрика, так как в нашей схеме мы не храним историю изменений статусов
+	// Используем разницу между датой завершения и датой создания
+	averageServiceTimeQuery := `
+		SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (COALESCE(completed_at, updated_at) - created_at)) / 60), 0)
+		FROM orders 
+		WHERE waiter_id = $1 
+		AND business_id = $2
+		AND status = 'completed'
+	`
+	err = db.QueryRow(averageServiceTimeQuery, waiterID, businessID).Scan(&metrics.AverageServiceTime)
+	if err != nil {
+		log.Printf("Error getting average service time for waiter %d: %v", waiterID, err)
+		// Устанавливаем значение по умолчанию
+		metrics.AverageServiceTime = 0
 	}
 
 	return metrics, nil

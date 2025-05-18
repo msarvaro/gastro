@@ -229,6 +229,36 @@ func GetUserIDFromContext(ctx context.Context) (int, bool) {
 	return int(userIDFloat), true
 }
 
+// GetBusinessIDFromJWT извлекает business_id из JWT токена в контексте запроса.
+// Возвращает ID бизнеса и true, если ID найден и имеет корректный тип.
+// В противном случае возвращает 0 и false.
+func GetBusinessIDFromJWT(ctx context.Context) (int64, bool) {
+	businessIDVal := ctx.Value("business_id")
+	if businessIDVal == nil {
+		return 0, false
+	}
+
+	// claims["business_id"] обычно float64 после парсинга JWT, поэтому нужна проверка типа
+	businessIDFloat, ok := businessIDVal.(float64)
+	if !ok {
+		// Попробуем как int, если вдруг уже преобразовано
+		businessIDInt, okInt := businessIDVal.(int)
+		if okInt {
+			return int64(businessIDInt), true
+		}
+		// Попробуем как string и сконвертируем
+		businessIDStr, okStr := businessIDVal.(string)
+		if okStr {
+			id, err := strconv.ParseInt(businessIDStr, 10, 64)
+			if err == nil {
+				return id, true
+			}
+		}
+		return 0, false // Не удалось привести к известному типу
+	}
+	return int64(businessIDFloat), true
+}
+
 // GetUserRoleFromContext извлекает role из контекста запроса.
 func GetUserRoleFromContext(ctx context.Context) (string, bool) {
 	roleVal := ctx.Value("role")

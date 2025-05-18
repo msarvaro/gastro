@@ -161,6 +161,25 @@ func (h *ShiftHandler) CreateShift(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Получаем business_id из контекста или куки
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		// Если нет в контексте, пробуем получить из куки
+		cookie, err := r.Cookie("business_id")
+		if err != nil || cookie.Value == "" {
+			log.Printf("Error CreateShift - no business ID in context or cookie")
+			respondWithError(w, http.StatusBadRequest, "Business ID not found")
+			return
+		}
+		businessIDFromCookie, err := strconv.ParseInt(cookie.Value, 10, 64)
+		if err != nil {
+			log.Printf("Error CreateShift - invalid business ID in cookie: %v", err)
+			respondWithError(w, http.StatusBadRequest, "Invalid Business ID")
+			return
+		}
+		businessID = int(businessIDFromCookie)
+	}
+
 	// Декодируем данные запроса
 	var req models.CreateShiftRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -169,8 +188,14 @@ func (h *ShiftHandler) CreateShift(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	managerIDInt, err := strconv.Atoi(req.ManagerID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid manager ID")
+		return
+	}
+
 	// Валидация данных
-	if req.StartTime == "" || req.EndTime == "" || req.ManagerID == 0 {
+	if req.StartTime == "" || req.EndTime == "" || managerIDInt == 0 {
 		respondWithError(w, http.StatusBadRequest, "Missing required fields: start_time, end_time, manager_id")
 		return
 	}
@@ -209,11 +234,12 @@ func (h *ShiftHandler) CreateShift(w http.ResponseWriter, r *http.Request) {
 
 	// Создаем объект смены
 	shift := &models.Shift{
-		Date:      shiftDate,
-		StartTime: time.Date(shiftDate.Year(), shiftDate.Month(), shiftDate.Day(), startTime.Hour(), startTime.Minute(), 0, 0, time.Local),
-		EndTime:   time.Date(shiftDate.Year(), shiftDate.Month(), shiftDate.Day(), endTime.Hour(), endTime.Minute(), 0, 0, time.Local),
-		ManagerID: req.ManagerID,
-		Notes:     req.Notes,
+		Date:       shiftDate,
+		StartTime:  time.Date(shiftDate.Year(), shiftDate.Month(), shiftDate.Day(), startTime.Hour(), startTime.Minute(), 0, 0, time.Local),
+		EndTime:    time.Date(shiftDate.Year(), shiftDate.Month(), shiftDate.Day(), endTime.Hour(), endTime.Minute(), 0, 0, time.Local),
+		ManagerID:  managerIDInt,
+		BusinessID: businessID,
+		Notes:      req.Notes,
 	}
 
 	// Создаем смену в БД
@@ -337,12 +363,37 @@ func (h *ShiftHandler) UpdateShift(w http.ResponseWriter, r *http.Request) {
 
 	// Создаем обновленный объект смены
 	updatedShift := &models.Shift{
-		ID:        shiftID,
-		Date:      shiftDate,
-		StartTime: startTime,
-		EndTime:   endTime,
-		ManagerID: managerID,
-		Notes:     req.Notes,
+		ID:         shiftID,
+		Date:       shiftDate,
+		StartTime:  startTime,
+		EndTime:    endTime,
+		ManagerID:  managerID,
+		BusinessID: existingShift.BusinessID,
+		Notes:      req.Notes,
+	}
+
+	// Если business_id не указан в существующей смене, пробуем получить из контекста или куки
+	if updatedShift.BusinessID == 0 {
+		businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+		if !ok {
+			// Если нет в контексте, пробуем получить из куки
+			cookie, err := r.Cookie("business_id")
+			if err == nil && cookie.Value != "" {
+				businessIDFromCookie, err := strconv.ParseInt(cookie.Value, 10, 64)
+				if err == nil {
+					updatedShift.BusinessID = int(businessIDFromCookie)
+				}
+			}
+
+			// Если все еще нет business_id, выдаем ошибку
+			if updatedShift.BusinessID == 0 {
+				log.Printf("Error UpdateShift - no business ID in existing shift, context or cookie")
+				respondWithError(w, http.StatusBadRequest, "Business ID not found")
+				return
+			}
+		} else {
+			updatedShift.BusinessID = businessID
+		}
 	}
 
 	// Если список сотрудников не указан, оставляем существующий
