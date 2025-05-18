@@ -7,7 +7,7 @@ import (
 )
 
 // GetWaiterProfile возвращает полную информацию профиля официанта
-func (db *DB) GetWaiterProfile(waiterID int) (*models.WaiterProfileResponse, error) {
+func (db *DB) GetWaiterProfile(waiterID int, businessID int) (*models.WaiterProfileResponse, error) {
 	// 1. Получаем базовую информацию о пользователе
 	user, err := db.GetUserByID(waiterID)
 	if err != nil {
@@ -23,7 +23,8 @@ func (db *DB) GetWaiterProfile(waiterID int) (*models.WaiterProfileResponse, err
 	}
 
 	// 2. Получаем информацию о текущей и предстоящих сменах из реальной БД
-	currentShift, upcomingShifts, err := db.GetCurrentAndUpcomingShifts(waiterID)
+	// Filter shifts by businessID
+	currentShift, upcomingShifts, err := db.GetWaiterCurrentAndUpcomingShifts(waiterID, businessID)
 	if err != nil {
 		log.Printf("Warning: Could not get shifts for waiter %d: %v", waiterID, err)
 		// Продолжаем выполнение, это некритичная ошибка
@@ -62,7 +63,8 @@ func (db *DB) GetWaiterProfile(waiterID int) (*models.WaiterProfileResponse, err
 	}
 
 	// 3. Получаем назначенные столы
-	assignedTables, err := db.GetTablesAssignedToWaiter(waiterID)
+	// Filter tables by businessID
+	assignedTables, err := db.GetTablesAssignedToWaiter(waiterID, businessID)
 	if err != nil {
 		log.Printf("Warning: Could not get assigned tables for waiter %d: %v", waiterID, err)
 		// Продолжаем выполнение, это некритичная ошибка
@@ -71,7 +73,8 @@ func (db *DB) GetWaiterProfile(waiterID int) (*models.WaiterProfileResponse, err
 	}
 
 	// 4. Получаем статистику по активным заказам
-	orderStats, err := db.GetWaiterOrderStats(waiterID)
+	// Filter orders by businessID
+	orderStats, err := db.GetWaiterOrderStats(waiterID, businessID)
 	if err != nil {
 		log.Printf("Warning: Could not get order stats for waiter %d: %v", waiterID, err)
 		// По умолчанию инициализируем пустую статистику
@@ -80,7 +83,8 @@ func (db *DB) GetWaiterProfile(waiterID int) (*models.WaiterProfileResponse, err
 	profile.OrderStats = orderStats
 
 	// 5. Получаем показатели эффективности
-	performanceData, err := db.GetWaiterPerformanceMetrics(waiterID)
+	// Filter performance metrics by businessID
+	performanceData, err := db.GetWaiterPerformanceMetrics(waiterID, businessID)
 	if err != nil {
 		log.Printf("Warning: Could not get performance metrics for waiter %d: %v", waiterID, err)
 		// По умолчанию инициализируем пустую статистику
@@ -91,27 +95,37 @@ func (db *DB) GetWaiterProfile(waiterID int) (*models.WaiterProfileResponse, err
 	return profile, nil
 }
 
-// GetWaiterShifts возвращает текущую и предстоящие смены официанта
-func (db *DB) GetWaiterShifts(waiterID int) (*models.ShiftInfo, []models.ShiftInfo, error) {
-	// TODO: Реализовать получение смен из БД
+// GetWaiterCurrentAndUpcomingShifts возвращает текущую и предстоящие смены официанта
+func (db *DB) GetWaiterCurrentAndUpcomingShifts(waiterID int, businessID int) (*models.ShiftWithEmployees, []models.ShiftWithEmployees, error) {
+	// TODO: Реализовать получение смен из БД с фильтрацией по business_id
 	// В рамках текущего задания используем тестовые данные
 
 	// Текущее время для определения активной смены
 	now := time.Now()
 
 	// Мок для текущей смены (если сейчас рабочее время)
-	var currentShift *models.ShiftInfo
+	var currentShift *models.ShiftWithEmployees
 
 	// Проверяем рабочее время (с 9:00 до 22:00)
 	if now.Hour() >= 9 && now.Hour() < 22 {
+		shiftDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 		shiftStart := time.Date(now.Year(), now.Month(), now.Day(), 9, 0, 0, 0, now.Location())
 		shiftEnd := time.Date(now.Year(), now.Month(), now.Day(), 22, 0, 0, 0, now.Location())
 
-		currentShift = &models.ShiftInfo{
+		currentShift = &models.ShiftWithEmployees{
 			ID:        1,
+			Date:      shiftDate,
 			StartTime: shiftStart,
 			EndTime:   shiftEnd,
-			IsActive:  true,
+			ManagerID: 1,
+			Manager: &models.User{
+				ID:       1,
+				Username: "manager",
+				Name:     "Менеджер Смены",
+			},
+			Notes:     "Текущая смена",
+			CreatedAt: now.Add(-24 * time.Hour),
+			UpdatedAt: now.Add(-24 * time.Hour),
 		}
 	}
 
@@ -119,18 +133,26 @@ func (db *DB) GetWaiterShifts(waiterID int) (*models.ShiftInfo, []models.ShiftIn
 	tomorrow := now.Add(24 * time.Hour)
 	dayAfterTomorrow := now.Add(48 * time.Hour)
 
-	upcomingShifts := []models.ShiftInfo{
+	upcomingShifts := []models.ShiftWithEmployees{
 		{
 			ID:        2,
+			Date:      time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 0, 0, 0, 0, now.Location()),
 			StartTime: time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 9, 0, 0, 0, now.Location()),
 			EndTime:   time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 22, 0, 0, 0, now.Location()),
-			IsActive:  false,
+			ManagerID: 1,
+			Notes:     "Завтрашняя смена",
+			CreatedAt: now.Add(-24 * time.Hour),
+			UpdatedAt: now.Add(-24 * time.Hour),
 		},
 		{
 			ID:        3,
+			Date:      time.Date(dayAfterTomorrow.Year(), dayAfterTomorrow.Month(), dayAfterTomorrow.Day(), 0, 0, 0, 0, now.Location()),
 			StartTime: time.Date(dayAfterTomorrow.Year(), dayAfterTomorrow.Month(), dayAfterTomorrow.Day(), 9, 0, 0, 0, now.Location()),
 			EndTime:   time.Date(dayAfterTomorrow.Year(), dayAfterTomorrow.Month(), dayAfterTomorrow.Day(), 22, 0, 0, 0, now.Location()),
-			IsActive:  false,
+			ManagerID: 1,
+			Notes:     "Смена послезавтра",
+			CreatedAt: now.Add(-24 * time.Hour),
+			UpdatedAt: now.Add(-24 * time.Hour),
 		},
 	}
 
@@ -138,7 +160,7 @@ func (db *DB) GetWaiterShifts(waiterID int) (*models.ShiftInfo, []models.ShiftIn
 }
 
 // GetTablesAssignedToWaiter возвращает столы, назначенные официанту
-func (db *DB) GetTablesAssignedToWaiter(waiterID int) ([]models.Table, error) {
+func (db *DB) GetTablesAssignedToWaiter(waiterID int, businessID int) ([]models.Table, error) {
 	// TODO: Реализовать получение назначенных столов из БД
 	// В рамках текущего задания используем тестовые данные
 
@@ -168,7 +190,7 @@ func (db *DB) GetTablesAssignedToWaiter(waiterID int) ([]models.Table, error) {
 }
 
 // GetWaiterOrderStats возвращает статистику по заказам официанта
-func (db *DB) GetWaiterOrderStats(waiterID int) (models.OrderStatusCounts, error) {
+func (db *DB) GetWaiterOrderStats(waiterID int, businessID int) (models.OrderStatusCounts, error) {
 	// TODO: Реализовать получение статистики заказов из БД
 	// В рамках текущего задания используем тестовые данные
 
@@ -185,7 +207,7 @@ func (db *DB) GetWaiterOrderStats(waiterID int) (models.OrderStatusCounts, error
 }
 
 // GetWaiterPerformanceMetrics возвращает метрики эффективности официанта
-func (db *DB) GetWaiterPerformanceMetrics(waiterID int) (models.PerformanceMetrics, error) {
+func (db *DB) GetWaiterPerformanceMetrics(waiterID int, businessID int) (models.PerformanceMetrics, error) {
 	// TODO: Реализовать получение метрик эффективности из БД
 	// В рамках текущего задания используем тестовые данные
 

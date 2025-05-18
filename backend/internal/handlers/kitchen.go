@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"restaurant-management/internal/database"
+	"restaurant-management/internal/middleware"
 	"restaurant-management/internal/models"
 	"strconv"
 
@@ -42,7 +43,13 @@ func (h *KitchenHandler) respondWithJSON(w http.ResponseWriter, code int, payloa
 
 // GetKitchenOrders returns all orders with status 'preparing'
 func (h *KitchenHandler) GetKitchenOrders(w http.ResponseWriter, r *http.Request) {
-	orders, err := h.db.GetOrdersByStatus("preparing")
+	// Extract business_id from context
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		businessID = 0 // Fallback to 0 if not available
+	}
+
+	orders, err := h.db.GetOrdersByStatus("preparing", businessID)
 	if err != nil {
 		log.Printf("Error GetKitchenOrders - fetching orders: %v", err)
 		h.respondWithError(w, http.StatusInternalServerError, "Failed to fetch kitchen orders")
@@ -68,8 +75,14 @@ func (h *KitchenHandler) UpdateOrderStatusByCook(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Extract business_id from context
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		businessID = 0 // Fallback to 0 if not available
+	}
+
 	// Verify the current status is 'preparing' before allowing update to 'ready'
-	order, err := h.db.GetOrderByID(orderID)
+	order, err := h.db.GetOrderByID(orderID, businessID)
 	if err != nil {
 		log.Printf("Error UpdateOrderStatusByCook - fetching order %d: %v", orderID, err)
 		h.respondWithError(w, http.StatusInternalServerError, "Failed to get order details")
