@@ -57,6 +57,7 @@ func main() {
 	managerHandler := handlers.NewManagerHandler(db)
 	waiterHandler := handlers.NewWaiterHandler(db)
 	kitchenHandler := handlers.NewKitchenHandler(db)
+	shiftHandler := handlers.NewShiftHandler(db)
 
 	// Публичные API
 	r.HandleFunc("/api/login", authHandler.Login).Methods("POST")
@@ -72,10 +73,18 @@ func main() {
 	admin.HandleFunc("/users/{id}", adminHandler.DeleteUser).Methods("DELETE")
 	admin.HandleFunc("/stats", adminHandler.GetStats).Methods("GET")
 
+	// Регистрация обработчиков API для смен
+	adminShiftsRouter := admin.PathPrefix("/shifts").Subrouter()
+	adminShiftsRouter.HandleFunc("", shiftHandler.GetAllShifts).Methods("GET")
+	adminShiftsRouter.HandleFunc("", shiftHandler.CreateShift).Methods("POST")
+	adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.GetShiftByID).Methods("GET")
+	adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.UpdateShift).Methods("PUT")
+	adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.DeleteShift).Methods("DELETE")
+
 	// API маршруты для менеджера
 	manager := api.PathPrefix("/manager").Subrouter()
 	manager.HandleFunc("/dashboard", managerHandler.GetDashboard).Methods("GET")
-	manager.HandleFunc("/orders/history", managerHandler.GetOrderHistory).Methods("GET")
+	manager.HandleFunc("/orders/history", waiterHandler.GetOrderHistory).Methods("GET")
 
 	// API маршруты для инвентаря (перенесены к менеджеру)
 	manager.HandleFunc("/inventory", inventoryHandler.GetAll).Methods("GET")
@@ -105,6 +114,7 @@ func main() {
 	waiter.HandleFunc("/history", waiterHandler.GetOrderHistory).Methods("GET")
 	waiter.HandleFunc("/orders", waiterHandler.CreateOrder).Methods("POST")
 	waiter.HandleFunc("/orders/{id}/status", waiterHandler.UpdateOrderStatus).Methods("PUT")
+	waiter.HandleFunc("/profile", waiterHandler.GetProfile).Methods("GET")
 
 	// API маршруты для кухни
 	kitchen := api.PathPrefix("/kitchen").Subrouter()
@@ -116,6 +126,10 @@ func main() {
 
 	// API маршруты для меню
 	menuHandler.RegisterRoutes(r)
+
+	// Регистрация обработчиков API для смен
+	apiRouter := api.PathPrefix("/shifts").Subrouter()
+	apiRouter.HandleFunc("", shiftHandler.GetEmployeeShifts).Methods("GET")
 
 	// HTML страницы (теперь защищены middleware)
 	htmlRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
