@@ -1,3 +1,6 @@
+// Add a default food image constant at the top of the file
+const DEFAULT_FOOD_IMAGE = "https://cdn.pixabay.com/photo/2018/06/01/20/30/food-3447416_1280.jpg";
+
 document.addEventListener('DOMContentLoaded', async function() {
 
     const token = localStorage.getItem('token');
@@ -291,7 +294,13 @@ function updateComparisonIndicator(indicatorElement, change) {
 }
 
 function formatMoney(amount) {
-    return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    // Ensure amount is a number
+    if (typeof amount !== 'number') {
+        amount = parseFloat(amount) || 0;
+    }
+    
+    // Format with thousand separators
+    return amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$& ').replace('.00', '') + ' ₸';
 }
 
 function setupEventListeners() {
@@ -320,6 +329,20 @@ function setupEventListeners() {
         });
     }
     
+    // Logout button handler
+    const logoutButton = document.querySelector('.logout');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', function() {
+            // Clear authentication data
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            document.cookie = 'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+            
+            // Redirect to login page
+            window.location.href = '/';
+        });
+    }
+    
     // Navigation menu
     document.querySelectorAll('.sidebar nav ul li').forEach(item => {
         item.addEventListener('click', function() {
@@ -330,7 +353,7 @@ function setupEventListeners() {
             }
         });
     });
-        
+    
     // Filter buttons
     document.querySelectorAll('.filter-button').forEach(button => {
         button.addEventListener('click', function() {
@@ -952,57 +975,147 @@ async function loadMenuData() {
     console.log('loadMenuData called');
     try {
         const token = localStorage.getItem('token');
+        const businessId = window.api && window.api.getBusinessId ? window.api.getBusinessId() : null;
+        
+        if (!token) {
+            console.error('No authentication token found');
+            showError('Ошибка аутентификации');
+            return;
+        }
+        
+        console.log(`Fetching menu data with token: ${token ? 'exists' : 'missing'}, Business ID: ${businessId || 'not set'}`);
+        
         const response = await fetch('/api/menu', {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
         });
 
         if (!response.ok) {
-            throw new Error('Failed to load menu data');
+            const errorText = await response.text();
+            console.error(`Error loading menu data: HTTP ${response.status} - ${errorText}`);
+            throw new Error(`Failed to load menu data: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
-        updateMenuUI(data.categories, data.items);
+        console.log('Menu data loaded successfully:', data);
+        
+        // Process the items to ensure all fields have default values if null
+        if (data.items) {
+            data.items = data.items.map(item => ({
+                ...item,
+                // Set default values for null fields
+                preparation_time: item.preparation_time || 0,
+                calories: item.calories || 0,
+                allergens: item.allergens || [],
+                description: item.description || '',
+                business_id: item.business_id || 0,
+                is_available: typeof item.is_available === 'boolean' ? item.is_available : true
+            }));
+        }
+        
+        // Store the menu data in a global variable for pagination access
+        window.menuData = data;
+        
+        // Set initial menu page
+        window.currentMenuPage = 1;
+        
+        updateMenuUI(data.categories || [], data.items || []);
+        
+        // Add pagination event listeners
+        setupMenuPagination();
     } catch (error) {
-        console.error('Error loading menu data:', error);
-        showError('Ошибка загрузки меню');
+        console.error('Error in loadMenuData:', error.message, error.stack);
+        showError('Ошибка загрузки меню: ' + error.message);
+    }
+}
+
+function setupMenuPagination() {
+    const prevButton = document.querySelector('.pagination-arrow.prev');
+    const nextButton = document.querySelector('.pagination-arrow.next');
+    
+    if (prevButton) {
+        prevButton.addEventListener('click', function() {
+            if (window.currentMenuPage > 1) {
+                window.currentMenuPage--;
+                
+                // Get the currently selected category
+                const activeCategory = document.querySelector('.category-item.active');
+                if (activeCategory) {
+                    const categoryId = activeCategory.getAttribute('data-category-id');
+                    
+                    // Re-display the items with the new page
+                    displayMenuItemsByCategory(window.menuData.items, categoryId, window.currentMenuPage);
+                }
+            }
+        });
+    }
+    
+    if (nextButton) {
+        nextButton.addEventListener('click', function() {
+            // Get the currently selected category
+            const activeCategory = document.querySelector('.category-item.active');
+            if (activeCategory) {
+                const categoryId = activeCategory.getAttribute('data-category-id');
+                const categoryItems = window.menuData.items.filter(item => item.category_id == categoryId);
+                
+                const totalPages = Math.ceil(categoryItems.length / 10); // Assuming 10 items per page
+                
+                if (window.currentMenuPage < totalPages) {
+                    window.currentMenuPage++;
+                    
+                    // Re-display the items with the new page
+                    displayMenuItemsByCategory(window.menuData.items, categoryId, window.currentMenuPage);
+                }
+            }
+        });
     }
 }
 
 function updateMenuUI(categories, items) {
-    // Update categories
-    const categoriesContainer = document.querySelector('#menu-section .categories');
+    // Update categories in sidebar
+    const categoriesContainer = document.getElementById('menu-categories-list');
     if (categoriesContainer) {
-        categoriesContainer.innerHTML = categories.map(category => `
-            <div class="category-card" data-category-id="${category.id}">
-                <h3>${category.name}</h3>
-                <div class="category-actions">
-                    <button onclick="editCategory(${category.id})">✏️</button>
-                    <button onclick="deleteCategory(${category.id})">🗑️</button>
+        categoriesContainer.innerHTML = categories.map((category, index) => {
+            const itemCount = items.filter(item => item.category_id === category.id).length;
+            const isActive = index === 0; // First category is active by default
+            
+            return `
+                <div class="category-item ${isActive ? 'active' : ''}" data-category-id="${category.id}">
+                    <span class="category-name">${category.name}</span>
+                    <span class="category-count">${itemCount}</span>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+        
+        // Add click event to category items
+        document.querySelectorAll('.category-item').forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove active class from all categories
+                document.querySelectorAll('.category-item').forEach(cat => cat.classList.remove('active'));
+                // Add active class to clicked category
+                this.classList.add('active');
+                
+                const categoryId = this.getAttribute('data-category-id');
+                const categoryName = this.querySelector('.category-name').textContent;
+                
+                // Update selected category title
+                document.getElementById('selected-category-title').textContent = categoryName;
+                
+                // Reset page number to 1 when switching categories
+                window.currentMenuPage = 1;
+                
+                // Filter and display items for the selected category
+                displayMenuItemsByCategory(items, categoryId, 1);
+            });
+        });
     }
 
-    // Update menu items
-    const itemsContainer = document.querySelector('#menu-section .menu-items');
-    if (itemsContainer) {
-        itemsContainer.innerHTML = items.map(item => `
-            <div class="menu-item-card" data-item-id="${item.id}">
-                <img src="${item.image_url || '../static/images/placeholder.jpg'}" alt="${item.name}">
-                <div class="item-details">
-                    <h4>${item.name}</h4>
-                    <p>${item.description || ''}</p>
-                    <div class="item-meta">
-                        <span class="price">${formatMoney(item.price)}₸</span>
-                        <span class="prep-time">${item.preparation_time} мин</span>
-                    </div>
-                    <div class="item-actions">
-                        <button onclick="editMenuItem(${item.id})">✏️</button>
-                        <button onclick="deleteMenuItem(${item.id})">🗑️</button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
+    // Initially display items for the first category if exists
+    if (categories.length > 0) {
+        document.getElementById('selected-category-title').textContent = categories[0].name;
+        displayMenuItemsByCategory(items, categories[0].id);
     }
 
     // Update category select in add/edit item forms
@@ -1017,12 +1130,88 @@ function updateMenuUI(categories, items) {
     });
 }
 
+function displayMenuItemsByCategory(items, categoryId, page = 1) {
+    const itemsContainer = document.getElementById('menu-items-list');
+    if (!itemsContainer) return;
+    
+    const filteredItems = items.filter(item => item.category_id == categoryId);
+    
+    if (filteredItems.length === 0) {
+        itemsContainer.innerHTML = '<div class="no-items">Нет блюд в этой категории</div>';
+        document.querySelector('.pagination-text').textContent = `0 из 0 страниц`;
+        return;
+    }
+    
+    // Pagination settings
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+    
+    // Ensure page is within valid range
+    page = Math.max(1, Math.min(page, totalPages));
+    
+    // Store current page in the global variable
+    window.currentMenuPage = page;
+    
+    // Calculate slice indexes
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, filteredItems.length);
+    
+    // Get items for current page
+    const pageItems = filteredItems.slice(startIndex, endIndex);
+    
+    itemsContainer.innerHTML = pageItems.map(item => {
+        const status = item.status || 'active';
+        const statusText = status === 'active' ? 'Активно' : 'Скрыто';
+        const statusClass = status === 'active' ? 'status-active' : 'status-paused';
+        
+        return `
+            <div class="menu-item" data-item-id="${item.id}">
+                <img src="${item.image_url || DEFAULT_FOOD_IMAGE}" class="menu-item-image" alt="${item.name}">
+                <div class="menu-item-details">
+                    <div class="menu-item-name">${item.name}</div>
+                    <div class="menu-item-description">${item.description || 'Без описания'}</div>
+                    <div class="menu-item-prep-time">Время приготовления: ${item.preparation_time || '?'} мин</div>
+                </div>
+                <div class="menu-item-actions">
+                    <div class="menu-item-price">${formatMoney(item.price)}</div>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                    <div class="action-buttons">
+                        <button class="action-button info-btn" title="Подробнее" onclick="event.stopPropagation(); showMenuItemDetails(${item.id})">ⓘ</button>
+                        <button class="action-button edit-btn" title="Редактировать" onclick="event.stopPropagation(); editMenuItem(${item.id})">✏️</button>
+                        <button class="action-button delete-btn" title="Удалить" onclick="event.stopPropagation(); deleteMenuItem(${item.id})">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Update pagination text
+    document.querySelector('.pagination-text').textContent = `${page} из ${totalPages} страниц`;
+    
+    // Update pagination arrows state
+    const prevArrow = document.querySelector('.pagination-arrow.prev');
+    const nextArrow = document.querySelector('.pagination-arrow.next');
+    
+    if (prevArrow) {
+        prevArrow.style.opacity = page > 1 ? '1' : '0.5';
+        prevArrow.style.cursor = page > 1 ? 'pointer' : 'default';
+    }
+    
+    if (nextArrow) {
+        nextArrow.style.opacity = page < totalPages ? '1' : '0.5';
+        nextArrow.style.cursor = page < totalPages ? 'pointer' : 'default';
+    }
+}
+
 async function addCategory(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
     
     try {
+        // Get business ID from cookie
+        const businessId = window.api && window.api.getBusinessId ? parseInt(window.api.getBusinessId()) : null;
+        
         const token = localStorage.getItem('token');
         const response = await fetch('/api/menu/categories', {
             method: 'POST',
@@ -1032,7 +1221,8 @@ async function addCategory(event) {
             },
             body: JSON.stringify({
                 name: formData.get('categoryName'),
-                description: formData.get('categoryDescription')
+                description: formData.get('categoryDescription'),
+                business_id: businessId
             })
         });
 
@@ -1083,6 +1273,9 @@ async function updateCategory(event) {
     const categoryId = formData.get('categoryId');
     
     try {
+        // Get business ID from cookie
+        const businessId = window.api && window.api.getBusinessId ? parseInt(window.api.getBusinessId()) : null;
+        
         const token = localStorage.getItem('token');
         const response = await fetch(`/api/menu/categories/${categoryId}`, {
             method: 'PUT',
@@ -1092,7 +1285,8 @@ async function updateCategory(event) {
             },
             body: JSON.stringify({
                 name: formData.get('categoryName'),
-                description: formData.get('categoryDescription')
+                description: formData.get('categoryDescription'),
+                business_id: businessId
             })
         });
 
@@ -1139,6 +1333,107 @@ async function addMenuItem(event) {
     const formData = new FormData(form);
     
     try {
+        // Create an empty data object, we will only add fields that have values
+        const itemData = {};
+        
+        // Add business_id from cookie
+        const businessId = window.api && window.api.getBusinessId ? parseInt(window.api.getBusinessId()) : null;
+        if (businessId) {
+            itemData.business_id = businessId;
+        }
+        
+        // Get category ID - must be parsed as an integer
+        const categoryValue = formData.get('itemCategory');
+        if (categoryValue && categoryValue.trim() !== '') {
+            itemData.category_id = parseInt(categoryValue, 10);
+        } else {
+            throw new Error('Категория обязательна');
+        }
+        
+        // Only add name if it's not empty
+        const nameValue = formData.get('itemName');
+        if (nameValue && nameValue.trim() !== '') {
+            itemData.name = nameValue.trim();
+        } else {
+            throw new Error('Название блюда обязательно');
+        }
+        
+        // Price field - must be a float/number, not a string
+        const priceValue = formData.get('itemPrice');
+        if (priceValue && priceValue.trim() !== '') {
+            // Strip all currency symbols and non-numeric characters (except decimal)
+            const cleanedPrice = priceValue
+                .replace(/[₽₸руб.тг]/gi, '') // Remove common currency symbols: ₽, ₸, руб, тг
+                .replace(/[^0-9.,]/g, '')    // Remove any other non-numeric characters except decimal separators
+                .replace(/,/g, '.')          // Replace comma with dot for decimal
+                .trim();
+                
+            const price = parseFloat(cleanedPrice);
+            
+            console.log(`Price conversion: "${priceValue}" -> "${cleanedPrice}" -> ${price}`);
+            
+            if (!isNaN(price)) {
+                itemData.price = price;
+            } else {
+                console.error(`Invalid price format: "${priceValue}" -> "${cleanedPrice}"`);
+                throw new Error(`Неверный формат цены: ${priceValue}`);
+            }
+        } else {
+            throw new Error('Цена обязательна');
+        }
+        
+        // Convert status to is_available boolean
+        const statusValue = formData.get('itemStatus');
+        if (statusValue) {
+            itemData.is_available = (statusValue === 'active');
+        } else {
+            itemData.is_available = true; // Default to active
+        }
+        
+        // Add description if it has a value
+        const descValue = formData.get('itemDescription');
+        if (descValue !== null) {
+            itemData.description = descValue.trim();
+        } else {
+            itemData.description = "";
+        }
+
+        // Add preparation time if present - must be an integer
+        const prepTimeValue = formData.get('itemPrepTime');
+        if (prepTimeValue && prepTimeValue.trim() !== '') {
+            const prepTime = parseInt(prepTimeValue, 10);
+            if (!isNaN(prepTime)) {
+                itemData.preparation_time = prepTime;
+            } else {
+                itemData.preparation_time = 0;
+            }
+        } else {
+            itemData.preparation_time = 0;
+        }
+        
+        // Add calories if present - must be an integer
+        const caloriesValue = formData.get('itemCalories');
+        if (caloriesValue && caloriesValue.trim() !== '') {
+            const calories = parseInt(caloriesValue, 10);
+            if (!isNaN(calories)) {
+                itemData.calories = calories;
+            } else {
+                itemData.calories = 0;
+            }
+        } else {
+            itemData.calories = 0;
+        }
+        
+        // Add allergens if present - convert comma-separated string to array
+        const allergensValue = formData.get('itemAllergens');
+        if (allergensValue && allergensValue.trim() !== '') {
+            itemData.allergens = allergensValue.split(',').map(a => a.trim()).filter(a => a);
+        } else {
+            itemData.allergens = [];
+        }
+
+        console.log('Adding item with data:', itemData);
+        
         const token = localStorage.getItem('token');
         const response = await fetch('/api/menu/items', {
             method: 'POST',
@@ -1146,27 +1441,22 @@ async function addMenuItem(event) {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                category_id: formData.get('itemCategory'),
-                name: formData.get('itemName'),
-                description: formData.get('itemDescription'),
-                price: parseFloat(formData.get('itemPrice')),
-                preparation_time: parseInt(formData.get('itemPrepTime')),
-                calories: parseInt(formData.get('itemCalories')) || null,
-                allergens: formData.get('itemAllergens') ? 
-                    formData.get('itemAllergens').split(',').map(a => a.trim()) : []
-            })
+            body: JSON.stringify(itemData)
         });
 
         if (!response.ok) {
-            throw new Error('Failed to add menu item');
+            const errorText = await response.text();
+            console.error('Server response:', errorText);
+            throw new Error(`Failed to add menu item: ${response.status} ${response.statusText}`);
         }
+
+        const responseData = await response.json();
+        console.log('Add item response:', responseData);
 
         // Handle image upload if present
         const imageFile = formData.get('itemImage');
-        if (imageFile && imageFile.size > 0) {
-            const itemId = (await response.json()).id;
-            await uploadMenuItemImage(itemId, imageFile);
+        if (imageFile && imageFile.size > 0 && responseData && responseData.id) {
+            await uploadMenuItemImage(responseData.id, imageFile);
         }
 
         closeModal('addMenuItemModal');
@@ -1174,84 +1464,63 @@ async function addMenuItem(event) {
         await loadMenuData();
         showSuccess('Блюдо успешно добавлено');
     } catch (error) {
-        console.error('Error adding menu item:', error);
-        showError('Ошибка при добавлении блюда');
+        console.error('Error adding menu item:', error, error.stack);
+        showError(`Ошибка при добавлении блюда: ${error.message}`);
     }
 }
 
 async function editMenuItem(itemId) {
     try {
+        console.log('Editing menu item with ID:', itemId);
         const token = localStorage.getItem('token');
         const response = await fetch(`/api/menu/items/${itemId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (!response.ok) {
-            throw new Error('Failed to load menu item data');
+            const errorText = await response.text();
+            console.error('Server response:', errorText);
+            throw new Error(`Failed to load menu item data: ${response.status} ${response.statusText}`);
         }
 
         const item = await response.json();
+        console.log('Loaded item data:', item);
         
         // Fill the edit form
         const form = document.getElementById('editMenuItemForm');
         form.querySelector('[name="itemId"]').value = item.id;
-        form.querySelector('[name="itemCategory"]').value = item.category_id;
-        form.querySelector('[name="itemName"]').value = item.name;
+        
+        // Set category
+        const categorySelect = form.querySelector('[name="itemCategory"]');
+        if (item.category_id) {
+            categorySelect.value = item.category_id;
+        }
+        
+        // Basic fields
+        form.querySelector('[name="itemName"]').value = item.name || '';
         form.querySelector('[name="itemDescription"]').value = item.description || '';
-        form.querySelector('[name="itemPrice"]').value = item.price;
-        form.querySelector('[name="itemPrepTime"]').value = item.preparation_time;
-        form.querySelector('[name="itemCalories"]').value = item.calories || '';
-        form.querySelector('[name="itemAllergens"]').value = item.allergens ? item.allergens.join(', ') : '';
+        form.querySelector('[name="itemPrice"]').value = item.price || '';
+        form.querySelector('[name="itemPrepTime"]').value = item.preparation_time || '';
+        
+        // Optional fields
+        if (form.querySelector('[name="itemCalories"]')) {
+            form.querySelector('[name="itemCalories"]').value = item.calories || '';
+        }
+        
+        if (form.querySelector('[name="itemAllergens"]')) {
+            form.querySelector('[name="itemAllergens"]').value = item.allergens && item.allergens.length > 0 ? item.allergens.join(', ') : '';
+        }
+        
+        // Set status if present (convert is_available to status)
+        const statusSelect = form.querySelector('[name="itemStatus"]');
+        if (statusSelect) {
+            statusSelect.value = item.is_available ? 'active' : 'hidden';
+        }
         
         showModal('editMenuItemModal');
     } catch (error) {
-        console.error('Error loading menu item:', error);
-        showError('Ошибка при загрузке блюда');
-    }
-}
-
-async function updateMenuItem(event) {
-    event.preventDefault();
-    const form = event.target;
-    const formData = new FormData(form);
-    const itemId = formData.get('itemId');
-    
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/menu/items/${itemId}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                category_id: formData.get('itemCategory'),
-                name: formData.get('itemName'),
-                description: formData.get('itemDescription'),
-                price: parseFloat(formData.get('itemPrice')),
-                preparation_time: parseInt(formData.get('itemPrepTime')),
-                calories: parseInt(formData.get('itemCalories')) || null,
-                allergens: formData.get('itemAllergens') ? 
-                    formData.get('itemAllergens').split(',').map(a => a.trim()) : []
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to update menu item');
-        }
-
-        // Handle image upload if present
-        const imageFile = formData.get('itemImage');
-        if (imageFile && imageFile.size > 0) {
-            await uploadMenuItemImage(itemId, imageFile);
-        }
-
-        closeModal('editMenuItemModal');
-        await loadMenuData();
-        showSuccess('Блюдо успешно обновлено');
-    } catch (error) {
-        console.error('Error updating menu item:', error);
-        showError('Ошибка при обновлении блюда');
+        console.error('Error loading menu item:', error, error.stack);
+        showError(`Ошибка при загрузке блюда: ${error.message}`);
     }
 }
 
@@ -1261,6 +1530,7 @@ async function deleteMenuItem(itemId) {
     }
     
     try {
+        console.log('Deleting menu item with ID:', itemId);
         const token = localStorage.getItem('token');
         const response = await fetch(`/api/menu/items/${itemId}`, {
             method: 'DELETE',
@@ -1276,6 +1546,145 @@ async function deleteMenuItem(itemId) {
     } catch (error) {
         console.error('Error deleting menu item:', error);
         showError('Ошибка при удалении блюда');
+    }
+}
+
+async function updateMenuItem(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const itemId = parseInt(formData.get('itemId'), 10);
+    
+    try {
+        if (!itemId || isNaN(itemId)) {
+            throw new Error('Неверный ID блюда');
+        }
+        
+        // Create an empty data object, we will only add fields that have values
+        const itemData = {};
+        
+        // Add business_id from cookie
+        const businessId = window.api && window.api.getBusinessId ? parseInt(window.api.getBusinessId()) : null;
+        if (businessId) {
+            itemData.business_id = businessId;
+        }
+        
+        // Get category ID - must be parsed as an integer
+        const categoryValue = formData.get('itemCategory');
+        if (categoryValue && categoryValue.trim() !== '') {
+            itemData.category_id = parseInt(categoryValue, 10);
+        }
+        
+        // Name field
+        const nameValue = formData.get('itemName');
+        if (nameValue && nameValue.trim() !== '') {
+            itemData.name = nameValue.trim();
+        }
+        
+        // Price field - must be a float/number, not a string
+        const priceValue = formData.get('itemPrice');
+        if (priceValue && priceValue.trim() !== '') {
+            // Strip all currency symbols and non-numeric characters (except decimal)
+            const cleanedPrice = priceValue
+                .replace(/[₽₸руб.тг]/gi, '') // Remove common currency symbols: ₽, ₸, руб, тг
+                .replace(/[^0-9.,]/g, '')    // Remove any other non-numeric characters except decimal separators
+                .replace(/,/g, '.')          // Replace comma with dot for decimal
+                .trim();
+                
+            const price = parseFloat(cleanedPrice);
+            
+            console.log(`Price conversion: "${priceValue}" -> "${cleanedPrice}" -> ${price}`);
+            
+            if (!isNaN(price)) {
+                itemData.price = price;
+            } else {
+                console.error(`Invalid price format: "${priceValue}" -> "${cleanedPrice}"`);
+                throw new Error(`Неверный формат цены: ${priceValue}`);
+            }
+        }
+        
+        // Convert status to is_available boolean
+        const statusValue = formData.get('itemStatus');
+        if (statusValue) {
+            itemData.is_available = (statusValue === 'active');
+        }
+        
+        // Add description if it has a value
+        const descValue = formData.get('itemDescription');
+        if (descValue !== null) {
+            itemData.description = descValue.trim();
+        } else {
+            itemData.description = "";
+        }
+
+        // Add preparation time if present - must be an integer
+        const prepTimeValue = formData.get('itemPrepTime');
+        if (prepTimeValue && prepTimeValue.trim() !== '') {
+            const prepTime = parseInt(prepTimeValue, 10);
+            if (!isNaN(prepTime)) {
+                itemData.preparation_time = prepTime;
+            } else {
+                itemData.preparation_time = 0;
+            }
+        } else {
+            itemData.preparation_time = 0;
+        }
+        
+        // Add calories if present - must be an integer
+        const caloriesValue = formData.get('itemCalories');
+        if (caloriesValue && caloriesValue.trim() !== '') {
+            const calories = parseInt(caloriesValue, 10);
+            if (!isNaN(calories)) {
+                itemData.calories = calories;
+            } else {
+                itemData.calories = 0;
+            }
+        } else {
+            itemData.calories = 0;
+        }
+        
+        // Add allergens if present - convert comma-separated string to array
+        const allergensValue = formData.get('itemAllergens');
+        if (allergensValue && allergensValue.trim() !== '') {
+            itemData.allergens = allergensValue.split(',').map(a => a.trim()).filter(a => a);
+        } else {
+            itemData.allergens = [];
+        }
+
+        console.log('Updating item with data:', itemData);
+        
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/menu/items/${itemId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(itemData)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server response:', errorText);
+            throw new Error(`Failed to update menu item: ${response.status} ${response.statusText}`);
+        }
+
+        const responseData = await response.json();
+        console.log('Update item response:', responseData);
+
+        // Handle image upload if present
+        const imageFile = formData.get('itemImage');
+        if (imageFile && imageFile.size > 0) {
+            await uploadMenuItemImage(itemId, imageFile);
+        }
+
+        closeModal('editMenuItemModal');
+        form.reset();
+        await loadMenuData();
+        showSuccess('Блюдо успешно обновлено');
+    } catch (error) {
+        console.error('Error updating menu item:', error, error.stack);
+        showError(`Ошибка при обновлении блюда: ${error.message}`);
     }
 }
 
@@ -2326,3 +2735,115 @@ async function loadEmployees() {
         return [];
     }
 }
+
+async function showMenuItemDetails(itemId) {
+    try {
+        // Find the item in the cached menu data first
+        let item = null;
+        if (window.menuData && window.menuData.items) {
+            item = window.menuData.items.find(i => i.id === itemId);
+        }
+        
+        // If not found in cache or cache doesn't exist, fetch from API
+        if (!item) {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/menu/items/${itemId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load menu item details');
+            }
+            
+            item = await response.json();
+        }
+        
+        // Get the category name
+        let categoryName = "Неизвестная категория";
+        if (window.menuData && window.menuData.categories) {
+            const category = window.menuData.categories.find(c => c.id === item.category_id);
+            if (category) {
+                categoryName = category.name;
+            }
+        }
+        
+        // Create a details modal
+        const modalHtml = `
+        <div class="modal" id="menuItemDetailsModal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h3>Детали блюда</h3>
+                <div class="item-details-container">
+                    <div class="item-details-image">
+                        <img src="${item.image_url || DEFAULT_FOOD_IMAGE}" alt="${item.name}">
+                    </div>
+                    <div class="item-details-info">
+                        <div class="item-details-row">
+                            <span class="detail-label">Название:</span>
+                            <span class="detail-value">${item.name}</span>
+                        </div>
+                        <div class="item-details-row">
+                            <span class="detail-label">Категория:</span>
+                            <span class="detail-value">${categoryName}</span>
+                        </div>
+                        <div class="item-details-row">
+                            <span class="detail-label">Цена:</span>
+                            <span class="detail-value">${formatMoney(item.price)}</span>
+                        </div>
+                        <div class="item-details-row">
+                            <span class="detail-label">Время приготовления:</span>
+                            <span class="detail-value">${item.preparation_time || '—'} мин</span>
+                        </div>
+                        <div class="item-details-row">
+                            <span class="detail-label">Статус:</span>
+                            <span class="detail-value status-badge ${item.status === 'active' ? 'status-active' : 'status-paused'}">${item.status === 'active' ? 'Активно' : 'Скрыто'}</span>
+                        </div>
+                        <div class="item-details-row">
+                            <span class="detail-label">Описание:</span>
+                            <span class="detail-value">${item.description || 'Нет описания'}</span>
+                        </div>
+                        ${item.calories ? `
+                        <div class="item-details-row">
+                            <span class="detail-label">Калории:</span>
+                            <span class="detail-value">${item.calories} ккал</span>
+                        </div>
+                        ` : ''}
+                        ${item.allergens && item.allergens.length > 0 ? `
+                        <div class="item-details-row">
+                            <span class="detail-label">Аллергены:</span>
+                            <span class="detail-value">${item.allergens.join(', ')}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="modal-buttons">
+                    <button onclick="closeModal('menuItemDetailsModal')" class="btn-secondary">Закрыть</button>
+                    <button onclick="editMenuItem(${item.id}); closeModal('menuItemDetailsModal')" class="btn-primary">Редактировать</button>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // Append modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Show the modal
+        showModal('menuItemDetailsModal');
+        
+        // Add event listener to close button
+        document.querySelector('#menuItemDetailsModal .close-modal').addEventListener('click', function() {
+            closeModal('menuItemDetailsModal');
+        });
+        
+        // Add event listener to close when clicking outside
+        document.getElementById('menuItemDetailsModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeModal('menuItemDetailsModal');
+            }
+        });
+    } catch (error) {
+        console.error('Error showing menu item details:', error);
+        showError('Ошибка при загрузке деталей блюда');
+    }
+}
+

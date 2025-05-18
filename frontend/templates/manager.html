@@ -163,13 +163,40 @@
     <!-- Другие секции -->
     <section id="menu-section" class="section" style="display:none;">
         <div class="header">Управление меню</div>
-        <div class="menu-actions">
-            <button id="addCategoryBtn">Добавить категорию</button>
-            <button id="addMenuItemBtn">Добавить блюдо</button>
-        </div>
+        
         <div class="menu-content">
-            <div class="categories"></div>
-            <div class="menu-items"></div>
+            <div class="categories-sidebar">
+                <h3>Категории</h3>
+                <div class="category-list" id="menu-categories-list">
+                    <!-- Categories will be populated by JavaScript -->
+                </div>
+                <div class="add-category-btn-container">
+                    <button class="add-btn" id="addCategoryBtn">+ Добавить категорию</button>
+                </div>
+            </div>
+            
+            <div class="menu-items-container">
+                <h3 id="selected-category-title">Основные блюда</h3>
+                <div class="menu-items-list" id="menu-items-list">
+                    <!-- Menu items will be populated by JavaScript -->
+                </div>
+                <div class="add-item-btn-container">
+                    <button class="add-btn" id="addMenuItemBtn">+ Добавить блюдо</button>
+                </div>
+                <div class="pagination">
+                    <div class="pagination-arrow prev">
+                        <svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11.875 14.25L7.125 9.5L11.875 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                    <span class="pagination-text">1 из 3 страниц</span>
+                    <div class="pagination-arrow next">
+                        <svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7.125 14.25L11.875 9.5L7.125 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
     
@@ -444,19 +471,62 @@
             <span class="close-modal">&times;</span>
             <h3>Добавление нового блюда</h3>
             <form id="addMenuItemForm" onsubmit="addMenuItem(event)">
-                <select name="itemCategory" required>
-                    <option value="">Выберите категорию*</option>
-                    <!-- Динамически заполняется -->
-                </select>
-                <input type="text" name="itemName" placeholder="Название блюда*" required>
-                <div style="display:flex; gap:8px;">
-                    <input type="number" name="itemPrice" placeholder="Цена*" required min="0" step="100">
-                    <input type="number" name="itemPrepTime" placeholder="Время приготовления (мин)*" required min="0">
+                <div class="form-group">
+                    <label>Категория</label>
+                    <select name="itemCategory" required>
+                        <option value="">Выберите категорию</option>
+                        <!-- Динамически заполняется -->
+                    </select>
                 </div>
-                <input type="file" name="itemImage" accept="image/*">
-                <div style="display:flex; gap:8px;">
-                    <button type="button" class="cancel" onclick="closeModal('addMenuItemModal')">Отмена</button>
-                    <button type="submit">Добавить</button>
+                
+                <div class="form-group">
+                    <label>Название блюда</label>
+                    <input type="text" name="itemName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea name="itemDescription" rows="3"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label>Цена, ₽</label>
+                        <input type="number" name="itemPrice" required min="0">
+                    </div>
+                    <div class="form-group half">
+                        <label>Время приготовления, мин</label>
+                        <input type="number" name="itemPrepTime" required min="0">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label>Калории</label>
+                        <input type="number" name="itemCalories" min="0">
+                    </div>
+                    <div class="form-group half">
+                        <label>Статус</label>
+                        <select name="itemStatus">
+                            <option value="active">Активно</option>
+                            <option value="hidden">Скрыто</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Аллергены (через запятую)</label>
+                    <input type="text" name="itemAllergens" placeholder="Орехи, молоко, глютен...">
+                </div>
+                
+                <div class="form-group">
+                    <label>Изображение</label>
+                    <input type="file" name="itemImage" accept="image/*" class="file-input">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('addMenuItemModal')">Отмена</button>
+                    <button type="submit" class="btn-primary">Добавить</button>
                 </div>
             </form>
         </div>
@@ -486,24 +556,63 @@
             <h3>Редактирование блюда</h3>
             <form id="editMenuItemForm" onsubmit="updateMenuItem(event)">
                 <input type="hidden" name="itemId">
-                <select name="itemCategory" required>
-                    <option value="">Выберите категорию*</option>
-                    <!-- Динамически заполняется -->
-                </select>
-                <input type="text" name="itemName" placeholder="Название блюда*" required>
-                <textarea name="itemDescription" placeholder="Описание блюда"></textarea>
-                <div style="display:flex; gap:8px;">
-                    <input type="number" name="itemPrice" placeholder="Цена*" required min="0" step="0.01">
-                    <input type="number" name="itemPrepTime" placeholder="Время приготовления (мин)*" required min="0">
+                
+                <div class="form-group">
+                    <label>Категория</label>
+                    <select name="itemCategory" required>
+                        <option value="">Выберите категорию</option>
+                        <!-- Динамически заполняется -->
+                    </select>
                 </div>
-                <div style="display:flex; gap:8px;">
-                    <input type="number" name="itemCalories" placeholder="Калории" min="0">
-                    <input type="text" name="itemAllergens" placeholder="Аллергены (через запятую)">
+                
+                <div class="form-group">
+                    <label>Название блюда</label>
+                    <input type="text" name="itemName" required>
                 </div>
-                <input type="file" name="itemImage" accept="image/*">
-                <div style="display:flex; gap:8px;">
-                    <button type="button" class="cancel" onclick="closeModal('editMenuItemModal')">Отмена</button>
-                    <button type="submit">Сохранить</button>
+                
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea name="itemDescription" rows="3"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label>Цена, ₽</label>
+                        <input type="number" name="itemPrice" required min="0">
+                    </div>
+                    <div class="form-group half">
+                        <label>Время приготовления, мин</label>
+                        <input type="number" name="itemPrepTime" required min="0">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label>Калории</label>
+                        <input type="number" name="itemCalories" min="0">
+                    </div>
+                    <div class="form-group half">
+                        <label>Статус</label>
+                        <select name="itemStatus">
+                            <option value="active">Активно</option>
+                            <option value="hidden">Скрыто</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Аллергены (через запятую)</label>
+                    <input type="text" name="itemAllergens" placeholder="Орехи, молоко, глютен...">
+                </div>
+                
+                <div class="form-group">
+                    <label>Изображение</label>
+                    <input type="file" name="itemImage" accept="image/*" class="file-input">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('editMenuItemModal')">Отмена</button>
+                    <button type="submit" class="btn-primary">Сохранить</button>
                 </div>
             </form>
         </div>

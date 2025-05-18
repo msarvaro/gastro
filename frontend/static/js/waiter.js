@@ -1,5 +1,8 @@
 // waiter.js: объединённая логика для панели официанта
 
+// Add a default food image constant at the top of the file
+const DEFAULT_FOOD_IMAGE = "https://cdn.pixabay.com/photo/2018/06/01/20/30/food-3447416_1280.jpg";
+
 // Menu API functions
 const API_BASE = '/api/menu';
 async function apiCall(endpoint, method = 'GET', data = null) {
@@ -1489,7 +1492,7 @@ function filterDishesByCategory(categoryId) {
         // Adjust if your menu item structure is different (e.g. from menuApi.getMenuItems())
         dishCard.innerHTML = `
             <div class="dish-card__image-container">
-                ${dish.image_url ? `<img src="${dish.image_url}" alt="${dish.name}" class="dish-card__image">` : '<div class="dish-card__image_placeholder">Нет фото</div>'}
+                ${dish.image_url ? `<img src="${dish.image_url}" alt="${dish.name}" class="dish-card__image">` : `<img src="${DEFAULT_FOOD_IMAGE}" alt="${dish.name}" class="dish-card__image">`}
             </div>
             <div class="dish-card__details">
                 <h4 class="dish-card__name">${dish.name}</h4>
