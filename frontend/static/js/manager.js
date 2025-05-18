@@ -558,7 +558,6 @@ function setupStaffEventListeners() {
                 if (response.ok) {
                     closeModal('editUserModal');
                     loadUsers();
-                    showSuccess('Пользователь успешно обновлен');
                 } else {
                     showError('Ошибка при обновлении пользователя');
                 }
@@ -1490,85 +1489,6 @@ function getShiftsApiEndpoint() {
     return '/api/manager/shifts';
 }
 
-// Создаем демо-данные для пользователей, если API недоступен
-function populateDummyUsers(tbody) {
-    const dummyUsers = [
-        {
-            id: 'dummy1',
-            username: 'ivanov',
-            name: 'Иванов Иван',
-            role: 'manager',
-            status: 'active',
-            last_active: '2023-06-15T10:30:00',
-            created_at: '2023-01-10T08:00:00'
-        },
-        {
-            id: 'dummy2',
-            username: 'petrov',
-            name: 'Петров Петр',
-            role: 'waiter',
-            status: 'active',
-            last_active: '2023-06-14T18:45:00',
-            created_at: '2023-02-15T09:30:00'
-        },
-        {
-            id: 'dummy3',
-            username: 'sidorov',
-            name: 'Сидоров Сидор',
-            role: 'cook',
-            status: 'inactive',
-            last_active: '2023-05-20T14:20:00',
-            created_at: '2023-03-05T10:15:00'
-        }
-    ];
-
-    tbody.innerHTML = '';
-    
-    dummyUsers.forEach(user => {
-        // Преобразуем даты в правильный формат
-        const formattedLastActive = formatUserDate(user.last_active);
-        const formattedCreatedAt = formatUserDate(user.created_at);
-        
-        const tr = document.createElement('tr');
-        tr.setAttribute('data-user-id', user.id);
-        tr.innerHTML = `
-            <td>${user.username || ''}</td>
-            <td>${user.name || ''}</td>
-            <td data-role="${user.role || ''}">${translateRole(user.role || '')}</td>
-            <td><span class="status-badge ${user.status || ''}">${translateStatus(user.status || '')}</span></td>
-            <td>${formattedLastActive}</td>
-            <td>${formattedCreatedAt}</td>
-            <td class="actions">
-                <button onclick="editUser('${user.id}')" class="edit-btn" title="Редактировать">
-                    <img src="../static/images/edit.svg" alt="Редактировать" class="icon">
-                </button>
-                <button onclick="deleteUser('${user.id}')" class="delete-btn" title="Удалить">
-                    <img src="../static/images/delete.svg" alt="Удалить" class="icon">
-                </button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-    
-    // Обновляем счетчики на основе демо-данных
-    updateUserCount(dummyUsers.length);
-    
-    const activeUsers = dummyUsers.filter(user => user.status === 'active').length;
-    const newUsers = dummyUsers.filter(user => {
-        if (!user.created_at) return false;
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        const createdDate = new Date(user.created_at);
-        return createdDate >= oneWeekAgo;
-    }).length;
-    
-    const cardValues = document.querySelectorAll('#staff-users-tab .card .value');
-    if (cardValues.length >= 3) {
-        cardValues[1].textContent = activeUsers;
-        cardValues[2].textContent = newUsers;
-    }
-}
-
 // Загрузка пользователей
 async function loadUsers() {
     try {
@@ -1613,8 +1533,7 @@ async function loadUsers() {
         
         const endpoint = getUsersApiEndpoint() + queryParams;
         const token = localStorage.getItem('token');
-        console.log(`loadUsers: Using token: ${token ? 'Token exists' : 'No token!'}`);
-        
+
         const response = await fetch(endpoint, {
             method: 'GET',
             headers: {
@@ -1705,8 +1624,6 @@ async function loadUsers() {
         // Вместо всплывающего окна с ошибкой просто показываем сообщение в таблице
         console.log("Ошибка загрузки пользователей подавлена для улучшения UX");
         
-        // Создаем демо-данные для отображения, чтобы интерфейс не был пустым
-        populateDummyUsers(tbody);
     }
 }
 
@@ -1864,7 +1781,6 @@ function editUser(id) {
             if (response.ok) {
                 closeModal('editUserModal');
                 loadUsers();
-                showSuccess('Пользователь успешно обновлен');
             } else {
                 showError('Ошибка при обновлении пользователя');
             }
