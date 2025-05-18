@@ -78,11 +78,7 @@ body {
 }
 
 /* Specific background for profile if it should differ */
-.profile-status {
-    background-color: #1976FF;
-}
 
-.page-status__title,
 .occupancy-status__title,
 .orders-status__title,
 .profile-status > div:first-child /* Targeting title in HTML structure */
@@ -92,7 +88,7 @@ body {
   letter-spacing: 0.24px;
 }
 
-.page-status__subtitle,
+
 .occupancy-status__subtitle,
 .orders-status__subtitle,
 .profile-status > div:nth-child(2) /* Targeting subtitle in HTML structure */
@@ -103,8 +99,7 @@ body {
   letter-spacing: 0.15px;
 }
 
-/* Special header layout with back button */
-.page-status__header,
+
 .orders-status__header /* As used in HTML for create-order section */
 {
   display: flex;
@@ -365,6 +360,7 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   margin-bottom: 16px;
+  position: relative; /* Добавлено для абсолютного позиционирования бейджа */
 }
 
 .filter-button__icon {
@@ -380,19 +376,18 @@ body {
 }
 
 .filter-button__badge {
-  border-radius: 20px;
-  background-color: #006ffd;
+  display: none;
+  min-width: 24px;
   min-height: 20px;
-  padding: 0 6px;
-  font-size: 10px;
-  color: #fff;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  min-width: 20px;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background-color: #006FFD;
+  color: white;
+  border-radius: 12px;
+  margin-left: 4px;
 }
 
 /* Tab Bar */
@@ -409,7 +404,6 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
   z-index: 1000;
 }
 
@@ -437,7 +431,7 @@ body {
   height: 20px;
   object-fit: contain;
   margin-bottom: 4px;
-  transition: filter 0.2s ease;
+ 
 }
 
 .tab-item__text {
@@ -861,24 +855,7 @@ body {
 }
 
 /* Обновленные стили для заголовка */
-.orders-status {
-    background: #2196F3;
-    color: white;
-    padding: 20px 16px;
-}
 
-.orders-status__title {
-    font-size: 24px;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.orders-status__subtitle {
-    font-size: 16px;
-    opacity: 0.9;
-}
-
-/* Добавьте эти стили к существующим */
 
 .order-actions {
     display: flex;
@@ -943,22 +920,7 @@ body {
 /* Общие стили для orders.html и history.html */
 
 /* Статус в шапке */
-.orders-status {
-    background: #2196F3;
-    color: white;
-    padding: 24px 16px;
-}
 
-.orders-status__title {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 8px;
-}
-
-.orders-status__subtitle {
-    font-size: 16px;
-    font-weight: 500;
-}
 
 /* Заголовок и фильтры */
 .orders-header {
@@ -1786,4 +1748,214 @@ body {
 
 .status-text--cancelled {
     background-color: #F44336; /* Red */
+}
+
+/* Styles for filter modal dialog */
+.filter-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.filter-option {
+    padding: 10px 16px;
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    background: white;
+    color: #333;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.filter-option:hover {
+    background-color: #F5F5F5;
+}
+
+.filter-option.active {
+    border-color: #006FFD;
+    background-color: rgba(0, 111, 253, 0.05);
+    color: #006FFD;
+    font-weight: 600 !important;
+    box-shadow: 0 0 0 2px rgba(0, 111, 253, 0.2);
+}
+
+.filter-options--checkboxes {
+    padding: 4px 0;
+}
+
+.filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 4px;
+    cursor: pointer;
+}
+
+.filter-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.clear-filters-btn, .apply-filters-btn {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clear-filters-btn {
+    background: #F5F5F5;
+    border: 1px solid #E0E0E0;
+    color: #333;
+    flex: 1;
+}
+
+.apply-filters-btn {
+    background: #006FFD;
+    border: none;
+    color: white;
+    flex: 2;
+}
+
+.clear-filters-btn:hover {
+    background: #E5E5E5;
+}
+
+.apply-filters-btn:hover {
+    background: #0056cc;
+}
+
+/* Calendar/date picker styles */
+.date-range-picker {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.date-input {
+    flex: 1;
+}
+
+.date-input label {
+    display: block;
+    margin-bottom: 8px;
+    color: #666;
+    font-size: 14px;
+}
+
+.date-input input[type="date"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+.no-tables-message, .no-orders {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    font-size: 16px;
+    background: #F5F5F5;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+/* Fix for button focus issues */
+button, 
+.filter-option,
+.apply-filters-btn, 
+.clear-filters-btn,
+.tab-item,
+.status-badge {
+    outline: none !important; /* Убирает контур при фокусе */
+    -webkit-tap-highlight-color: transparent; /* Убирает эффект тапа на мобильных устройствах */
+}
+
+button::-moz-focus-inner {
+    border: 0; /* Firefox specific fix */
+}
+
+/* Style for label elements in filters */
+.filter-checkbox {
+    -webkit-tap-highlight-color: transparent; /* Убирает выделение на мобильных устройствах */
+    user-select: none; /* Запрещает выделение текста */
+}
+
+/* Стили для бейджей статуса в фильтрах */
+.status-badge--free {
+    background-color: #737373;
+    color: white;
+}
+
+.status-badge--reserved {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.status-badge--occupied {
+    background-color: #006ffd;
+    color: white;
+}
+
+/* Стили для модального окна изменения статуса стола */
+.status-options {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.status-option {
+    flex: 1;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.status-option--free {
+    background-color: #f1f3f4;
+    color: #5f6368;
+}
+
+.status-option--occupied {
+    background-color: #e8f0fe;
+    color: #1a73e8;
+}
+
+.status-option--reserved {
+    background-color: #fff8e1;
+    color: #f9a825;
+}
+
+.status-option:not(.active):hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+.status-option.active {
+    box-shadow: 0 0 0 2px currentColor;
+    transform: none;
+    opacity: 1;
+}
+
+.modal__message {
+    text-align: center;
+    margin-top: 10px;
+    font-weight: 500;
 }

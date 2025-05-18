@@ -102,6 +102,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const activeSection = sections[currentPath] || 'tables';
         showSection(activeSection);
+    
+    // Инициализируем счетчики фильтров при загрузке страницы
+    updateTableFilterBadge();
 });
 
 function showSection(section) {
@@ -118,6 +121,11 @@ function showSection(section) {
     if (section === 'history') loadHistory();
     if (section === 'profile') loadProfile();
 }
+
+// Глобальная переменная для хранения текущих фильтров столов
+window.tableFilters = {
+    statuses: [] // Массив активных фильтров: ['free', 'reserved', 'occupied'] или пустой массив (все)
+};
 
 // Пример функций для загрузки данных (реализуйте по аналогии с вашими API)
 async function loadTables() {
@@ -138,9 +146,45 @@ async function loadTables() {
             `;
         }
 
+        // Сохраняем данные столов в глобальной переменной для использования в фильтрации
+        window.allTables = data.tables || [];
+        
+        renderTablesWithFilter();
+        
+        // Добавляем обработчик для кнопки фильтра
+        const filterButton = document.querySelector('.filter-button');
+        if (filterButton) {
+            filterButton.addEventListener('click', showTableFiltersModal);
+        }
+        
+        // Обновляем счетчик фильтров при загрузке таблиц
+        updateTableFilterBadge();
+    } catch (e) {
+        console.error('Failed to load tables:', e);
+        const tablesStatusInfo = document.getElementById('tablesStatusInfo');
+        if (tablesStatusInfo) tablesStatusInfo.textContent = 'Ошибка загрузки столов';
+    }
+}
+
+// Функция для отображения столов с учетом текущего фильтра
+function renderTablesWithFilter() {
+    if (!window.allTables) return;
+
         const grid = document.getElementById('tablesGrid');
-        if (grid && data.tables) {
-            grid.innerHTML = data.tables.map(table => `
+    if (!grid) return;
+    
+    // Применяем фильтры, только если есть активные фильтры
+    const filterStatuses = window.tableFilters.statuses;
+    const filteredTables = filterStatuses.length > 0 ? 
+        window.allTables.filter(table => filterStatuses.includes(table.status)) : 
+        window.allTables;
+    
+    if (filteredTables.length === 0) {
+        grid.innerHTML = '<p class="no-tables-message">Столы не найдены</p>';
+        return;
+    }
+    
+    grid.innerHTML = filteredTables.map(table => `
                 <div class="table-card table-card--${table.status.toLowerCase()}" data-table-id="${table.id}" data-table-status="${table.status.toLowerCase()}"> 
                     <div class="table-card__header">
                         <span class="status-dot status-dot--${table.status.toLowerCase()}"></span>
@@ -157,12 +201,12 @@ async function loadTables() {
                                 <div class="table-order__time">${order.time}</div>
                                 ${order.comment ? `<div class="table-order__comment-text">${order.comment}</div>` : ''}
                             </div>
-                        `).join('') : (table.status.toLowerCase() === 'free' || table.status.toLowerCase() === 'available' ? '<p class="table-empty-message">Свободен</p>' : '')}
+                        `).join('') : ''}
                     </div>
                 </div>
             `).join('');
             
-            // Add click event to table cards for status changes
+    // Добавляем обработчик клика для карточек столов
             grid.querySelectorAll('.table-card').forEach(tableCard => {
                 tableCard.addEventListener('click', function() {
                     const tableId = this.dataset.tableId;
@@ -171,11 +215,18 @@ async function loadTables() {
                 });
             });
         }
-    } catch (e) {
-        console.error('Failed to load tables:', e);
-        const tablesStatusInfo = document.getElementById('tablesStatusInfo');
-        if (tablesStatusInfo) tablesStatusInfo.textContent = 'Ошибка загрузки столов';
-    }
+
+// Функция для обновления бейджа фильтров
+function updateTableFilterBadge() {
+    const filterBadge = document.querySelector('.filter-button .filter-button__badge');
+    if (!filterBadge) return;
+    
+    // Количество активных фильтров
+    const activeFilterCount = window.tableFilters.statuses.length;
+    
+    // Обновляем текст и видимость бейджа
+    filterBadge.textContent = activeFilterCount;
+    filterBadge.style.display = activeFilterCount > 0 ? 'flex' : 'none';
 }
 
 async function loadOrders() {
@@ -189,7 +240,76 @@ async function loadOrders() {
             list.innerHTML = '<div class="no-orders">Нет активных заказов</div>';
             return;
         }
-        list.innerHTML = data.orders.map(order => `
+        
+        // Сохраняем все заказы для фильтрации
+        window.allOrders = data.orders || [];
+        
+        // Рендерим заказы с учетом фильтров
+        renderOrdersWithFilter();
+        
+        // Добавляем обработчики для фильтров
+        setupOrderFilters();
+    } catch (e) {
+        console.error('Failed to load orders:', e);
+        document.getElementById('ordersList').innerHTML = '<div class="error-message">Ошибка загрузки заказов</div>';
+    }
+}
+
+// Функция для настройки фильтров заказов
+function setupOrderFilters() {
+    const timeFilterBtn = document.querySelector('#section-orders .filter-button--time');
+    const statusFilterBtn = document.querySelector('#section-orders .filter-button--filter');
+    
+    if (timeFilterBtn) {
+        timeFilterBtn.addEventListener('click', showOrderTimeFilterModal);
+    }
+    
+    if (statusFilterBtn) {
+        statusFilterBtn.addEventListener('click', showOrderStatusFilterModal);
+    }
+}
+
+// Глобальные переменные для хранения текущих фильтров заказов
+window.orderFilters = {
+    sortBy: 'newest', // newest, oldest
+    statuses: [] // Активные статусы фильтра ['new', 'accepted', ...]
+};
+
+// Функция для рендеринга заказов с учетом фильтров
+function renderOrdersWithFilter() {
+    if (!window.allOrders) return;
+    
+    const list = document.getElementById('ordersList');
+    if (!list) return;
+    
+    // Применяем фильтры
+    let filteredOrders = [...window.allOrders];
+    
+    // Фильтруем по статусам, если есть активные фильтры
+    if (window.orderFilters.statuses.length > 0) {
+        filteredOrders = filteredOrders.filter(order => 
+            window.orderFilters.statuses.includes(order.status)
+        );
+    }
+    
+    // Сортируем по времени
+    filteredOrders.sort((a, b) => {
+        const dateA = new Date(a.created_at);
+        const dateB = new Date(b.created_at);
+        
+        if (window.orderFilters.sortBy === 'newest') {
+            return dateB - dateA; // От новых к старым
+        } else {
+            return dateA - dateB; // От старых к новым
+        }
+    });
+    
+    if (filteredOrders.length === 0) {
+        list.innerHTML = '<div class="no-orders">Нет заказов, соответствующих фильтрам</div>';
+        return;
+    }
+    
+    list.innerHTML = filteredOrders.map(order => `
             <div class="order-card order-card--${order.status}">
                 <div class="order-card__header">
                     <div class="order-card__id">#${order.id}</div>
@@ -207,11 +327,203 @@ async function loadOrders() {
                 </div>
             </div>
         `).join('');
-    } catch (e) {
-        console.error('Failed to load orders:', e);
-        document.getElementById('ordersList').innerHTML = '<div class="error-message">Ошибка загрузки заказов</div>';
+    
+    // Обновление счетчиков активных фильтров для заказов
+    updateOrderFilterBadges();
+}
+
+// Обновление счетчиков активных фильтров для заказов
+function updateOrderFilterBadges() {
+    const statusFilterBadge = document.querySelector('#section-orders .filter-button--filter .filter-button__badge');
+    if (statusFilterBadge) {
+        const activeFilters = window.orderFilters.statuses.length;
+        statusFilterBadge.textContent = activeFilters;
+        statusFilterBadge.style.display = activeFilters > 0 ? 'flex' : 'none';
+    }
+    
+    // Отдельно обновляем бейдж для времени (сортировки)
+    const timeFilterBadge = document.querySelector('#section-orders .filter-button--time .filter-button__badge');
+    if (timeFilterBadge) {
+        // Сортировка "Сначала новые" считается дефолтной и не влияет на счетчик
+        const hasTimeFilter = window.orderFilters.sortBy !== 'newest';
+        timeFilterBadge.textContent = hasTimeFilter ? '1' : '0';
+        timeFilterBadge.style.display = hasTimeFilter ? 'flex' : 'none';
     }
 }
+
+// Модальное окно для фильтра по времени
+function showOrderTimeFilterModal() {
+    let modal = document.getElementById('orderTimeFilterModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'orderTimeFilterModal';
+        modal.className = 'modal';
+        
+        modal.innerHTML = `
+            <div class="modal__content">
+                <div class="modal__header">
+                    <h2>Сортировка по времени</h2>
+                    <button class="close-modal-btn">&times;</button>
+                </div>
+                <div class="modal__body">
+                    <div class="filter-options">
+                        <button class="filter-option filter-option--newest active">Сначала новые</button>
+                        <button class="filter-option filter-option--oldest">Сначала старые</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Закрытие модального окна
+        modal.querySelector('.close-modal-btn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Установка активного фильтра
+    const filterOptions = modal.querySelectorAll('.filter-option');
+    filterOptions.forEach(option => {
+        // Обновляем активный фильтр
+        if ((option.classList.contains('filter-option--newest') && window.orderFilters.sortBy === 'newest') ||
+            (option.classList.contains('filter-option--oldest') && window.orderFilters.sortBy === 'oldest')) {
+            option.classList.add('active');
+        } else {
+            option.classList.remove('active');
+        }
+        
+        // Удаляем старые обработчики
+        const newOption = option.cloneNode(true);
+        option.parentNode.replaceChild(newOption, option);
+        
+        // Добавляем новые обработчики
+        newOption.addEventListener('click', function() {
+            filterOptions.forEach(opt => opt.classList.remove('active'));
+            this.classList.add('active');
+            
+            if (this.classList.contains('filter-option--newest')) {
+                window.orderFilters.sortBy = 'newest';
+            } else {
+                window.orderFilters.sortBy = 'oldest';
+            }
+            
+            // Убираем фокус с кнопки
+            setTimeout(() => {
+                this.blur();
+                document.activeElement.blur();
+            }, 100);
+            
+            renderOrdersWithFilter();
+            modal.style.display = 'none';
+        });
+    });
+    
+    modal.style.display = 'block';
+}
+
+// Модальное окно для фильтра по статусу
+function showOrderStatusFilterModal() {
+    let modal = document.getElementById('orderStatusFilterModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'orderStatusFilterModal';
+        modal.className = 'modal';
+        
+        modal.innerHTML = `
+            <div class="modal__content">
+                <div class="modal__header">
+                    <h2>Фильтр по статусу</h2>
+                    <button class="close-modal-btn">&times;</button>
+                </div>
+                <div class="modal__body">
+                    <div class="filter-options filter-options--checkboxes">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="new">
+                            <span class="status-badge status-badge--new">Новый</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="accepted">
+                            <span class="status-badge status-badge--accepted">Принят</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="preparing">
+                            <span class="status-badge status-badge--preparing">Готовится</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="ready">
+                            <span class="status-badge status-badge--ready">Готов</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="served">
+                            <span class="status-badge status-badge--served">Подан</span>
+                        </label>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="clear-filters-btn">Сбросить</button>
+                        <button class="apply-filters-btn">Применить</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Закрытие модального окна
+        modal.querySelector('.close-modal-btn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Кнопки действий
+        modal.querySelector('.clear-filters-btn').addEventListener('click', () => {
+            modal.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Убираем фокус с кнопки
+            setTimeout(() => {
+                document.activeElement.blur();
+            }, 100);
+        });
+        
+        modal.querySelector('.apply-filters-btn').addEventListener('click', () => {
+            const selectedStatuses = [];
+            modal.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+                selectedStatuses.push(checkbox.value);
+            });
+            
+            window.orderFilters.statuses = selectedStatuses;
+            
+            // Убираем фокус с кнопки
+            setTimeout(() => {
+                document.activeElement.blur();
+            }, 100);
+            
+            renderOrdersWithFilter();
+            modal.style.display = 'none';
+        });
+    }
+    
+    // Установка текущих фильтров
+    modal.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = window.orderFilters.statuses.includes(checkbox.value);
+    });
+    
+    modal.style.display = 'block';
+}
+
 async function loadHistory() {
     try {
         const data = await window.api.call('/api/waiter/history');
@@ -250,7 +562,92 @@ async function loadHistory() {
             if (historySubStatEl) historySubStatEl.textContent = ''; 
             return;
         }
-        historyList.innerHTML = data.orders.map(order => `
+        
+        // Сохраняем заказы для фильтрации
+        window.historyOrders = data.orders || [];
+        
+        // Рендерим историю с учетом фильтров
+        renderHistoryWithFilter();
+        
+        // Настраиваем фильтры для истории
+        setupHistoryFilters();
+    } catch (e) {
+        console.error('Failed to load history:', e);
+        document.getElementById('historyList').innerHTML = '<div class="error-message">Ошибка загрузки истории</div>';
+        const historyMainStatEl = document.getElementById('historyMainStat');
+        const historySubStatEl = document.getElementById('historySubStat');
+        if (historyMainStatEl) historyMainStatEl.textContent = 'История заказов';
+        if (historySubStatEl) historySubStatEl.textContent = 'Ошибка загрузки статистики';
+    }
+}
+
+// Функция для настройки фильтров истории заказов
+function setupHistoryFilters() {
+    const timeFilterBtn = document.querySelector('#section-history .filter-button--time');
+    const statusFilterBtn = document.querySelector('#section-history .filter-button--filter');
+    
+    if (timeFilterBtn) {
+        timeFilterBtn.addEventListener('click', showHistoryTimeFilterModal);
+    }
+    
+    if (statusFilterBtn) {
+        statusFilterBtn.addEventListener('click', showHistoryStatusFilterModal);
+    }
+}
+
+// Глобальные переменные для хранения фильтров истории
+window.historyFilters = {
+    sortBy: 'newest', // newest, oldest
+    statuses: [], // Статусы для фильтрации ['completed', 'cancelled']
+    dateRange: null // Объект с date_from и date_to или null
+};
+
+// Функция для рендеринга истории с учетом фильтров
+function renderHistoryWithFilter() {
+    if (!window.historyOrders) return;
+    
+    const historyList = document.getElementById('historyList');
+    if (!historyList) return;
+    
+    // Применяем фильтры
+    let filteredHistory = [...window.historyOrders];
+    
+    // Фильтруем по статусам
+    if (window.historyFilters.statuses.length > 0) {
+        filteredHistory = filteredHistory.filter(order => 
+            window.historyFilters.statuses.includes(order.status)
+        );
+    }
+    
+    // Фильтруем по датам, если задан диапазон
+    if (window.historyFilters.dateRange) {
+        const dateFrom = new Date(window.historyFilters.dateRange.date_from);
+        const dateTo = new Date(window.historyFilters.dateRange.date_to);
+        
+        filteredHistory = filteredHistory.filter(order => {
+            const orderDate = new Date(order.completed_at || order.cancelled_at);
+            return orderDate >= dateFrom && orderDate <= dateTo;
+        });
+    }
+    
+    // Сортируем по времени
+    filteredHistory.sort((a, b) => {
+        const dateA = new Date(a.completed_at || a.cancelled_at);
+        const dateB = new Date(b.completed_at || b.cancelled_at);
+        
+        if (window.historyFilters.sortBy === 'newest') {
+            return dateB - dateA; // От новых к старым
+        } else {
+            return dateA - dateB; // От старых к новым
+        }
+    });
+    
+    if (filteredHistory.length === 0) {
+        historyList.innerHTML = '<div class="no-orders">Нет заказов, соответствующих фильтрам</div>';
+        return;
+    }
+    
+    historyList.innerHTML = filteredHistory.map(order => `
             <div class="order-card ${order.status === 'completed' ? 'order-card--green' : 'order-card--red'}">
                 <div class="order-card__header">
                     <div class="order-card__id">#${order.id}</div>
@@ -266,14 +663,240 @@ async function loadHistory() {
                 </div>
             </div>
         `).join('');
-    } catch (e) {
-        console.error('Failed to load history:', e);
-        document.getElementById('historyList').innerHTML = '<div class="error-message">Ошибка загрузки истории</div>';
-        const historyMainStatEl = document.getElementById('historyMainStat');
-        const historySubStatEl = document.getElementById('historySubStat');
-        if (historyMainStatEl) historyMainStatEl.textContent = 'История заказов';
-        if (historySubStatEl) historySubStatEl.textContent = 'Ошибка загрузки статистики';
+    
+    // Обновление счетчиков активных фильтров для истории
+    updateHistoryFilterBadges();
+}
+
+// Обновление счетчиков активных фильтров для истории
+function updateHistoryFilterBadges() {
+    const statusFilterBadge = document.querySelector('#section-history .filter-button--filter .filter-button__badge');
+    if (statusFilterBadge) {
+        // Считаем активные фильтры: статусы, если выбраны + диапазон дат, если указан
+        let activeFilters = window.historyFilters.statuses.length;
+        
+        // Если есть фильтр по дате, добавляем его как еще один активный фильтр
+        if (window.historyFilters.dateRange) {
+            activeFilters += 1;
+        }
+        
+        statusFilterBadge.textContent = activeFilters;
+        statusFilterBadge.style.display = activeFilters > 0 ? 'flex' : 'none';
     }
+    
+    // Отдельно обновляем бейдж для времени (сортировки)
+    const timeFilterBadge = document.querySelector('#section-history .filter-button--time .filter-button__badge');
+    if (timeFilterBadge) {
+        // Сортировка "Сначала новые" считается дефолтной и не влияет на счетчик
+        const hasTimeFilter = window.historyFilters.sortBy !== 'newest';
+        timeFilterBadge.textContent = hasTimeFilter ? '1' : '0';
+        timeFilterBadge.style.display = hasTimeFilter ? 'flex' : 'none';
+    }
+}
+
+// Модальное окно для сортировки истории по времени
+function showHistoryTimeFilterModal() {
+    let modal = document.getElementById('historyTimeFilterModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'historyTimeFilterModal';
+        modal.className = 'modal';
+        
+        modal.innerHTML = `
+            <div class="modal__content">
+                <div class="modal__header">
+                    <h2>Сортировка по времени</h2>
+                    <button class="close-modal-btn">&times;</button>
+                </div>
+                <div class="modal__body">
+                    <div class="filter-options">
+                        <button class="filter-option filter-option--newest active">Сначала новые</button>
+                        <button class="filter-option filter-option--oldest">Сначала старые</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Закрытие модального окна
+        modal.querySelector('.close-modal-btn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Установка активного фильтра
+    const filterOptions = modal.querySelectorAll('.filter-option');
+    filterOptions.forEach(option => {
+        // Обновляем активный фильтр
+        if ((option.classList.contains('filter-option--newest') && window.historyFilters.sortBy === 'newest') ||
+            (option.classList.contains('filter-option--oldest') && window.historyFilters.sortBy === 'oldest')) {
+            option.classList.add('active');
+        } else {
+            option.classList.remove('active');
+        }
+        
+        // Удаляем старые обработчики
+        const newOption = option.cloneNode(true);
+        option.parentNode.replaceChild(newOption, option);
+        
+        // Добавляем новые обработчики
+        newOption.addEventListener('click', function() {
+            filterOptions.forEach(opt => opt.classList.remove('active'));
+            this.classList.add('active');
+            
+            if (this.classList.contains('filter-option--newest')) {
+                window.historyFilters.sortBy = 'newest';
+            } else {
+                window.historyFilters.sortBy = 'oldest';
+            }
+            
+            // Убираем фокус с кнопки
+            setTimeout(() => {
+                this.blur();
+                document.activeElement.blur();
+            }, 100);
+            
+            renderHistoryWithFilter();
+            modal.style.display = 'none';
+        });
+    });
+    
+    modal.style.display = 'block';
+}
+
+// Модальное окно для фильтра истории по статусу и дате
+function showHistoryStatusFilterModal() {
+    let modal = document.getElementById('historyStatusFilterModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'historyStatusFilterModal';
+        modal.className = 'modal';
+        
+        modal.innerHTML = `
+            <div class="modal__content">
+                <div class="modal__header">
+                    <h2>Фильтр истории</h2>
+                    <button class="close-modal-btn">&times;</button>
+                </div>
+                <div class="modal__body">
+                    <h3>Статус заказа</h3>
+                    <div class="filter-options filter-options--checkboxes">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="completed">
+                            <span class="status-badge status-badge--paid">Оплачен</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="cancelled">
+                            <span class="status-badge status-badge--cancelled">Отменён</span>
+                        </label>
+                    </div>
+                    
+                    <h3 style="margin-top: 16px;">Период</h3>
+                    <div class="date-range-picker">
+                        <div class="date-input">
+                            <label>С</label>
+                            <input type="date" id="date-from">
+                        </div>
+                        <div class="date-input">
+                            <label>По</label>
+                            <input type="date" id="date-to">
+                        </div>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button class="clear-filters-btn">Сбросить</button>
+                        <button class="apply-filters-btn">Применить</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Закрытие модального окна
+        modal.querySelector('.close-modal-btn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Кнопка сброса фильтров
+        modal.querySelector('.clear-filters-btn').addEventListener('click', () => {
+            // Сбрасываем чекбоксы
+            modal.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Сбрасываем даты
+            modal.querySelector('#date-from').value = '';
+            modal.querySelector('#date-to').value = '';
+            
+            // Убираем фокус с кнопки
+            setTimeout(() => {
+                document.activeElement.blur();
+            }, 100);
+        });
+        
+        // Кнопка применения фильтров
+        modal.querySelector('.apply-filters-btn').addEventListener('click', () => {
+            // Собираем статусы
+            const selectedStatuses = [];
+            modal.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+                selectedStatuses.push(checkbox.value);
+            });
+            
+            // Собираем диапазон дат
+            const dateFrom = modal.querySelector('#date-from').value;
+            const dateTo = modal.querySelector('#date-to').value;
+            
+            // Обновляем фильтры
+            window.historyFilters.statuses = selectedStatuses;
+            
+            if (dateFrom && dateTo) {
+                window.historyFilters.dateRange = {
+                    date_from: dateFrom,
+                    date_to: dateTo
+                };
+            } else {
+                window.historyFilters.dateRange = null;
+            }
+            
+            // Убираем фокус с кнопки
+            setTimeout(() => {
+                document.activeElement.blur();
+            }, 100);
+            
+            renderHistoryWithFilter();
+            modal.style.display = 'none';
+        });
+    }
+    
+    // Устанавливаем текущие значения фильтров
+    modal.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = window.historyFilters.statuses.includes(checkbox.value);
+    });
+    
+    // Устанавливаем значения дат
+    if (window.historyFilters.dateRange) {
+        modal.querySelector('#date-from').value = window.historyFilters.dateRange.date_from;
+        modal.querySelector('#date-to').value = window.historyFilters.dateRange.date_to;
+    } else {
+        modal.querySelector('#date-from').value = '';
+        modal.querySelector('#date-to').value = '';
+    }
+    
+    modal.style.display = 'block';
 }
 
 const formatTime = (dateOrTimeString) => {
@@ -318,6 +941,24 @@ async function loadProfile() {
         const profileHeaderEl = document.getElementById('profileHeaderName');
         if (profileHeaderEl) {
             profileHeaderEl.textContent = profileData.name || profileData.username;
+        }                // Обновляем шапку профиля с информацией о смене, если она есть        
+        const profileStatusEl = document.querySelector('.profile-status');        
+        if (profileStatusEl) {            
+            if (profileData.current_shift) {                
+                const shift = profileData.current_shift;                
+                const shiftId = shift.id; // Используем ID смены или значение по умолчанию                
+                const shiftDate = formatShiftDate(shift.date) || new Date().toLocaleDateString('ru-RU');             
+                profileStatusEl.innerHTML = `                    
+                <div>Смена #${shiftId}</div>                    
+                <div>${shiftDate}</div>
+                `;            
+            } else {                
+                // Если нет активной смены, устанавливаем дефолтные значения в шапке                
+                profileStatusEl.innerHTML = `                   
+                <div>Нет активной смены</div>                    
+                <div>Проверьте расписание</div>                
+                `;            
+            }        
         }
         
         // Получаем контейнер для профиля
@@ -496,7 +1137,9 @@ async function loadProfile() {
                 assignedTablesHtml += `
                     <div class="profile-table">
                         Стол №${table.number}
-                        <span>${table.seats} мест • ${table.status === 'free' ? 'Свободен' : 'Занят'}</span>
+                    <span>${table.seats} мест • ${                            
+                        table.status === 'free' ? 'Свободен' :                             
+                        (table.status === 'reserved' ? 'Забронирован' : 'Занят')}</span>                    
                     </div>
                 `;
             });
@@ -1056,7 +1699,8 @@ async function updateTableStatus(tableId, newStatus) {
     }
 }
 
-// Update the function that shows the modal to use the new updateTableStatus function
+// Удаляем весь встроенный CSS-код 
+// Add table status modal
 function showTableStatusModal(tableId, currentStatus) {
     // Create modal if it doesn't exist
     let modal = document.getElementById('tableStatusModal');
@@ -1242,106 +1886,6 @@ function updateTablesStats(stats) {
     }
 }
 
-// Add CSS for the table status modal
-const styleSheet = document.createElement('style');
-styleSheet.textContent = `
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-
-    .modal__content {
-        background-color: #fff;
-        margin: 15% auto;
-        padding: 20px;
-        border-radius: 10px;
-        width: 80%;
-        max-width: 500px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    }
-
-    .modal__header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-
-    .modal__header h2 {
-        margin: 0;
-        font-size: 1.5rem;
-    }
-
-    .close-modal-btn {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: #888;
-    }
-
-    .close-modal-btn:hover {
-        color: #000;
-    }
-
-    .status-options {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-
-    .status-option {
-        flex: 1;
-        padding: 15px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 1rem;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-
-    .status-option--free {
-        background-color: #f1f3f4;
-        color: #5f6368;
-    }
-
-    .status-option--occupied {
-        background-color: #e8f0fe;
-        color: #1a73e8;
-    }
-
-    .status-option--reserved {
-        background-color: #fff8e1;
-        color: #f9a825;
-    }
-
-    .status-option:not(.active):hover {
-        opacity: 0.9;
-        transform: translateY(-2px);
-    }
-
-    .status-option.active {
-        box-shadow: 0 0 0 2px currentColor;
-        transform: none;
-        opacity: 1;
-    }
-
-    .modal__message {
-        text-align: center;
-        margin-top: 10px;
-        font-weight: 500;
-    }
-`;
-document.head.appendChild(styleSheet);
-
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     loadTables();
@@ -1382,3 +1926,100 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 }); 
+
+// Функция для отображения модального окна с фильтрами столов
+function showTableFiltersModal() {
+    // Создаем модальное окно, если оно еще не существует
+    let modal = document.getElementById('tableFiltersModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'tableFiltersModal';
+        modal.className = 'modal';
+        
+        modal.innerHTML = `
+            <div class="modal__content">
+                <div class="modal__header">
+                    <h2>Фильтр столов</h2>
+                    <button class="close-modal-btn">&times;</button>
+                </div>
+                <div class="modal__body">
+                    <div class="filter-options filter-options--checkboxes">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="free">
+                            <span class="status-badge status-badge--free">Свободные</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="reserved">
+                            <span class="status-badge status-badge--reserved">Забронированные</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="occupied">
+                            <span class="status-badge status-badge--occupied">Занятые</span>
+                        </label>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="clear-filters-btn">Сбросить</button>
+                        <button class="apply-filters-btn">Применить</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Добавляем обработчик для закрытия модального окна
+        modal.querySelector('.close-modal-btn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        
+        // Закрытие модального окна при клике вне его содержимого
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Кнопка сброса фильтров
+        modal.querySelector('.clear-filters-btn').addEventListener('click', () => {
+            modal.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Убираем фокус с кнопки
+            setTimeout(() => {
+                document.activeElement.blur();
+            }, 100);
+        });
+        
+        // Кнопка применения фильтров
+        modal.querySelector('.apply-filters-btn').addEventListener('click', () => {
+            // Собираем выбранные статусы
+            const selectedStatuses = [];
+            modal.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+                selectedStatuses.push(checkbox.value);
+            });
+            
+            // Обновляем фильтры
+            window.tableFilters.statuses = selectedStatuses;
+            
+            // Убираем фокус с кнопки
+            setTimeout(() => {
+                document.activeElement.blur();
+            }, 100);
+            
+            // Обновляем отображение таблиц и счетчик фильтров
+            renderTablesWithFilter();
+            updateTableFilterBadge();
+            
+            modal.style.display = 'none';
+        });
+    }
+    
+    // Устанавливаем текущие значения фильтров в чекбоксы
+    modal.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = window.tableFilters.statuses.includes(checkbox.value);
+    });
+    
+    // Отображаем модальное окно
+    modal.style.display = 'block';
+}

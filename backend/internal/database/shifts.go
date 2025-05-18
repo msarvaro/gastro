@@ -105,7 +105,7 @@ func (db *DB) GetShiftByID(shiftID int) (*models.ShiftWithEmployees, error) {
 		&shift.ID, &shift.Date, &shift.StartTime, &shift.EndTime,
 		&shift.ManagerID, &shift.Notes, &shift.CreatedAt, &shift.UpdatedAt,
 	)
-
+	
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // Смена не найдена
