@@ -48,12 +48,14 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID, err := strconv.Atoi(vars["id"])
 	if err != nil {
+
 		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
 
 	err = h.db.DeleteUser(userID)
 	if err != nil {
+		log.Printf("DeleteUser: Ошибка при удалении пользователя: %v", err)
 		http.Error(w, "Failed to delete user", http.StatusInternalServerError)
 		return
 	}

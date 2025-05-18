@@ -68,23 +68,39 @@ func main() {
 
 	// API маршруты для админа
 	admin := api.PathPrefix("/admin").Subrouter()
-	admin.HandleFunc("/users", adminHandler.GetUsers).Methods("GET")
-	admin.HandleFunc("/users", adminHandler.CreateUser).Methods("POST")
-	admin.HandleFunc("/users/{id}", adminHandler.DeleteUser).Methods("DELETE")
+	// Оставляем только статистику, остальное будет через эндпоинты менеджера
 	admin.HandleFunc("/stats", adminHandler.GetStats).Methods("GET")
 
-	// Регистрация обработчиков API для смен
-	adminShiftsRouter := admin.PathPrefix("/shifts").Subrouter()
-	adminShiftsRouter.HandleFunc("", shiftHandler.GetAllShifts).Methods("GET")
-	adminShiftsRouter.HandleFunc("", shiftHandler.CreateShift).Methods("POST")
-	adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.GetShiftByID).Methods("GET")
-	adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.UpdateShift).Methods("PUT")
-	adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.DeleteShift).Methods("DELETE")
+	// ПРИМЕЧАНИЕ: эндпоинты пользователей и смен перенесены в /api/manager/*
+	// admin.HandleFunc("/users", adminHandler.GetUsers).Methods("GET")
+	// admin.HandleFunc("/users", adminHandler.CreateUser).Methods("POST")
+	// admin.HandleFunc("/users/{id}", adminHandler.DeleteUser).Methods("DELETE")
+
+	// Регистрация обработчиков API для смен также перенесена в /api/manager/shifts
+	// adminShiftsRouter := admin.PathPrefix("/shifts").Subrouter()
+	// adminShiftsRouter.HandleFunc("", shiftHandler.GetAllShifts).Methods("GET")
+	// adminShiftsRouter.HandleFunc("", shiftHandler.CreateShift).Methods("POST")
+	// adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.GetShiftByID).Methods("GET")
+	// adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.UpdateShift).Methods("PUT")
+	// adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.DeleteShift).Methods("DELETE")
 
 	// API маршруты для менеджера
 	manager := api.PathPrefix("/manager").Subrouter()
 	manager.HandleFunc("/dashboard", managerHandler.GetDashboard).Methods("GET")
 	manager.HandleFunc("/orders/history", waiterHandler.GetOrderHistory).Methods("GET")
+
+	// Добавляем маршруты для пользователей, используя обработчики админа
+	manager.HandleFunc("/users", adminHandler.GetUsers).Methods("GET")
+	manager.HandleFunc("/users", adminHandler.CreateUser).Methods("POST")
+	manager.HandleFunc("/users/{id}", adminHandler.UpdateUser).Methods("PUT")
+	manager.HandleFunc("/users/{id}", adminHandler.DeleteUser).Methods("DELETE")
+
+	// Добавляем маршруты для смен, используя обработчики смен
+	manager.HandleFunc("/shifts", shiftHandler.GetAllShifts).Methods("GET")
+	manager.HandleFunc("/shifts", shiftHandler.CreateShift).Methods("POST")
+	manager.HandleFunc("/shifts/{id:[0-9]+}", shiftHandler.GetShiftByID).Methods("GET")
+	manager.HandleFunc("/shifts/{id:[0-9]+}", shiftHandler.UpdateShift).Methods("PUT")
+	manager.HandleFunc("/shifts/{id:[0-9]+}", shiftHandler.DeleteShift).Methods("DELETE")
 
 	// API маршруты для инвентаря (перенесены к менеджеру)
 	manager.HandleFunc("/inventory", inventoryHandler.GetAll).Methods("GET")

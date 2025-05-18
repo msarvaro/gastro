@@ -172,6 +172,7 @@
             <div class="menu-items"></div>
         </div>
     </section>
+    
     <section id="staff-section" class="section" style="display:none;">
         <div class="header">Управление персоналом</div>
         <div class="tabs">
@@ -507,149 +508,148 @@
             </form>
         </div>
     </div>
-</div>
 
-<script src="../static/js/manager.js"></script>
-
-<!-- Модальные окна для управления персоналом -->
-<!-- Модальное окно добавления пользователя -->
-<div id="addUserModal" class="modal">
-  <div class="modal-content">
-    <span class="close-modal">&times;</span>
-    <h3>Добавить пользователя</h3>
-    <form id="addUserForm">
-      <div class="form-group">
-        <label>Логин</label>
-        <input type="text" name="username" required>
-      </div>
-      <div class="form-group">
-        <label>Имя</label>
-        <input type="text" name="name" required>
-      </div>
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" name="email" required>
-      </div>
-      <div class="form-group">
-        <label>Пароль</label>
-        <input type="password" name="password" required>
-      </div>
-      <div class="form-group">
-        <label>Роль</label>
-        <select name="role" required>
-          <option value="waiter">Официант</option>
-          <option value="cook">Повар</option>
-          <option value="manager">Менеджер</option>
-          <option value="client">Клиент</option>
-        </select>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn-secondary close-modal">Отмена</button>
-        <button type="submit" class="btn-primary">Добавить</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Модальное окно редактирования пользователя -->
-<div id="editUserModal" class="modal">
-  <div class="modal-content">
-    <span class="close-modal">&times;</span>
-    <h3>Редактировать пользователя</h3>
-    <form id="editUserForm">
-      <div class="form-group">
-        <label>Логин</label>
-        <input type="text" name="username" required>
-      </div>
-      <div class="form-group">
-        <label>Имя</label>
-        <input type="text" name="name" required>
-      </div>
-      <div class="form-group">
-        <label>Роль</label>
-        <select name="role" required>
-          <option value="waiter">Официант</option>
-          <option value="cook">Повар</option>
-          <option value="manager">Менеджер</option>
-          <option value="client">Клиент</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Статус</label>
-        <select name="status" required>
-          <option value="active">Активен</option>
-          <option value="inactive">Неактивен</option>
-        </select>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn-secondary close-modal">Отмена</button>
-        <button type="submit" class="btn-primary">Сохранить</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Модальное окно для добавления/редактирования смены -->
-<div id="shiftModal" class="modal">
-  <div class="modal-content">
-    <span class="close-modal">&times;</span>
-    <h3 id="shiftModalTitle">Добавить смену</h3>
-    <form id="shiftForm">
-      <input type="hidden" id="shift-id">
-      <div class="form-group">
-        <label for="shift-date">Дата</label>
-        <input type="date" id="shift-date" required>
-      </div>
-      
-      <div class="form-group time-inputs">
-        <div class="time-input">
-          <label for="shift-start-time">Время начала</label>
-          <input type="time" id="shift-start-time" required>
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h3>Добавить пользователя</h3>
+        <form id="addUserForm">
+            <div class="form-group">
+            <label>Логин</label>
+            <input type="text" name="username" required>
+            </div>
+            <div class="form-group">
+            <label>Имя</label>
+            <input type="text" name="name" required>
+            </div>
+            <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" required>
+            </div>
+            <div class="form-group">
+            <label>Пароль</label>
+            <input type="password" name="password" required>
+            </div>
+            <div class="form-group">
+            <label>Роль</label>
+            <select name="role" required>
+                <option value="waiter">Официант</option>
+                <option value="cook">Повар</option>
+                <option value="manager">Менеджер</option>
+                <option value="client">Клиент</option>
+            </select>
+            </div>
+            <div class="modal-actions">
+            <button type="button" class="btn-secondary close-modal">Отмена</button>
+            <button type="submit" class="btn-primary">Добавить</button>
+            </div>
+        </form>
         </div>
-        
-        <div class="time-input">
-          <label for="shift-end-time">Время окончания</label>
-          <input type="time" id="shift-end-time" required>
+    </div>
+    
+    <!-- Модальное окно редактирования пользователя -->
+    <div id="editUserModal" class="modal">
+        <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h3>Редактировать пользователя</h3>
+        <form id="editUserForm">
+            <div class="form-group">
+            <label>Логин</label>
+            <input type="text" name="username" required>
+            </div>
+            <div class="form-group">
+            <label>Имя</label>
+            <input type="text" name="name" required>
+            </div>
+            <div class="form-group">
+            <label>Роль</label>
+            <select name="role" required>
+                <option value="waiter">Официант</option>
+                <option value="cook">Повар</option>
+                <option value="manager">Менеджер</option>
+                <option value="client">Клиент</option>
+            </select>
+            </div>
+            <div class="form-group">
+            <label>Статус</label>
+            <select name="status" required>
+                <option value="active">Активен</option>
+                <option value="inactive">Неактивен</option>
+            </select>
+            </div>
+            <div class="modal-actions">
+            <button type="button" class="btn-secondary close-modal">Отмена</button>
+            <button type="submit" class="btn-primary">Сохранить</button>
+            </div>
+        </form>
         </div>
-      </div>
-
-      <div class="form-group">
-        <label for="shift-manager">Ответственный менеджер</label>
-        <select id="shift-manager" required>
-          <option value="">Выберите менеджера</option>
-          <!-- Список менеджеров будет добавлен через JavaScript -->
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="shift-status">Статус смены</label>
-        <select id="shift-status">
-          <option value="active">Активна</option>
-          <option value="pending">Ожидает</option>
-          <option value="completed">Завершена</option>
-          <option value="canceled">Отменена</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="shift-notes">Примечания</label>
-        <textarea id="shift-notes" rows="2"></textarea>
-      </div>
-
-      <div class="form-group">
-        <label for="shift-employees-container">Сотрудники смены</label>
-        <div id="shift-employees-container" class="employees-container">
-          <!-- Списки сотрудников будут добавлены через JavaScript -->
+    </div>
+    
+    <!-- Модальное окно для добавления/редактирования смены -->
+    <div id="shiftModal" class="modal">
+        <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h3 id="shiftModalTitle">Добавить смену</h3>
+        <form id="shiftForm">
+            <input type="hidden" id="shift-id">
+            <div class="form-group">
+            <label for="shift-date">Дата</label>
+            <input type="date" id="shift-date" required>
+            </div>
+            
+            <div class="form-group time-inputs">
+            <div class="time-input">
+                <label for="shift-start-time">Время начала</label>
+                <input type="time" id="shift-start-time" required>
+            </div>
+            
+            <div class="time-input">
+                <label for="shift-end-time">Время окончания</label>
+                <input type="time" id="shift-end-time" required>
+            </div>
+            </div>
+    
+            <div class="form-group">
+            <label for="shift-manager">Ответственный менеджер</label>
+            <select id="shift-manager" required>
+                <option value="">Выберите менеджера</option>
+                <!-- Список менеджеров будет добавлен через JavaScript -->
+            </select>
+            </div>
+    
+            <div class="form-group">
+            <label for="shift-status">Статус смены</label>
+            <select id="shift-status">
+                <option value="active">Активна</option>
+                <option value="pending">Ожидает</option>
+                <option value="completed">Завершена</option>
+                <option value="canceled">Отменена</option>
+            </select>
+            </div>
+    
+            <div class="form-group">
+            <label for="shift-notes">Примечания</label>
+            <textarea id="shift-notes" rows="2"></textarea>
+            </div>
+    
+            <div class="form-group">
+            <label for="shift-employees-container">Сотрудники смены</label>
+            <div id="shift-employees-container" class="employees-container">
+                <!-- Списки сотрудников будут добавлены через JavaScript -->
+            </div>
+            </div>
+    
+            <div class="modal-actions">
+            <button type="button" id="cancelShiftBtn" class="btn-secondary">Отмена</button>
+            <button type="submit" id="saveShiftBtn" class="btn-primary">Сохранить</button>
+            </div>
+        </form>
         </div>
-      </div>
-
-      <div class="modal-actions">
-        <button type="button" id="cancelShiftBtn" class="btn-secondary">Отмена</button>
-        <button type="submit" id="saveShiftBtn" class="btn-primary">Сохранить</button>
-      </div>
-    </form>
-  </div>
+    </div>
 </div>
+    
+
+    <script src="../static/js/manager.js"></script>
 </body>
 </html>
 
