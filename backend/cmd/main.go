@@ -71,19 +71,6 @@ func main() {
 	// Оставляем только статистику, остальное будет через эндпоинты менеджера
 	admin.HandleFunc("/stats", adminHandler.GetStats).Methods("GET")
 
-	// ПРИМЕЧАНИЕ: эндпоинты пользователей и смен перенесены в /api/manager/*
-	// admin.HandleFunc("/users", adminHandler.GetUsers).Methods("GET")
-	// admin.HandleFunc("/users", adminHandler.CreateUser).Methods("POST")
-	// admin.HandleFunc("/users/{id}", adminHandler.DeleteUser).Methods("DELETE")
-
-	// Регистрация обработчиков API для смен также перенесена в /api/manager/shifts
-	// adminShiftsRouter := admin.PathPrefix("/shifts").Subrouter()
-	// adminShiftsRouter.HandleFunc("", shiftHandler.GetAllShifts).Methods("GET")
-	// adminShiftsRouter.HandleFunc("", shiftHandler.CreateShift).Methods("POST")
-	// adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.GetShiftByID).Methods("GET")
-	// adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.UpdateShift).Methods("PUT")
-	// adminShiftsRouter.HandleFunc("/{id:[0-9]+}", shiftHandler.DeleteShift).Methods("DELETE")
-
 	// API маршруты для менеджера
 	manager := api.PathPrefix("/manager").Subrouter()
 	manager.HandleFunc("/dashboard", managerHandler.GetDashboard).Methods("GET")
@@ -126,6 +113,7 @@ func main() {
 	// API маршруты для официанта
 	waiter := api.PathPrefix("/waiter").Subrouter()
 	waiter.HandleFunc("/tables", waiterHandler.GetTables).Methods("GET")
+	waiter.HandleFunc("/tables/{id}/status", waiterHandler.UpdateTableStatus).Methods("PUT")
 	waiter.HandleFunc("/orders", waiterHandler.GetOrders).Methods("GET")
 	waiter.HandleFunc("/history", waiterHandler.GetOrderHistory).Methods("GET")
 	waiter.HandleFunc("/orders", waiterHandler.CreateOrder).Methods("POST")
@@ -193,13 +181,6 @@ func main() {
 	htmlRouter.HandleFunc("/kitchen", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "kitchen.html"))
 	}).Methods("GET")
-
-	// Логируем пути для отладки
-	log.Printf("Using configuration:")
-	log.Printf("Project root: %s", config.Paths.ProjectRoot)
-	log.Printf("Frontend dir: %s", config.Paths.Frontend)
-	log.Printf("Static dir: %s", config.Paths.Static)
-	log.Printf("Templates dir: %s", config.Paths.Templates)
 
 	log.Printf("Server starting on http://127.0.0.1:%s", config.Server.Port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%s", config.Server.Port), r))

@@ -1727,3 +1727,29 @@ body {
     height: 12px;
     transition: transform 0.2s ease;
 }
+
+/* Add Order Button */
+.add-order-button {
+  background-color: #006ffd;
+  border: 3px dashed #d4d6dd;
+  border-radius: 50%;
+  width: 76px;
+  height: 76px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 32px;
+  padding: 10px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.add-order-button:hover {
+  background-color: #0056cc;
+}

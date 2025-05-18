@@ -117,7 +117,10 @@ function showSection(section) {
 // Пример функций для загрузки данных (реализуйте по аналогии с вашими API)
 async function loadTables() {
     try {
-        const resp = await fetch('/api/waiter/tables', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+        const resp = await fetch('/api/waiter/tables', { 
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            credentials: 'include'
+        });
         if (!resp.ok) throw new Error('Failed to load tables');
         const data = await resp.json();
         
@@ -137,7 +140,7 @@ async function loadTables() {
         const grid = document.getElementById('tablesGrid');
         if (grid && data.tables) {
             grid.innerHTML = data.tables.map(table => `
-                <div class="table-card table-card--${table.status.toLowerCase()}"> 
+                <div class="table-card table-card--${table.status.toLowerCase()}" data-table-id="${table.id}" data-table-status="${table.status.toLowerCase()}"> 
                     <div class="table-card__header">
                         <span class="status-dot status-dot--${table.status.toLowerCase()}"></span>
                         <span class="table-card__title">№${table.number}</span>
@@ -157,6 +160,15 @@ async function loadTables() {
                     </div>
                 </div>
             `).join('');
+            
+            // Add click event to table cards for status changes
+            grid.querySelectorAll('.table-card').forEach(tableCard => {
+                tableCard.addEventListener('click', function() {
+                    const tableId = this.dataset.tableId;
+                    const currentStatus = this.dataset.tableStatus;
+                    showTableStatusModal(tableId, currentStatus);
+                });
+            });
         }
     } catch (e) {
         console.error('Failed to load tables:', e);
@@ -167,7 +179,10 @@ async function loadTables() {
 
 async function loadOrders() {
   
-        const resp = await fetch('/api/waiter/orders', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+        const resp = await fetch('/api/waiter/orders', { 
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            credentials: 'include'
+        });
         if (!resp.ok) throw new Error('Failed to load orders');
         const data = await resp.json();
         document.getElementById('ordersStatusInfo').textContent = `${data.stats.total_active_orders || 0} активных заказов`;
@@ -197,7 +212,10 @@ async function loadOrders() {
 }
 async function loadHistory() {
     try {
-        const resp = await fetch('/api/waiter/history', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+        const resp = await fetch('/api/waiter/history', { 
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            credentials: 'include'
+        });
         if (!resp.ok) throw new Error('Failed to load history');
         const data = await resp.json();
 
@@ -292,7 +310,8 @@ async function loadProfile() {
     try {
         // Получаем данные профиля
         const response = await fetch('/api/waiter/profile', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            credentials: 'include'
         });
         
         if (!response.ok) {
@@ -571,7 +590,10 @@ function getNextStatus(status) {
     return flow[status] || status;
 }
 async function renderTables() {
-        const resp = await fetch('/api/waiter/tables', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+        const resp = await fetch('/api/waiter/tables', { 
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            credentials: 'include' 
+        });
         if (!resp.ok) throw new Error('Failed to load tables');
         const data = await resp.json();
         const grid = document.querySelector('.table-modal__grid');
@@ -697,6 +719,7 @@ async function createOrder() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
+            credentials: 'include',
             body: JSON.stringify(payload)
         });
         if (!response.ok) {
@@ -913,6 +936,7 @@ async function updateOrderStatus(orderId, newStatus) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
+            credentials: 'include',
             body: JSON.stringify({ status: newStatus })
         });
         loadOrders();
@@ -1004,3 +1028,347 @@ function formatShiftDate(dateString) {
         return dateString;
     }
 } 
+
+// Function to handle table click for status update
+function showTableStatusModal(tableId, currentStatus) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('tableStatusModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'tableStatusModal';
+        modal.className = 'modal';
+        
+        modal.innerHTML = `
+            <div class="modal__content">
+                <div class="modal__header">
+                    <h2>Изменить статус стола</h2>
+                    <button class="close-modal-btn">&times;</button>
+                </div>
+                <div class="modal__body">
+                    <div class="status-options">
+                        <button class="status-option status-option--free">Свободен</button>
+                        <button class="status-option status-option--occupied">Занят</button>
+                        <button class="status-option status-option--reserved">Забронирован</button>
+                    </div>
+                </div>
+                <div class="modal__footer">
+                    <p class="modal__message" style="display: none;"></p>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add event listener to close button
+        modal.querySelector('.close-modal-btn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Store the tableId in the modal for reference
+    modal.setAttribute('data-table-id', tableId);
+    
+    // Get all status buttons
+    const statusButtons = modal.querySelectorAll('.status-option');
+    
+    // Remove active class from all buttons first
+    statusButtons.forEach(button => {
+        button.classList.remove('active');
+        
+        // Remove all event listeners by cloning and replacing
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+    });
+    
+    // Re-query buttons after replacing them
+    const newStatusButtons = modal.querySelectorAll('.status-option');
+    
+    // Add active class to current status button
+    newStatusButtons.forEach(button => {
+        if ((button.classList.contains('status-option--free') && currentStatus === 'free') ||
+            (button.classList.contains('status-option--occupied') && currentStatus === 'occupied') ||
+            (button.classList.contains('status-option--reserved') && currentStatus === 'reserved')) {
+            button.classList.add('active');
+        }
+        
+        // Add click event handler
+        button.addEventListener('click', async () => {
+            let newStatus;
+            if (button.classList.contains('status-option--free')) {
+                newStatus = 'free';
+            } else if (button.classList.contains('status-option--occupied')) {
+                newStatus = 'occupied';
+            } else if (button.classList.contains('status-option--reserved')) {
+                newStatus = 'reserved';
+            }
+            
+            // Immediately update UI
+            newStatusButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            if (newStatus) {
+                try {
+                    const response = await fetch(`/api/waiter/tables/${tableId}/status`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ status: newStatus }),
+                        credentials: 'include'
+                    });
+                    
+                    const messageElement = modal.querySelector('.modal__message');
+                    
+                    if (response.ok) {
+                        // Update was successful
+                        messageElement.textContent = 'Статус стола успешно обновлен';
+                        messageElement.style.color = 'green';
+                        messageElement.style.display = 'block';
+                        
+                        // Refresh tables data
+                        await loadTables();
+                        
+                        // Close modal after a delay
+                        setTimeout(() => {
+                            modal.style.display = 'none';
+                            messageElement.style.display = 'none';
+                        }, 1500);
+                    } else {
+                        // Handle error
+                        const errorData = await response.json();
+                        messageElement.textContent = errorData.error || 'Ошибка при обновлении статуса стола';
+                        messageElement.style.color = 'red';
+                        messageElement.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error updating table status:', error);
+                    const messageElement = modal.querySelector('.modal__message');
+                    messageElement.textContent = 'Ошибка сети при обновлении статуса стола';
+                    messageElement.style.color = 'red';
+                    messageElement.style.display = 'block';
+                }
+            }
+        });
+    });
+    
+    // Show the modal
+    modal.style.display = 'block';
+}
+
+// Function to generate table elements in the grid
+function generateTableElements(tables) {
+    const tablesGrid = document.getElementById('tablesGrid');
+    if (!tablesGrid) return;
+    
+    tablesGrid.innerHTML = '';
+    
+    tables.forEach(table => {
+        const tableElement = document.createElement('div');
+        tableElement.className = `table-item table-item--${table.status}`;
+        tableElement.setAttribute('data-table-id', table.id);
+        
+        tableElement.innerHTML = `
+            <div class="table-item__header">
+                <div class="table-item__number">№${table.number}</div>
+                <div class="table-item__seats">${table.seats} мест</div>
+            </div>
+            <div class="table-item__status">${translateTableStatus(table.status)}</div>
+        `;
+        
+        // Add orders if any
+        if (table.orders && table.orders.length > 0) {
+            const ordersElement = document.createElement('div');
+            ordersElement.className = 'table-item__orders';
+            
+            table.orders.forEach(order => {
+                const orderElement = document.createElement('div');
+                orderElement.className = 'table-item__order';
+                orderElement.innerHTML = `
+                    <span class="order-id">Заказ #${order.id}</span>
+                    <span class="order-time">${formatTableTime(new Date(order.time))}</span>
+                `;
+                ordersElement.appendChild(orderElement);
+            });
+            
+            tableElement.appendChild(ordersElement);
+        }
+        
+        // Add click event to update status
+        tableElement.addEventListener('click', () => {
+            showTableStatusModal(table.id, table.status);
+        });
+        
+        tablesGrid.appendChild(tableElement);
+    });
+}
+
+// Helper function to translate table status to Russian
+function translateTableStatus(status) {
+    const translations = {
+        'free': 'Свободен',
+        'occupied': 'Занят',
+        'reserved': 'Забронирован'
+    };
+    return translations[status] || status;
+}
+
+// Helper function to format time
+function formatTableTime(date) {
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Function to update tables statistics
+function updateTablesStats(stats) {
+    const tablesStatusInfo = document.getElementById('tablesStatusInfo');
+    if (tablesStatusInfo) {
+        tablesStatusInfo.textContent = `${stats.free} столов свободно из ${stats.total} (${stats.occupied} занято, ${stats.reserved} забронировано)`;
+    }
+}
+
+// Add CSS for the table status modal
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal__content {
+        background-color: #fff;
+        margin: 15% auto;
+        padding: 20px;
+        border-radius: 10px;
+        width: 80%;
+        max-width: 500px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .modal__header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    .close-modal-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #888;
+    }
+
+    .close-modal-btn:hover {
+        color: #000;
+    }
+
+    .status-options {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .status-option {
+        flex: 1;
+        padding: 15px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .status-option--free {
+        background-color: #f1f3f4;
+        color: #5f6368;
+    }
+
+    .status-option--occupied {
+        background-color: #e8f0fe;
+        color: #1a73e8;
+    }
+
+    .status-option--reserved {
+        background-color: #fff8e1;
+        color: #f9a825;
+    }
+
+    .status-option:not(.active):hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+    }
+
+    .status-option.active {
+        box-shadow: 0 0 0 2px currentColor;
+        transform: none;
+        opacity: 1;
+    }
+
+    .modal__message {
+        text-align: center;
+        margin-top: 10px;
+        font-weight: 500;
+    }
+`;
+document.head.appendChild(styleSheet);
+
+// Initialize the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    loadTables();
+    
+    // Add tab switching logic
+    const tabItems = document.querySelectorAll('.tab-item');
+    const sections = document.querySelectorAll('section');
+    
+    tabItems.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const targetSection = this.getAttribute('data-section');
+            
+            // Update active tab
+            tabItems.forEach(t => t.classList.remove('tab-item--active'));
+            this.classList.add('tab-item--active');
+            
+            // Show target section, hide others
+            sections.forEach(section => {
+                if (section.id === `section-${targetSection}`) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+            
+            // Load data based on active tab
+            if (targetSection === 'tables') {
+                loadTables();
+            } else if (targetSection === 'orders') {
+                // loadOrders(); // Implement this function if needed
+            } else if (targetSection === 'history') {
+                // loadOrderHistory(); // Implement this function if needed
+            } else if (targetSection === 'profile') {
+                // loadProfile(); // Implement this function if needed
+            }
+        });
+    });
+}); 
