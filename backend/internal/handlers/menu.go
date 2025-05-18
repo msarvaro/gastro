@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -60,14 +62,23 @@ func (h *MenuHandler) GetMenuItem(w http.ResponseWriter, r *http.Request) {
 func (h *MenuHandler) CreateMenuItem(w http.ResponseWriter, r *http.Request) {
 	var item models.MenuItemCreate
 	if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errMsg := fmt.Sprintf("Error decoding request body: %v", err)
+		log.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
+
+	log.Printf("Received create menu item request with data: %+v", item)
+
 	created, err := h.repo.CreateMenuItem(r.Context(), item)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errMsg := fmt.Sprintf("Error creating menu item: %v", err)
+		log.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(created)
 }
@@ -81,14 +92,27 @@ func (h *MenuHandler) UpdateMenuItem(w http.ResponseWriter, r *http.Request) {
 	}
 	var item models.MenuItemUpdate
 	if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errMsg := fmt.Sprintf("Error decoding request body: %v", err)
+		log.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
+	log.Printf("Received update request for item %d with data: %+v", id, item)
+
 	updated, err := h.repo.UpdateMenuItem(r.Context(), id, item)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errMsg := fmt.Sprintf("Error updating menu item: %v", err)
+		log.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
+
+	if updated == nil {
+		http.Error(w, "Menu item not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updated)
 }
 

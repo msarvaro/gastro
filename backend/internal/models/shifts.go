@@ -56,7 +56,7 @@ type UpdateShiftRequest struct {
 	Date        string `json:"date"`
 	StartTime   string `json:"start_time"`
 	EndTime     string `json:"end_time"`
-	ManagerID   int    `json:"manager_id"`
+	ManagerID   string `json:"manager_id"`
 	Notes       string `json:"notes"`
 	EmployeeIDs []int  `json:"employee_ids"`
 }

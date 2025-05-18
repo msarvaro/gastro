@@ -356,8 +356,15 @@ func (h *ShiftHandler) UpdateShift(w http.ResponseWriter, r *http.Request) {
 
 	// Проверяем ID менеджера (если не указан, используем существующий)
 	managerID := existingShift.ManagerID
-	if req.ManagerID != 0 {
-		managerID = req.ManagerID
+	if req.ManagerID != "" {
+		// Конвертируем manager_id из строки в int
+		var convErr error
+		managerID, convErr = strconv.Atoi(req.ManagerID)
+		if convErr != nil {
+			log.Printf("Error UpdateShift - converting manager_id %s to int: %v", req.ManagerID, convErr)
+			respondWithError(w, http.StatusBadRequest, "Invalid manager ID format")
+			return
+		}
 	}
 
 	// Создаем обновленный объект смены
