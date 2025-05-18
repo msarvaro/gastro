@@ -254,40 +254,16 @@
                 successElement.textContent = 'Заведение выбрано успешно! Перенаправление...';
                 successElement.style.display = 'block';
                 
-                // Get user role from local storage
-                const userRole = localStorage.getItem('role');
-                
                 // Add client-side check for the cookie to make sure it was set
                 const businessId = window.api.getBusinessId();
                 if (!businessId) {
                     console.log("Cookie not set by server, setting it client-side as fallback");
                     window.api.setBusinessId(selectedBusinessId);
                 }
-                
-                // Determine redirect path based on user role
-                let redirectPath = '/';
-                if (userRole) {
-                    switch (userRole) {
-                        case 'admin':
-                            redirectPath = '/admin';
-                            break;
-                        case 'manager':
-                            redirectPath = '/manager';
-                            break;
-                        case 'waiter':
-                            redirectPath = '/waiter';
-                            break;
-                        case 'cook':
-                            redirectPath = '/kitchen';
-                            break;
-                    }
-                }
-                
-                console.log(`Business selected, redirecting to ${redirectPath}`);
-                
+
                 // Redirect after a short delay
                 setTimeout(() => {
-                    window.location.href = redirectPath;
+                    window.location.href = '/admin';
                 }, 1500);
                 
             } catch (error) {

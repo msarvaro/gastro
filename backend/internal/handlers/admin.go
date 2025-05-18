@@ -79,8 +79,28 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user.ID = userID
+
+	// Extract business ID and user role from context to apply same business rules as in CreateUser
+	businessID, _ := middleware.GetBusinessIDFromContext(r.Context())
+	userRole, _ := middleware.GetUserRoleFromContext(r.Context())
+
+	// If this is a business_id update, enforce business context rules
+	if user.BusinessID > 0 {
+		// Only admins can change business_id
+		if userRole != "admin" {
+			log.Printf("UpdateUser: Non-admin user (role %s) attempted to change business_id", userRole)
+			http.Error(w, "Only admins can change business_id", http.StatusForbidden)
+			return
+		}
+	} else if userRole == "manager" {
+		// For managers, enforce their own business_id if none provided
+		user.BusinessID = businessID
+	}
+
+	log.Printf("UpdateUser: Performing selective update on user ID %d", userID)
 	err = h.db.UpdateUser(&user)
 	if err != nil {
+		log.Printf("UpdateUser: Failed to update user: %v", err)
 		http.Error(w, "Failed to update user", http.StatusInternalServerError)
 		return
 	}

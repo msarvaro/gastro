@@ -228,12 +228,40 @@ func (db *DB) DeleteUser(id int) error {
 }
 
 func (db *DB) UpdateUser(user *models.User) error {
-	_, err := db.Exec(`
+	existingUser, err := db.GetUserByID(user.ID)
+	if err != nil {
+		log.Printf("UpdateUser: Error retrieving existing user data: %v", err)
+		return err
+	}
+
+	if user.Username != "" {
+		existingUser.Username = user.Username
+	}
+	if user.Name != "" {
+		existingUser.Name = user.Name
+	}
+	if user.Email != "" {
+		existingUser.Email = user.Email
+	}
+	if user.Role != "" {
+		existingUser.Role = user.Role
+	}
+	if user.Status != "" {
+		existingUser.Status = user.Status
+	}
+
+	_, err = db.Exec(`
         UPDATE users 
         SET username = $1, name = $2, email = $3, role = $4, status = $5, updated_at = $6
         WHERE id = $7`,
-		user.Username, user.Name, user.Email, user.Role, user.Status, time.Now(), user.ID,
+		existingUser.Username, existingUser.Name, existingUser.Email,
+		existingUser.Role, existingUser.Status, time.Now(), user.ID,
 	)
+
+	if err != nil {
+		log.Printf("UpdateUser: Error updating user ID %d: %v", user.ID, err)
+	}
+
 	return err
 }
 
