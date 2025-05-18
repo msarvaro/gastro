@@ -76,26 +76,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('role', data.role);
                     document.cookie = `auth_token=${data.token}; path=/`;
-                    
-                    console.log("Auth.js: Login successful. Role:", data.role);
-                    console.log("Auth.js: Token stored:", data.token ? "Yes" : "No");
-                    
-                    if (data.role === 'admin') {
-                        console.log("Admin detected, redirecting to manager");
-                        window.location.href = '/manager';
-                    } else if (data.role === 'manager') {
-                        console.log("Manager detected, redirecting to manager");
-                        window.location.href = '/manager';
-                    } else if (data.role === 'waiter') {
-                        console.log("Waiter detected, redirecting to waiter");
-                        window.location.href = '/waiter';
-                    } else if (data.role === 'cook') {
-                        console.log("Cook detected, redirecting to kitchen");
-                        window.location.href = '/kitchen';
-                    } else {
-                        console.log("Redirecting to default");
-                        window.location.href = '/';
-                    }
+
+                    window.location.href = data.redirect
                 } else {
                     console.error("Login failed:", data);
                     alert("Login failed: " + (data.message || 'Неверные учетные данные'));

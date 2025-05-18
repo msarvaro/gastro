@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"restaurant-management/internal/database"
+	"restaurant-management/internal/middleware"
 	"restaurant-management/internal/models"
 	"strconv"
 
@@ -94,11 +95,45 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Отладка: выводим значения полей перед сохранением
-	log.Printf("CreateUser: Received user data - Username: %q, Name: %q, Email: %q, Role: %q, Status: %q",
-		user.Username, user.Name, user.Email, user.Role, user.Status)
+	// Extract business ID from request context (added by BusinessMiddleware)
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		log.Printf("CreateUser: Could not parse business ID from context")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-	if err := h.db.CreateUser(&user); err != nil {
+	// Extract user role from context
+	userRole, ok := middleware.GetUserRoleFromContext(r.Context())
+	if !ok {
+		log.Printf("CreateUser: Could not extract user role from context")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("CreateUser: Request from user with role %s", userRole)
+
+	// If the creator is a manager, they must have a business ID
+	if userRole == "manager" && businessID == 0 {
+		log.Printf("CreateUser: Manager attempted to create user without a business ID")
+		http.Error(w, "Managers must specify a business ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check if user explicitly provided a business_id in the request
+	if user.BusinessID > 0 {
+		// Allow admins to override the business ID
+		if userRole == "admin" {
+			businessID = user.BusinessID
+			log.Printf("CreateUser: Admin overriding with business ID %d from request", businessID)
+		} else {
+			// Non-admins can only create users in their own business
+			log.Printf("CreateUser: Non-admin attempted to override business ID, using context business ID %d instead", businessID)
+		}
+	}
+
+	log.Printf("CreateUser: Using business ID %d for new user", businessID)
+
+	if err := h.db.CreateUser(&user, businessID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
