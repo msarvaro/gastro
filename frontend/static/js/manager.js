@@ -90,6 +90,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             li.classList.toggle('active', route === currentPath);
         });
         
+        // Специальная обработка для разделов при прямом переходе/обновлении страницы
         if (activeSection === 'inventory') {
             showInventoryTab('stock');
         }
@@ -529,7 +530,7 @@ function setupStaffEventListeners() {
                 status: 'active'
             };
 
-            fetch('/api/staff/users', {
+            fetch(getUsersApiEndpoint(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -575,7 +576,7 @@ function setupStaffEventListeners() {
                 status: formData.get('status')
             };
 
-            fetch(`/api/staff/users/${userId}`, {
+            fetch(`${getUsersApiEndpoint()}/${userId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -707,6 +708,19 @@ function showSection(sectionName) {
             console.warn(`showSection: Element with ID '${s_name}-section' not found.`);
         }
     });
+
+    // Загружаем данные для соответствующего раздела
+    if (sectionName === 'staff') {
+        // По умолчанию загружаем данные пользователей (первая вкладка)
+        console.log('Автоматически загружаем данные пользователей при показе раздела персонала');
+        
+        // Определяем активную вкладку или используем "users" по умолчанию
+        const activeTab = document.querySelector('#staff-section .tab-btn.active');
+        const tabName = activeTab ? activeTab.getAttribute('data-tab') : 'users';
+        
+        // Загружаем данные в зависимости от активной вкладки
+        showStaffTab(tabName);
+    }
 
     // The active menu item highlighting is handled in the DOMContentLoaded scope
     // based on currentPath, so it's removed from here to avoid the ReferenceError.
@@ -1453,6 +1467,14 @@ document.getElementById('addRequestForm').addEventListener('submit', function(e)
 
 // Показать вкладку в секции персонала
 function showStaffTab(tab) {
+    console.log(`showStaffTab: Показываем вкладку ${tab}`);
+    
+    // Если не указана вкладка или указана неверно, используем "users" по умолчанию
+    if (!tab || !['users', 'shifts'].includes(tab)) {
+        console.log(`showStaffTab: Указана неверная вкладка ${tab}, используем users по умолчанию`);
+        tab = 'users';
+    }
+    
     // Скрываем все вкладки
     document.querySelectorAll('#staff-section .tab-content').forEach(el => {
         el.style.display = 'none';
@@ -1467,12 +1489,16 @@ function showStaffTab(tab) {
     const tabContent = document.getElementById(`staff-${tab}-tab`);
     if (tabContent) {
         tabContent.style.display = 'block';
+    } else {
+        console.error(`showStaffTab: Элемент с ID staff-${tab}-tab не найден`);
     }
 
     // Добавляем активное состояние кнопке
     const tabBtn = document.querySelector(`#staff-section .tab-btn[data-tab="${tab}"]`);
     if (tabBtn) {
         tabBtn.classList.add('active');
+    } else {
+        console.error(`showStaffTab: Кнопка с атрибутом data-tab="${tab}" не найдена`);
     }
 
     // Загружаем данные в зависимости от выбранной вкладки
@@ -1483,14 +1509,14 @@ function showStaffTab(tab) {
     }
 }
 
-// Определяет правильный API-эндпоинт для пользователей
+// Определяет API-эндпоинт для пользователей
 function getUsersApiEndpoint() {
-    // Всегда используем эндпоинт менеджера для всех пользователей
+    // Всегда используем эндпоинт менеджера независимо от роли
     return '/api/manager/users';
 }
 
 function getShiftsApiEndpoint() {
-    // Всегда используем эндпоинт менеджера для всех пользователей
+    // Всегда используем эндпоинт менеджера независимо от роли
     return '/api/manager/shifts';
 }
 
@@ -2024,9 +2050,6 @@ async function loadShifts() {
         
         // Вместо всплывающего окна с ошибкой просто показываем сообщение в таблице
         console.log("Ошибка загрузки данных о сменах подавлена для улучшения UX");
-        
-        // Создаем демо-данные для отображения, чтобы интерфейс не был пустым
-        populateDummyShifts(tbody);
     }
 }
 
@@ -2623,519 +2646,6 @@ async function loadAdminPanel() {
     }
 }
 
-// Настройка обработчиков событий для админ-панели
-function setupAdminPanelEventListeners() {
-    // Кнопка обновления
-    const refreshBtn = document.getElementById('refreshAdminBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', loadAdminPanel);
-    }
-    
-    // Кнопки управления разделами
-    const manageUsersBtn = document.getElementById('manageUsersBtn');
-    if (manageUsersBtn) {
-        manageUsersBtn.addEventListener('click', () => {
-            showAdminSection('users');
-            loadAdminUsers();
-        });
-    }
-    
-    const manageBranchesBtn = document.getElementById('manageBranchesBtn');
-    if (manageBranchesBtn) {
-        manageBranchesBtn.addEventListener('click', () => {
-            showAdminSection('branches');
-            loadBranches();
-        });
-    }
-    
-    const systemSettingsBtn = document.getElementById('systemSettingsBtn');
-    if (systemSettingsBtn) {
-        systemSettingsBtn.addEventListener('click', () => {
-            showAdminSection('settings');
-            loadSystemSettings();
-        });
-    }
-    
-    // Фильтры для пользователей
-    const userRoleFilter = document.getElementById('adminUserRoleFilter');
-    if (userRoleFilter) {
-        userRoleFilter.addEventListener('change', () => loadAdminUsers());
-    }
-    
-    const userStatusFilter = document.getElementById('adminUserStatusFilter');
-    if (userStatusFilter) {
-        userStatusFilter.addEventListener('change', () => loadAdminUsers());
-    }
-    
-    const userSearch = document.getElementById('adminUserSearch');
-    if (userSearch) {
-        userSearch.addEventListener('input', debounce(() => loadAdminUsers(), 300));
-    }
-    
-    // Создание пользователя
-    const createUserBtn = document.getElementById('createUserAdminBtn');
-    if (createUserBtn) {
-        createUserBtn.addEventListener('click', showAddUserModal);
-    }
-    
-    // Пагинация пользователей
-    const prevPageBtn = document.getElementById('prevUserPageBtn');
-    if (prevPageBtn) {
-        prevPageBtn.addEventListener('click', () => {
-            const currentPage = parseInt(localStorage.getItem('adminUsersPage') || '1');
-            if (currentPage > 1) {
-                localStorage.setItem('adminUsersPage', (currentPage - 1).toString());
-                loadAdminUsers();
-            }
-        });
-    }
-    
-    const nextPageBtn = document.getElementById('nextUserPageBtn');
-    if (nextPageBtn) {
-        nextPageBtn.addEventListener('click', () => {
-            const currentPage = parseInt(localStorage.getItem('adminUsersPage') || '1');
-            localStorage.setItem('adminUsersPage', (currentPage + 1).toString());
-            loadAdminUsers();
-        });
-    }
-    
-    // Форма системных настроек
-    const settingsForm = document.getElementById('systemSettingsForm');
-    if (settingsForm) {
-        settingsForm.addEventListener('submit', saveSystemSettings);
-    }
-    
-    const resetSettingsBtn = document.getElementById('resetSettingsBtn');
-    if (resetSettingsBtn) {
-        resetSettingsBtn.addEventListener('click', () => loadSystemSettings());
-    }
-    
-    // Фильтры для филиалов
-    const branchStatusFilter = document.getElementById('branchStatusFilter');
-    if (branchStatusFilter) {
-        branchStatusFilter.addEventListener('change', () => loadBranches());
-    }
-    
-    const branchSearch = document.getElementById('branchSearch');
-    if (branchSearch) {
-        branchSearch.addEventListener('input', debounce(() => loadBranches(), 300));
-    }
-    
-    // Добавление филиала
-    const createBranchBtn = document.getElementById('createBranchBtn');
-    if (createBranchBtn) {
-        createBranchBtn.addEventListener('click', showAddBranchModal);
-    }
-}
-
-// Показ определенной секции админ-панели
-function showAdminSection(section) {
-    // Скрываем все секции
-    document.querySelectorAll('.admin-section').forEach(el => {
-        el.style.display = 'none';
-    });
-    
-    // Показываем нужную секцию
-    const sectionElement = document.getElementById(`admin-${section}-section`);
-    if (sectionElement) {
-        sectionElement.style.display = 'block';
-    }
-}
-
-// Загрузка статистики по пользователям
-async function loadAdminUserStats() {
-    try {
-        const token = localStorage.getItem('token');
-        const endpoint = '/api/admin/statistics/users';
-        
-        const response = await fetch(endpoint, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to load user statistics');
-        }
-        
-        const data = await response.json();
-        
-        // Обновляем счетчик пользователей
-        const usersCountElement = document.getElementById('total-admin-users');
-        if (usersCountElement) {
-            usersCountElement.textContent = data.totalUsers || '0';
-        }
-    } catch (error) {
-        console.error('Error loading user statistics:', error);
-        // Обрабатываем ошибку тихо, чтобы не прерывать загрузку всей панели
-    }
-}
-
-// Загрузка статистики по филиалам
-async function loadBranchStats() {
-    try {
-        const token = localStorage.getItem('token');
-        const endpoint = '/api/admin/statistics/branches';
-        
-        const response = await fetch(endpoint, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to load branch statistics');
-        }
-        
-        const data = await response.json();
-        
-        // Обновляем счетчик филиалов
-        const branchesCountElement = document.getElementById('total-branches');
-        if (branchesCountElement) {
-            branchesCountElement.textContent = data.totalBranches || '0';
-        }
-    } catch (error) {
-        console.error('Error loading branch statistics:', error);
-        // Обрабатываем ошибку тихо, чтобы не прерывать загрузку всей панели
-    }
-}
-
-// Загрузка пользователей для админ-панели
-async function loadAdminUsers() {
-    try {
-        const token = localStorage.getItem('token');
-        const role = document.getElementById('adminUserRoleFilter').value;
-        const status = document.getElementById('adminUserStatusFilter').value;
-        const search = document.getElementById('adminUserSearch').value;
-        const page = parseInt(localStorage.getItem('adminUsersPage') || '1');
-        
-        let endpoint = getUsersApiEndpoint() + '?';
-        if (role) endpoint += `role=${role}&`;
-        if (status) endpoint += `status=${status}&`;
-        if (search) endpoint += `search=${encodeURIComponent(search)}&`;
-        endpoint += `page=${page}&limit=10`;
-        
-        const response = await fetch(endpoint, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to load users');
-        }
-        
-        const data = await response.json();
-        let users = Array.isArray(data) ? data : (data.users || []);
-        const totalUsers = data.total || users.length;
-        
-        // Обновляем информацию о странице
-        const pageInfo = document.getElementById('userPageInfo');
-        if (pageInfo) {
-            const totalPages = Math.ceil(totalUsers / 10);
-            pageInfo.textContent = `Страница ${page} из ${totalPages || 1}`;
-        }
-        
-        // Обновляем таблицу пользователей
-        const tbody = document.querySelector('#admin-users-table tbody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '';
-        
-        if (users.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="no-results">Пользователи не найдены</td>
-                </tr>`;
-        } else {
-            users.forEach(user => {
-                const formattedDate = formatUserDate(user.created_at);
-                
-                const tr = document.createElement('tr');
-                tr.setAttribute('data-user-id', user.id);
-                tr.innerHTML = `
-                    <td>${user.username || ''}</td>
-                    <td>${user.name || ''}</td>
-                    <td>${user.email || ''}</td>
-                    <td data-role="${user.role || ''}">${translateRole(user.role || '')}</td>
-                    <td><span class="status-badge ${user.status || ''}">${translateStatus(user.status || '')}</span></td>
-                    <td>${formattedDate}</td>
-                    <td class="actions">
-                        <button onclick="editUser(${user.id})" class="edit-btn" title="Редактировать">
-                            <img src="/static/images/edit.svg" alt="Редактировать" class="icon">
-                        </button>
-                        <button onclick="deleteUser(${user.id})" class="delete-btn" title="Удалить">
-                            <img src="/static/images/delete.svg" alt="Удалить" class="icon">
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-        
-    } catch (error) {
-        console.error('Error loading admin users:', error);
-        showError('Ошибка при загрузке пользователей');
-    }
-}
-
-// Загрузка филиалов
-async function loadBranches() {
-    try {
-        const token = localStorage.getItem('token');
-        const status = document.getElementById('branchStatusFilter').value;
-        const search = document.getElementById('branchSearch').value;
-        
-        let endpoint = '/api/admin/branches?';
-        if (status) endpoint += `status=${status}&`;
-        if (search) endpoint += `search=${encodeURIComponent(search)}`;
-        
-        const response = await fetch(endpoint, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to load branches');
-        }
-        
-        const data = await response.json();
-        const branches = Array.isArray(data) ? data : (data.branches || []);
-        
-        // Обновляем таблицу филиалов
-        const tbody = document.querySelector('#branches-table tbody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '';
-        
-        if (branches.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="no-results">Филиалы не найдены</td>
-                </tr>`;
-        } else {
-            branches.forEach(branch => {
-                const tr = document.createElement('tr');
-                tr.setAttribute('data-branch-id', branch.id);
-                tr.innerHTML = `
-                    <td>${branch.name || ''}</td>
-                    <td>${branch.address || ''}</td>
-                    <td>${branch.phone || ''}</td>
-                    <td>${branch.manager_name || 'Не назначен'}</td>
-                    <td><span class="status-badge ${branch.status || ''}">${translateBranchStatus(branch.status || '')}</span></td>
-                    <td class="actions">
-                        <button onclick="editBranch(${branch.id})" class="edit-btn" title="Редактировать">
-                            <img src="/static/images/edit.svg" alt="Редактировать" class="icon">
-                        </button>
-                        <button onclick="deleteBranch(${branch.id})" class="delete-btn" title="Удалить">
-                            <img src="/static/images/delete.svg" alt="Удалить" class="icon">
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-        
-    } catch (error) {
-        console.error('Error loading branches:', error);
-        showError('Ошибка при загрузке филиалов');
-    }
-}
-
-// Загрузка системных настроек
-async function loadSystemSettings() {
-    try {
-        const token = localStorage.getItem('token');
-        const endpoint = '/api/admin/settings';
-        
-        const response = await fetch(endpoint, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to load system settings');
-        }
-        
-        const settings = await response.json();
-        
-        // Заполняем форму настроек
-        document.getElementById('companyName').value = settings.companyName || '';
-        document.getElementById('contactEmail').value = settings.contactEmail || '';
-        document.getElementById('contactPhone').value = settings.contactPhone || '';
-        document.getElementById('sessionTimeout').value = settings.sessionTimeout || 30;
-        document.getElementById('passwordPolicy').value = settings.passwordPolicy || 'medium';
-        
-    } catch (error) {
-        console.error('Error loading system settings:', error);
-        showError('Ошибка при загрузке системных настроек');
-    }
-}
-
-// Сохранение системных настроек
-async function saveSystemSettings(event) {
-    event.preventDefault();
-    
-    try {
-        const token = localStorage.getItem('token');
-        const form = event.target;
-        const formData = new FormData(form);
-        
-        const settings = {
-            companyName: formData.get('companyName'),
-            contactEmail: formData.get('contactEmail'),
-            contactPhone: formData.get('contactPhone'),
-            sessionTimeout: parseInt(formData.get('sessionTimeout')),
-            passwordPolicy: formData.get('passwordPolicy')
-        };
-        
-        const response = await fetch('/api/admin/settings', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(settings)
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to save system settings');
-        }
-        
-        showSuccess('Настройки успешно сохранены');
-        
-    } catch (error) {
-        console.error('Error saving system settings:', error);
-        showError('Ошибка при сохранении настроек');
-    }
-}
-
-// Показ модального окна добавления филиала
-function showAddBranchModal() {
-    const modal = document.getElementById('branchModal');
-    if (!modal) {
-        showError('Модальное окно не найдено');
-        return;
-    }
-    
-    const form = document.getElementById('branchForm');
-    if (!form) return;
-    
-    form.reset();
-    document.getElementById('branchModalTitle').textContent = 'Добавить филиал';
-    document.getElementById('branch-id').value = '';
-    
-    showModal('branchModal');
-    
-    // Загружаем список менеджеров для выпадающего списка
-    loadManagersForSelect();
-}
-
-// Загрузка менеджеров для выпадающего списка в форме филиала
-async function loadManagersForSelect() {
-    try {
-        const managers = await loadManagers();
-        const select = document.getElementById('branch-manager');
-        if (!select) return;
-        
-        select.innerHTML = '<option value="">Выберите менеджера</option>';
-        
-        managers.forEach(manager => {
-            const option = document.createElement('option');
-            option.value = manager.id;
-            option.textContent = manager.name || manager.username;
-            select.appendChild(option);
-        });
-        
-    } catch (error) {
-        console.error('Error loading managers for select:', error);
-    }
-}
-
-// Функция для перевода статуса филиала
-function translateBranchStatus(status) {
-    const statuses = {
-        'active': 'Активен',
-        'closed': 'Закрыт',
-        'pending': 'В разработке'
-    };
-    return statuses[status] || status;
-}
-
-// Редактирование филиала
-async function editBranch(id) {
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/admin/branches/${id}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to load branch data');
-        }
-        
-        const branch = await response.json();
-        
-        const modal = document.getElementById('branchModal');
-        if (!modal) return;
-        
-        const form = document.getElementById('branchForm');
-        if (!form) return;
-        
-        form.reset();
-        document.getElementById('branchModalTitle').textContent = 'Редактировать филиал';
-        document.getElementById('branch-id').value = branch.id;
-        document.getElementById('branch-name').value = branch.name || '';
-        document.getElementById('branch-address').value = branch.address || '';
-        document.getElementById('branch-phone').value = branch.phone || '';
-        document.getElementById('branch-email').value = branch.email || '';
-        document.getElementById('branch-status').value = branch.status || 'active';
-        
-        // Загружаем список менеджеров и выбираем текущего
-        await loadManagersForSelect();
-        if (branch.manager_id) {
-            document.getElementById('branch-manager').value = branch.manager_id;
-        }
-        
-        showModal('branchModal');
-        
-    } catch (error) {
-        console.error('Error editing branch:', error);
-        showError('Ошибка при загрузке данных филиала');
-    }
-}
-
-// Удаление филиала
-async function deleteBranch(id) {
-    if (confirm('Вы уверены, что хотите удалить этот филиал?')) {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/admin/branches/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to delete branch');
-            }
-            
-            loadBranches();
-            showSuccess('Филиал успешно удален');
-            
-        } catch (error) {
-            console.error('Error deleting branch:', error);
-            showError('Ошибка при удалении филиала');
-        }
-    }
-}
-
-// Создаем демо-данные для смен, если API недоступен
 function populateDummyShifts(tbody) {
     const dummyShifts = [
         {
