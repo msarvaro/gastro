@@ -35,12 +35,10 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const usernameInput = document.getElementById('username');
             const passwordInput = document.getElementById('password');
-            const rememberCheckbox = document.querySelector('.remember-checkbox');
 
             console.log("Form elements found:", {
                 username: !!usernameInput,
                 password: !!passwordInput,
-                remember: !!rememberCheckbox
             });
 
             if (!usernameInput || !passwordInput) {
@@ -51,13 +49,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const username = usernameInput.value;
             const password = passwordInput.value;
-            const remember = rememberCheckbox ? rememberCheckbox.checked : false;
 
             console.log("Attempting login with username:", username);
             const requestData = { 
                 username, 
                 password,
-                remember
             };
   
             try {

@@ -19,7 +19,6 @@ type AuthHandler struct {
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-	Remember bool   `json:"remember"`
 }
 
 type LoginResponse struct {
@@ -65,9 +64,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Login handler: Password verified successfully")
 
 	expirationTime := time.Now().Add(24 * time.Hour)
-	if req.Remember {
-		expirationTime = time.Now().Add(30 * 24 * time.Hour)
-	}
 
 	claims := jwt.MapClaims{
 		"user_id": user.ID,
