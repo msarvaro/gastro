@@ -187,10 +187,10 @@ func (db *DB) CreateShift(shift *models.Shift, employeeIDs []int) (*models.Shift
 
 	// Вставляем запись о смене
 	err = tx.QueryRow(`
-		INSERT INTO shifts (date, start_time, end_time, manager_id, notes, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $6)
+		INSERT INTO shifts (date, start_time, end_time, manager_id, business_id, notes, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
 		RETURNING id, created_at, updated_at
-	`, shift.Date, shift.StartTime, shift.EndTime, shift.ManagerID, shift.Notes, time.Now()).
+	`, shift.Date, shift.StartTime, shift.EndTime, shift.ManagerID, shift.BusinessID, shift.Notes, time.Now()).
 		Scan(&shift.ID, &shift.CreatedAt, &shift.UpdatedAt)
 
 	if err != nil {
@@ -202,9 +202,9 @@ func (db *DB) CreateShift(shift *models.Shift, employeeIDs []int) (*models.Shift
 	// Назначаем сотрудников на смену
 	for _, employeeID := range employeeIDs {
 		_, err := tx.Exec(`
-			INSERT INTO shift_employees (shift_id, employee_id, created_at)
-			VALUES ($1, $2, $3)
-		`, shift.ID, employeeID, time.Now())
+			INSERT INTO shift_employees (shift_id, employee_id, business_id, created_at)
+			VALUES ($1, $2, $3, $4)
+		`, shift.ID, employeeID, shift.BusinessID, time.Now())
 
 		if err != nil {
 			tx.Rollback()
@@ -241,6 +241,16 @@ func (db *DB) UpdateShift(shift *models.Shift, employeeIDs []int) error {
 		return err
 	}
 
+	// Получаем business_id из существующей смены, если он не был указан
+	if shift.BusinessID == 0 {
+		err = tx.QueryRow("SELECT business_id FROM shifts WHERE id = $1", shift.ID).Scan(&shift.BusinessID)
+		if err != nil {
+			tx.Rollback()
+			log.Printf("Error getting business_id for shift %d: %v", shift.ID, err)
+			return err
+		}
+	}
+
 	// Удаляем все существующие связи с сотрудниками
 	_, err = tx.Exec("DELETE FROM shift_employees WHERE shift_id = $1", shift.ID)
 	if err != nil {
@@ -252,9 +262,9 @@ func (db *DB) UpdateShift(shift *models.Shift, employeeIDs []int) error {
 	// Добавляем новые связи с сотрудниками
 	for _, employeeID := range employeeIDs {
 		_, err := tx.Exec(`
-			INSERT INTO shift_employees (shift_id, employee_id, created_at)
-			VALUES ($1, $2, $3)
-		`, shift.ID, employeeID, time.Now())
+			INSERT INTO shift_employees (shift_id, employee_id, business_id, created_at)
+			VALUES ($1, $2, $3, $4)
+		`, shift.ID, employeeID, shift.BusinessID, time.Now())
 
 		if err != nil {
 			tx.Rollback()

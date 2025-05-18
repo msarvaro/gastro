@@ -2196,7 +2196,7 @@ async function saveShift(e) {
             manager_id: managerId || null,
             status: status,
             notes: notes,
-            employees: selectedEmployees
+            employee_ids: selectedEmployees
         };
         
         // Определяем метод и URL в зависимости от того, создание или редактирование

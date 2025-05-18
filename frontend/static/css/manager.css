@@ -3,6 +3,33 @@ body {
     font-family: "Inter", sans-serif;
     background: #e5e5e5;
 }
+
+/* Media query for responsive layout */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 70px !important;
+    }
+    
+    .sidebar .logo .sidebar-label,
+    .sidebar nav ul li .sidebar-label,
+    .sidebar .logout .sidebar-label {
+        display: none;
+    }
+    
+    .main-content {
+        margin-left: 70px !important;
+        padding: 20px !important;
+    }
+    
+    .cards {
+        flex-direction: column;
+    }
+    
+    .menu-content {
+        grid-template-columns: 1fr !important;
+    }
+}
+
 .sidebar {
     position: fixed;
     margin: 0;
@@ -15,7 +42,7 @@ body {
     flex-direction: column;
     z-index: 1000;
     transition: width 0.2s, box-shadow 0.2s;
-
+    overflow-y: auto;
 }
 .sidebar.closed {
     width: 102px;
@@ -265,10 +292,14 @@ tr:nth-child(even) {
     display: none;
     position: fixed;
     z-index: 2000;
-    left: 0; top: 0; width: 100vw; height: 100vh;
+    left: 0; 
+    top: 0; 
+    width: 100vw; 
+    height: 100vh;
     background: rgba(0,0,0,0.2);
     justify-content: center;
     align-items: center;
+    overflow-y: auto;
 }
 .modal.active {
     display: flex;
@@ -277,10 +308,13 @@ tr:nth-child(even) {
     background: #fff;
     border-radius: 10px;
     padding: 32px 28px 24px 28px;
-    min-width: 320px;
-    max-width: 400px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 0 2px 16px rgba(0,0,0,0.12);
     position: relative;
+    margin: auto;
 }
 .modal-content h3 {
     margin-top: 0;
@@ -505,4 +539,110 @@ tr:nth-child(even) {
 .modal-content textarea {
     min-height: 100px;
     resize: vertical;
+}
+
+@media (max-width: 576px) {
+    .modal-content {
+        width: 95%;
+        padding: 20px 16px 16px 16px;
+        max-height: 85vh;
+    }
+    
+    .filters {
+        flex-direction: column;
+    }
+    
+    .tabs {
+        flex-wrap: wrap;
+    }
+    
+    .tab-btn {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 14px;
+        text-align: center;
+    }
+}
+
+/* Staff section improvements */
+#staff-section .table-section {
+    overflow-x: auto;
+}
+
+/* User form styles */
+#addUserModal .modal-content,
+#editUserModal .modal-content,
+#shiftModal .modal-content {
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Time inputs in shift modal */
+.time-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.time-input {
+    flex: 1;
+    min-width: 150px;
+}
+
+/* Employee container in shift modal */
+#shift-employees-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.employee-group {
+    margin-bottom: 15px;
+}
+
+.employee-group-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.employee-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.employee-item label {
+    margin-left: 5px;
+}
+
+/* Table responsiveness */
+@media (max-width: 992px) {
+    .table-section {
+        overflow-x: auto;
+    }
+    
+    table {
+        min-width: 600px;
+    }
+}
+
+/* Modal action buttons responsiveness */
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+@media (max-width: 480px) {
+    .modal-actions {
+        flex-direction: column;
+    }
+    
+    .modal-actions button {
+        width: 100%;
+        margin-bottom: 10px;
+    }
 }

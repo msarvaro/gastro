@@ -351,26 +351,82 @@ async function loadProfile() {
             console.log('Время начала:', shift.start_time);
             console.log('Время окончания:', shift.end_time);
             
-            const startDate = new Date(shift.start_time);
-            const endDate = new Date(shift.end_time);
-   
-            // Вычисляем время до конца смены
+            // Получаем текущую дату
             const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            // Извлекаем только время из строк времени
+            let startHour = 0, startMinute = 0, endHour = 0, endMinute = 0;
+            
+            // Парсим время из строк
+            if (typeof shift.start_time === 'string') {
+                const timeMatch = shift.start_time.match(/(\d{1,2}):(\d{1,2})/);
+                if (timeMatch) {
+                    startHour = parseInt(timeMatch[1], 10);
+                    startMinute = parseInt(timeMatch[2], 10);
+                } else if (shift.start_time.includes('T')) {
+                    const timePart = shift.start_time.split('T')[1] || '';
+                    const timeComponents = timePart.split(':');
+                    if (timeComponents.length >= 2) {
+                        startHour = parseInt(timeComponents[0], 10);
+                        startMinute = parseInt(timeComponents[1], 10);
+                    }
+                }
+            }
+            
+            if (typeof shift.end_time === 'string') {
+                const timeMatch = shift.end_time.match(/(\d{1,2}):(\d{1,2})/);
+                if (timeMatch) {
+                    endHour = parseInt(timeMatch[1], 10);
+                    endMinute = parseInt(timeMatch[2], 10);
+                } else if (shift.end_time.includes('T')) {
+                    const timePart = shift.end_time.split('T')[1] || '';
+                    const timeComponents = timePart.split(':');
+                    if (timeComponents.length >= 2) {
+                        endHour = parseInt(timeComponents[0], 10);
+                        endMinute = parseInt(timeComponents[1], 10);
+                    }
+                }
+            }
+            
+            // Создаем объекты Date с текущим днем и временем из смены
+            const startDate = new Date(today);
+            startDate.setHours(startHour, startMinute, 0, 0);
+            
+            const endDate = new Date(today);
+            endDate.setHours(endHour, endMinute, 0, 0);
+            
+            // Если конец смены раньше начала (смена заканчивается на следующий день)
+            if (endDate < startDate) {
+                endDate.setDate(endDate.getDate() + 1);
+            }
+            
+            console.log('Исправленное время начала:', startDate);
+            console.log('Исправленное время окончания:', endDate);
+            
             let timeLeftText = '';
             
-            // Получаем правильное представление времени смены
-            const startTimeStr = shift.start_time;
-            const endTimeStr = shift.end_time;
+            // Получаем удобные для отображения времена
+            const startTime = formatTime(shift.start_time);
+            const endTime = formatTime(shift.end_time);
 
             // Форматируем дату смены с использованием специальной функции
-            const formattedShiftDate = formatShiftDate(shift.date);
-
-            // Извлекаем только время (HH:MM)
-            const startTime = formatTime(startTimeStr);
-            const endTime = formatTime(endTimeStr);
+            const formattedShiftDate = formatShiftDate(shift.date) || new Date().toLocaleDateString('ru-RU');
 
             // Вычисляем оставшееся время
-            if (now < endDate) {
+            if (now < startDate) {
+                // Смена еще не началась
+                const diffMs = startDate - now;
+                const diffHrs = Math.floor(diffMs / 3600000); // часы
+                const diffMins = Math.round((diffMs % 3600000) / 60000); // оставшиеся минуты
+                
+                if (diffHrs > 0) {
+                    timeLeftText = `${diffHrs} ч ${diffMins} мин до начала смены`;
+                } else {
+                    timeLeftText = `${diffMins} мин до начала смены`;
+                }
+            } else if (now < endDate) {
+                // Смена идет в данный момент
                 const diffMs = endDate - now;
                 const diffHrs = Math.floor(diffMs / 3600000); // часы
                 const diffMins = Math.round((diffMs % 3600000) / 60000); // оставшиеся минуты
@@ -388,8 +444,8 @@ async function loadProfile() {
                 <div class="profile-info-card__content">
                     <p><b>Текущая смена:</b> ${formattedShiftDate}</p>
                     <p><b>Время:</b> ${startTime} - ${endTime}</p>
-                    <p><b>Статус:</b> <span class="status-badge status-badge--${shift.is_active ? 'ready' : 'new'}">${shift.is_active ? 'Активна' : 'Запланирована'}</span></p>
-                    <p><b>До конца:</b> ${timeLeftText}</p>
+                    <p><b>Статус:</b> <span class="status-text status-text--${now < startDate ? 'new' : (now < endDate ? 'ready' : 'completed')}">${now < startDate ? 'Запланирована' : (now < endDate ? 'Активна' : 'Завершена')}</span></p>
+                    <p><b>${now < startDate ? 'До начала:' : 'До конца:'}</b> ${timeLeftText}</p>
                     ${profileData.current_shift_manager ? `<p><b>Менеджер:</b> ${profileData.current_shift_manager}</p>` : ''}
                 </div>
             `;
@@ -501,10 +557,6 @@ async function loadProfile() {
                     <div class="profile-info-card__item">
                         <span>${profileData.performance_data.orders_completed}</span>
                         Заказов выполнено
-                    </div>
-                    <div class="profile-info-card__item">
-                        <span>${profileData.performance_data.average_service_time.toFixed(1)} мин</span>
-                        Среднее время обслуживания
                     </div>
                 </div>
             </div>

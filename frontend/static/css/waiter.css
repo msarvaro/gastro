@@ -1753,3 +1753,37 @@ body {
 .add-order-button:hover {
   background-color: #0056cc;
 }
+
+/* Status text style (non-clickable colored text) */
+.status-text {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+.status-text--new {
+    background-color: #1976D2; /* Blue */
+}
+
+.status-text--ready {
+    background-color: #00C853; /* Green */
+}
+
+.status-text--preparing {
+    background-color: #FF9800; /* Orange */
+}
+
+.status-text--served {
+    background-color: #9C27B0; /* Purple */
+}
+
+.status-text--completed {
+    background-color: #4CAF50; /* Green */
+}
+
+.status-text--cancelled {
+    background-color: #F44336; /* Red */
+}
