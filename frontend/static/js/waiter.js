@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '/waiter': 'tables',
             '/waiter/orders': 'orders',
             '/waiter/history': 'history',
-            '/waiter/profile': 'profile',
+            '/waiter/profile': 'profile'
         };
         
         const activeSection = sections[currentPath] || 'tables';
@@ -164,6 +164,7 @@ async function loadTables() {
         if (tablesStatusInfo) tablesStatusInfo.textContent = 'Ошибка загрузки столов';
     }
 }
+
 async function loadOrders() {
   
         const resp = await fetch('/api/waiter/orders', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
@@ -257,8 +258,267 @@ async function loadHistory() {
         if (historySubStatEl) historySubStatEl.textContent = 'Ошибка загрузки статистики';
     }
 }
+
+const formatTime = (dateOrTimeString) => {
+    console.log(dateOrTimeString);
+    if (!dateOrTimeString) return '';
+    
+    // Если это строка даты-времени, извлекаем только время
+    if (typeof dateOrTimeString === 'string' && dateOrTimeString.includes('T')) {
+        const timePart = dateOrTimeString.split('T')[1] || '00:00';
+        return timePart.substring(0, 5); // HH:MM
+    }
+    
+    // Если это строка времени в формате HH:MM:SS, возвращаем только HH:MM
+    if (typeof dateOrTimeString === 'string' && dateOrTimeString.includes(':')) {
+        return dateOrTimeString.substring(0, 5); // HH:MM
+    }
+    
+    // Если это объект Date, извлекаем время напрямую без создания нового объекта Date
+    if (dateOrTimeString instanceof Date) {
+        const hours = dateOrTimeString.getHours().toString().padStart(2, '0');
+        const minutes = dateOrTimeString.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+    }
+    
+    return dateOrTimeString; // Если ничего не подходит, вернем как есть
+};
+
+const formatDate = (date) => {
+    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
 async function loadProfile() {
-    // Здесь можно реализовать загрузку профиля через API, если потребуется
+    try {
+        // Получаем данные профиля
+        const response = await fetch('/api/waiter/profile', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const profileData = await response.json();
+        console.log("Профиль загружен:", profileData);
+        console.log("Имя:", profileData.name, "Тип:", typeof profileData.name);
+        console.log("Логин:", profileData.username, "Тип:", typeof profileData.username);
+        
+        // Обновляем шапку профиля
+        const profileHeaderEl = document.getElementById('profileHeaderName');
+        if (profileHeaderEl) {
+            profileHeaderEl.textContent = profileData.name || profileData.username;
+        }
+        
+        // Получаем контейнер для профиля
+        const profileContainer = document.getElementById('section-profile');
+        if (!profileContainer) return;
+        
+        // Обновляем основную информацию профиля (имя и роль)
+        const userDetailsHtml = `
+            <div class="profile-user-details">
+                <div class="profile-user-details__avatar"></div>
+                <div class="profile-user-details__info">
+                    <div>${profileData.name || profileData.username}</div>
+                    <div>Официант • ${profileData.email || ''}</div>
+                </div>
+            </div>
+        `;
+        
+        // Информация о текущей смене
+        let shiftInfoHtml = `
+            <div class="profile-info-card">
+                <div class="profile-info-card__header">
+                    <span style="font-size: 18px; margin-right: 8px;">🕒</span>
+                    Информация о смене
+                </div>
+        `;
+        
+        if (profileData.current_shift) {
+            const shift = profileData.current_shift;
+            console.log('Данные текущей смены:', shift);
+            console.log('Дата смены:', shift.date);
+            console.log('Время начала:', shift.start_time);
+            console.log('Время окончания:', shift.end_time);
+            
+            const startDate = new Date(shift.start_time);
+            const endDate = new Date(shift.end_time);
+   
+            // Вычисляем время до конца смены
+            const now = new Date();
+            let timeLeftText = '';
+            
+            // Получаем правильное представление времени смены
+            const startTimeStr = shift.start_time;
+            const endTimeStr = shift.end_time;
+
+            // Форматируем дату смены с использованием специальной функции
+            const formattedShiftDate = formatShiftDate(shift.date);
+
+            // Извлекаем только время (HH:MM)
+            const startTime = formatTime(startTimeStr);
+            const endTime = formatTime(endTimeStr);
+
+            // Вычисляем оставшееся время
+            if (now < endDate) {
+                const diffMs = endDate - now;
+                const diffHrs = Math.floor(diffMs / 3600000); // часы
+                const diffMins = Math.round((diffMs % 3600000) / 60000); // оставшиеся минуты
+                
+                if (diffHrs > 0) {
+                    timeLeftText = `${diffHrs} ч ${diffMins} мин до конца смены`;
+                } else {
+                    timeLeftText = `${diffMins} мин до конца смены`;
+                }
+            } else {
+                timeLeftText = 'Смена завершена';
+            }
+            
+            shiftInfoHtml += `
+                <div class="profile-info-card__content">
+                    <p><b>Текущая смена:</b> ${formattedShiftDate}</p>
+                    <p><b>Время:</b> ${startTime} - ${endTime}</p>
+                    <p><b>Статус:</b> <span class="status-badge status-badge--${shift.is_active ? 'ready' : 'new'}">${shift.is_active ? 'Активна' : 'Запланирована'}</span></p>
+                    <p><b>До конца:</b> ${timeLeftText}</p>
+                    ${profileData.current_shift_manager ? `<p><b>Менеджер:</b> ${profileData.current_shift_manager}</p>` : ''}
+                </div>
+            `;
+        } else {
+            shiftInfoHtml += `
+                <div class="profile-info-card__content">
+                    <p>В данный момент нет активной смены.</p>
+                </div>
+            `;
+        }
+        
+        // Добавляем будущие смены если есть
+        if (profileData.upcoming_shifts && profileData.upcoming_shifts.length > 0) {
+            shiftInfoHtml += `<div class="profile-info-card__header" style="margin-top: 16px;">Предстоящие смены</div>`;
+            shiftInfoHtml += `<div class="profile-info-card__content profile-info-card__content--flex">`;
+            
+            profileData.upcoming_shifts.forEach(shift => {
+                // Форматируем дату и время с использованием специальных функций
+                const formattedDate = formatShiftDate(shift.date);
+                const startTime = formatTime(shift.start_time);
+                const endTime = formatTime(shift.end_time);
+                
+                shiftInfoHtml += `
+                    <div class="profile-info-card__item">
+                        <span>${formattedDate}</span>
+                        ${startTime} - ${endTime}
+                    </div>
+                `;
+            });
+            
+            shiftInfoHtml += `</div>`;
+        }
+        
+        shiftInfoHtml += `</div>`;
+        
+        // Назначенные столы
+        let assignedTablesHtml = `
+            <div class="profile-info-card">
+                <div class="profile-info-card__header">
+                    <span style="font-size: 18px; margin-right: 8px;">🍽️</span>
+                    Назначенные столы
+                </div>
+                <div class="profile-info-card__content profile-info-card__content--flex">
+        `;
+        
+        if (profileData.assigned_tables && profileData.assigned_tables.length > 0) {
+            profileData.assigned_tables.forEach(table => {
+                assignedTablesHtml += `
+                    <div class="profile-table">
+                        Стол №${table.number}
+                        <span>${table.seats} мест • ${table.status === 'free' ? 'Свободен' : 'Занят'}</span>
+                    </div>
+                `;
+            });
+        } else {
+            assignedTablesHtml += `<p>Нет назначенных столов</p>`;
+        }
+        
+        assignedTablesHtml += `</div></div>`;
+        
+        // Статистика по заказам
+        let orderStatsHtml = `
+            <div class="profile-info-card">
+                <div class="profile-info-card__header">
+                    <span style="font-size: 18px; margin-right: 8px;">📋</span>
+                    Активные заказы
+                </div>
+                <div class="profile-info-card__content profile-info-card__content--grid">
+                    <div class="profile-info-card__item">
+                        <span>${profileData.order_stats.new}</span>
+                        Новые
+                    </div>
+                    <div class="profile-info-card__item">
+                        <span>${profileData.order_stats.accepted}</span>
+                        Принятые
+                    </div>
+                    <div class="profile-info-card__item">
+                        <span>${profileData.order_stats.preparing}</span>
+                        Готовятся
+                    </div>
+                    <div class="profile-info-card__item">
+                        <span>${profileData.order_stats.ready}</span>
+                        Готовы
+                    </div>
+                    <div class="profile-info-card__item">
+                        <span>${profileData.order_stats.served}</span>
+                        Поданы
+                    </div>
+                    <div class="profile-info-card__item">
+                        <span>${profileData.order_stats.total}</span>
+                        Всего
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Показатели эффективности
+        let performanceHtml = `
+            <div class="profile-info-card">
+                <div class="profile-info-card__header">
+                    <span style="font-size: 18px; margin-right: 8px;">📊</span>
+                    Эффективность
+                </div>
+                <div class="profile-info-card__content profile-info-card__content--grid">
+                    <div class="profile-info-card__item">
+                        <span>${profileData.performance_data.tables_served}</span>
+                        Столов обслужено
+                    </div>
+                    <div class="profile-info-card__item">
+                        <span>${profileData.performance_data.orders_completed}</span>
+                        Заказов выполнено
+                    </div>
+                    <div class="profile-info-card__item">
+                        <span>${profileData.performance_data.average_service_time.toFixed(1)} мин</span>
+                        Среднее время обслуживания
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Обновляем контент страницы
+        const contentWrapper = profileContainer.querySelector('.content-wrapper') || profileContainer;
+        contentWrapper.innerHTML = userDetailsHtml + shiftInfoHtml + assignedTablesHtml + orderStatsHtml + performanceHtml;
+        
+    } catch (error) {
+        console.error('Ошибка при загрузке профиля:', error);
+        
+        // Отображаем сообщение об ошибке
+        const profileContainer = document.getElementById('section-profile');
+        if (profileContainer) {
+            const contentWrapper = profileContainer.querySelector('.content-wrapper') || profileContainer;
+            contentWrapper.innerHTML = `
+                <div class="error-message" style="padding: 20px; text-align: center;">
+                    <p>Не удалось загрузить данные профиля</p>
+                    <button onclick="loadProfile()" style="margin-top: 10px; padding: 8px 16px;">Попробовать снова</button>
+                </div>
+            `;
+        }
+    }
 }
 
 function formatOrderTime(dateString) {
@@ -721,3 +981,26 @@ document.addEventListener('DOMContentLoaded', function() {
        }
     }
 }); 
+
+// Форматирует дату в российском формате дд.мм.гггг
+function formatShiftDate(dateString) {
+    if (!dateString) return '';
+    
+    try {
+        // Проверяем формат YYYY-MM-DD
+        if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, month, day] = dateString.split('-');
+            return `${day}.${month}.${year}`;
+        }
+        
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            return dateString;
+        }
+        
+        return date.toLocaleDateString('ru-RU');
+    } catch (error) {
+        console.error('Ошибка при форматировании даты смены:', error);
+        return dateString;
+    }
+} 

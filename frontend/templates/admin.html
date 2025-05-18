@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Управление пользователями</title>
+    <title>Панель администратора</title>
     <link rel="stylesheet" href="../static/css/admin.css" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto:wght@400;500&display=swap"
@@ -16,22 +16,48 @@
   </head>
   <body>
     <header class="header">
-      Управление пользователями |
+      <span class="admin-title">Панель администратора</span>
+      <nav class="main-nav">
+        <div class="nav-item active" data-section="users">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 21C20 18.8783 19.1571 16.8434 17.6569 15.3431C16.1566 13.8429 14.1217 13 12 13C9.87827 13 7.84344 13.8429 6.34315 15.3431C4.84285 16.8434 4 18.8783 4 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Пользователи</span>
+        </div>
+        <div class="nav-item" data-section="shifts">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 2V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M16 2V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M3 8H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M3.5 4.5H20.5C21.0523 4.5 21.5 4.94772 21.5 5.5V19.5C21.5 20.0523 21.0523 20.5 20.5 20.5H3.5C2.94772 20.5 2.5 20.0523 2.5 19.5V5.5C2.5 4.94772 2.94772 4.5 3.5 4.5Z" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="6" y="10" width="2" height="2" rx="0.5" fill="currentColor"/>
+            <rect x="11" y="10" width="2" height="2" rx="0.5" fill="currentColor"/>
+            <rect x="16" y="10" width="2" height="2" rx="0.5" fill="currentColor"/>
+            <rect x="6" y="15" width="2" height="2" rx="0.5" fill="currentColor"/>
+            <rect x="11" y="15" width="2" height="2" rx="0.5" fill="currentColor"/>
+            <rect x="16" y="15" width="2" height="2" rx="0.5" fill="currentColor"/>
+          </svg>
+          <span>Смены</span>
+        </div>
+      </nav>
       <button class="logout-btn" onclick="logout()">Выход</button>
     </header>
 
     <main class="main-content">
-      <div class="title-section">
-        <h1 class="page-title">Управление пользователями</h1>
-        <div class="user-count">Всего пользователей:<span id="total-users">0</span></div>
-        <button class="add-user-btn">Добавить пользователя</button>
-      </div>
+      <!-- Секция управления пользователями -->
+      <section id="section-users" class="section active">
+        <div class="title-section">
+          <h1 class="page-title">Управление пользователями</h1>
+          <div class="user-count">Всего пользователей:<span id="total-users">0</span></div>
+          <button class="add-user-btn">Добавить пользователя</button>
+        </div>
 
-      <div class="search-section">
-        <div class="search-bar">
+        <div class="search-section">
+          <div class="search-bar">
             <img src="/static/images/search.svg" alt="Поиск" class="search-icon">
             <input type="text" class="search-input" placeholder="Поиск пользователей...">
-          
+            
             <div class="filter-container">
               <button class="filter-btn">
                   <img src="/static/images/filter.svg" alt="Фильтр" class="filter-icon">
@@ -63,126 +89,351 @@
                       </div>
                   </div>
               </div>
+            </div>
           </div>
         </div>
-    </div>
 
-      <div class="table-container">
-        <table class="user-table">
-          <thead>
-            <tr>
-              <th>Пользователь</th>
-              <th>Роль</th>
-              <th>Статус</th>
-              <th>Последняя активность</th>
-              <th>Дата создания</th>
-              <th>Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Table content will be dynamically populated -->
-          </tbody>
-        </table>
-        <div class="pagination">
-          <div>
-            <svg
-              class="prev"
-              width="19"
-              height="19"
-              viewBox="0 0 19 19"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M11.875 14.25L7.125 9.5L11.875 4.75"
-                stroke="#6A6A6A"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ></path>
-            </svg>
-          </div>
-          <span>1 из 1 страниц</span>
-          <div>
-            <svg
-              class="next"
-              width="19"
-              height="19"
-              viewBox="0 0 19 19"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M7.125 14.25L11.875 9.5L7.125 4.75"
-                stroke="#6A6A6A"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ></path>
-            </svg>
+        <div class="table-container">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th>Пользователь</th>
+                <th>Имя</th>
+                <th>Роль</th>
+                <th>Статус</th>
+                <th>Последняя активность</th>
+                <th>Дата регистрации</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Table content will be dynamically populated -->
+            </tbody>
+          </table>
+          <div class="pagination">
+            <div>
+              <svg
+                class="prev"
+                width="19"
+                height="19"
+                viewBox="0 0 19 19"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M11.875 14.25L7.125 9.5L11.875 4.75"
+                  stroke="#6A6A6A"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
+            <span>1 из 1 страниц</span>
+            <div>
+              <svg
+                class="next"
+                width="19"
+                height="19"
+                viewBox="0 0 19 19"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M7.125 14.25L11.875 9.5L7.125 4.75"
+                  stroke="#6A6A6A"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="stats-container">
-        <div class="stat-card">
-          <div class="stat-title">Активные пользователи</div>
-          <div class="stat-value"></div>
+        <div class="stats-container">
+          <div class="stat-card">
+            <div class="stat-title">Активные пользователи</div>
+            <div class="stat-value"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">Роли</div>
+            <div class="stat-value"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">Новых за неделю</div>
+            <div class="stat-value"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">Заблокированных</div>
+            <div class="stat-value"></div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-title">Роли</div>
-          <div class="stat-value"></div>
+      </section>
+
+      <!-- Секция управления сменами -->
+      <section id="section-shifts" class="section">
+        <div class="title-section">
+          <h1 class="page-title">Управление сменами</h1>
+          <div class="user-count">Всего смен: <span id="total-shifts">0</span></div>
+          <button class="add-user-btn" id="addShiftBtn">Добавить смену</button>
         </div>
-        <div class="stat-card">
-          <div class="stat-title">Новых за неделю</div>
-          <div class="stat-value"></div>
+
+        <div class="search-section">
+          <div class="search-bar">
+            <img src="/static/images/search.svg" alt="Поиск" class="search-icon">
+            <input type="text" class="search-input" placeholder="Поиск смен...">
+            
+            <div class="filter-container">
+              <button class="filter-btn">
+                <img src="/static/images/filter.svg" alt="Фильтр" class="filter-icon">
+                <span>Фильтр</span>
+              </button>
+              <div class="filter-dropdown">
+                <div class="filter-item">
+                  <div class="filter-select" data-type="date">
+                    <span>Дата</span>
+                    <img src="/static/images/chevron.svg" alt=">" class="chevron-icon">
+                  </div>
+                  <div class="filter-options">
+                    <div class="option" data-value="all">Все даты</div>
+                    <div class="option" data-value="today">Сегодня</div>
+                    <div class="option" data-value="tomorrow">Завтра</div>
+                    <div class="option" data-value="week">Эта неделя</div>
+                    <div class="option" data-value="month">Этот месяц</div>
+                  </div>
+                </div>
+                <div class="filter-item">
+                  <div class="filter-select" data-type="status">
+                    <span>Статус</span>
+                    <img src="/static/images/chevron.svg" alt=">" class="chevron-icon">
+                  </div>
+                  <div class="filter-options">
+                    <div class="option" data-value="all">Все</div>
+                    <div class="option" data-value="active">Активные</div>
+                    <div class="option" data-value="pending">Ожидающие</div>
+                    <div class="option" data-value="completed">Завершённые</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-title">Заблокированных</div>
-          <div class="stat-value"></div>
+
+        <!-- Список смен (таблица) -->
+        <div class="table-container">
+          <table class="user-table shift-table">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Время</th>
+                <th>Ответственный менеджер</th>
+                <th>Статус</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="shifts-tbody">
+              <!-- Данные о сменах будут добавлены через JavaScript -->
+            </tbody>
+          </table>
+          <div class="pagination">
+            <div>
+              <svg
+                class="prev"
+                width="19"
+                height="19"
+                viewBox="0 0 19 19"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M11.875 14.25L7.125 9.5L11.875 4.75"
+                  stroke="#6A6A6A"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
+            <span>1 из 1 страниц</span>
+            <div>
+              <svg
+                class="next"
+                width="19"
+                height="19"
+                viewBox="0 0 19 19"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M7.125 14.25L11.875 9.5L7.125 4.75"
+                  stroke="#6A6A6A"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
     </main>
 
     <!-- Модальное окно добавления пользователя -->
     <div id="addUserModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">Добавить пользователя</div>
-                <button class="close-btn">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                </button>
-            </div>
-            <form id="addUserForm">
-                <div class="input-group">
-                    <label>Имя пользователя</label>
-                    <input type="text" name="username" required>
-                </div>
-                <div class="input-group">
-                    <label>Email</label>
-                    <input type="email" name="email" required>
-                </div>
-                <div class="input-group">
-                    <label>Пароль</label>
-                    <input type="password" name="password" required>
-                </div>
-                <div class="input-group">
-                    <label>Роль</label>
-                    <select name="role" required>
-                        <option value="waiter">Официант</option>
-                        <option value="cook">Повар</option>
-                        <option value="manager">Менеджер</option>
-                        <option value="client">Клиент</option>
-                    </select>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn-secondary close-btn">Отмена</button>
-                    <button type="submit" class="btn-primary">Добавить</button>
-                </div>
-            </form>
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">Добавить пользователя</div>
+          <button class="close-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
         </div>
+        <form id="addUserForm">
+          <div class="input-group">
+            <label>Логин</label>
+            <input type="text" name="username" required>
+          </div>
+          <div class="input-group">
+            <label>Имя</label>
+            <input type="text" name="name" required>
+          </div>
+          <div class="input-group">
+            <label>Email</label>
+            <input type="email" name="email" required>
+          </div>
+          <div class="input-group">
+            <label>Пароль</label>
+            <input type="password" name="password" required>
+          </div>
+          <div class="input-group">
+            <label>Роль</label>
+            <select name="role" required>
+              <option value="waiter">Официант</option>
+              <option value="cook">Повар</option>
+              <option value="manager">Менеджер</option>
+              <option value="client">Клиент</option>
+            </select>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary close-btn">Отмена</button>
+            <button type="submit" class="btn-primary">Добавить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модальное окно редактирования пользователя -->
+    <div id="editUserModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">Редактировать пользователя</div>
+          <button class="close-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <form id="editUserForm">
+          <div class="input-group">
+            <label>Логин</label>
+            <input type="text" name="username" required>
+          </div>
+          <div class="input-group">
+            <label>Имя</label>
+            <input type="text" name="name" required>
+          </div>
+          <div class="input-group">
+            <label>Роль</label>
+            <select name="role" required>
+              <option value="waiter">Официант</option>
+              <option value="cook">Повар</option>
+              <option value="manager">Менеджер</option>
+              <option value="client">Клиент</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Статус</label>
+            <select name="status" required>
+              <option value="active">Активен</option>
+              <option value="inactive">Неактивен</option>
+            </select>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary close-btn">Отмена</button>
+            <button type="submit" class="btn-primary">Сохранить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модальное окно для добавления/редактирования смены -->
+    <div id="shiftModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title" id="shiftModalTitle">Добавить смену</div>
+          <button class="close-btn close-modal-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <form id="shiftForm">
+          <input type="hidden" id="shift-id">
+          <div class="input-group">
+            <label for="shift-date">Дата</label>
+            <input type="date" id="shift-date" required>
+          </div>
+          
+          <div class="input-group time-inputs">
+            <div class="time-input">
+              <label for="shift-start-time">Время начала</label>
+              <input type="time" id="shift-start-time" required>
+            </div>
+            
+            <div class="time-input">
+              <label for="shift-end-time">Время окончания</label>
+              <input type="time" id="shift-end-time" required>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="shift-manager">Ответственный менеджер</label>
+            <select id="shift-manager" required>
+              <option value="">Выберите менеджера</option>
+              <!-- Список менеджеров будет добавлен через JavaScript -->
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label for="shift-status">Статус смены</label>
+            <select id="shift-status">
+              <option value="active">Активна</option>
+              <option value="pending">Ожидает</option>
+              <option value="completed">Завершена</option>
+              <option value="canceled">Отменена</option>
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label for="shift-notes">Примечания</label>
+            <textarea id="shift-notes" rows="2"></textarea>
+          </div>
+
+          <div class="input-group">
+            <label for="shift-employees-container">Сотрудники смены</label>
+            <div id="shift-employees-container" class="employees-container">
+              <!-- Списки сотрудников будут добавлены через JavaScript -->
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" id="cancelShiftBtn" class="btn-secondary">Отмена</button>
+            <button type="submit" id="saveShiftBtn" class="btn-primary">Сохранить</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <script src="../static/js/admin.js"></script>

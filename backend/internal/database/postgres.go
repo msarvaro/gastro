@@ -81,15 +81,18 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 func (db *DB) GetUserByID(id int) (*models.User, error) {
 	user := &models.User{}
 	var createdAt, updatedAt, lastActive sql.NullTime // Use NullTime for nullable timestamps
+	var name sql.NullString                           // Используем NullString для поля name
+
+	log.Printf("GetUserByID: Получение пользователя с ID=%d", id)
 
 	err := db.QueryRow(`
-        SELECT id, username, email, role, status, created_at, updated_at, last_active 
+        SELECT id, username, name, email, role, status, created_at, updated_at, last_active 
         FROM users 
         WHERE id = $1`,
 		id,
 	).Scan(
-		&user.ID, &user.Username, &user.Email, &user.Role, &user.Status,
-		&createdAt, &updatedAt, &lastActive, // &user.Name, // Temporarily commented out
+		&user.ID, &user.Username, &name, &user.Email, &user.Role, &user.Status,
+		&createdAt, &updatedAt, &lastActive,
 	)
 
 	if err != nil {
@@ -98,6 +101,15 @@ func (db *DB) GetUserByID(id int) (*models.User, error) {
 		}
 		log.Printf("Database error fetching user by ID %d: %v", id, err)
 		return nil, err
+	}
+
+	// Преобразуем NullString в строку
+	if name.Valid {
+		user.Name = name.String
+		log.Printf("GetUserByID: Имя пользователя %d получено: %q", id, user.Name)
+	} else {
+		user.Name = ""
+		log.Printf("GetUserByID: Имя пользователя %d отсутствует (NULL)", id)
 	}
 
 	user.CreatedAt = createdAt.Time
@@ -110,7 +122,7 @@ func (db *DB) GetUserByID(id int) (*models.User, error) {
 func (db *DB) GetUsers(page, limit int, status, role, search string) ([]models.User, int, error) {
 	// Базовый запрос
 	query := `
-        SELECT id, username, email, role, status, last_active
+        SELECT id, username, name, email, role, status, last_active, created_at
         FROM users
         WHERE 1=1
     `
@@ -132,18 +144,23 @@ func (db *DB) GetUsers(page, limit int, status, role, search string) ([]models.U
 
 	if search != "" {
 		query += ` AND (username ILIKE $` + strconv.Itoa(len(args)+1) +
+			` OR name ILIKE $` + strconv.Itoa(len(args)+1) +
 			` OR email ILIKE $` + strconv.Itoa(len(args)+1) + `)`
 		countQuery += ` AND (username ILIKE $` + strconv.Itoa(len(args)+1) +
+			` OR name ILIKE $` + strconv.Itoa(len(args)+1) +
 			` OR email ILIKE $` + strconv.Itoa(len(args)+1) + `)`
 		args = append(args, "%"+search+"%")
 	}
 
 	// Получаем общее количество
 	var total int
+	log.Printf("GetUsers DB: Выполнение count query: %s с аргументами: %v", countQuery, args)
 	err := db.QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
+		log.Printf("GetUsers DB: Ошибка при подсчете пользователей: %v", err)
 		return nil, 0, err
 	}
+	log.Printf("GetUsers DB: Всего пользователей: %d", total)
 
 	// Добавляем пагинацию
 	query += ` ORDER BY id DESC LIMIT $` + strconv.Itoa(len(args)+1) +
@@ -151,8 +168,10 @@ func (db *DB) GetUsers(page, limit int, status, role, search string) ([]models.U
 	args = append(args, limit, (page-1)*limit)
 
 	// Выполняем запрос
+	log.Printf("GetUsers DB: Выполнение query: %s с аргументами: %v", query, args)
 	rows, err := db.Query(query, args...)
 	if err != nil {
+		log.Printf("GetUsers DB: Ошибка при выполнении запроса: %v", err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -161,16 +180,29 @@ func (db *DB) GetUsers(page, limit int, status, role, search string) ([]models.U
 	for rows.Next() {
 		var u models.User
 		var lastActive sql.NullTime
-		err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.Status, &lastActive)
+		var name sql.NullString // Используем NullString для поля name
+
+		log.Printf("GetUsers DB: Сканирование строки...")
+		err := rows.Scan(&u.ID, &u.Username, &name, &u.Email, &u.Role, &u.Status, &lastActive, &u.CreatedAt)
 		if err != nil {
+			log.Printf("GetUsers DB: Ошибка при сканировании строки: %v", err)
 			return nil, 0, err
 		}
+
+		// Преобразуем NullString в строку
+		if name.Valid {
+			u.Name = name.String
+		} else {
+			u.Name = "" // Используем пустую строку для NULL
+		}
+
 		if lastActive.Valid {
 			u.LastActive = lastActive.Time
 		}
 		users = append(users, u)
 	}
 
+	log.Printf("GetUsers DB: Получено %d пользователей", len(users))
 	return users, total, nil
 }
 
@@ -198,9 +230,9 @@ func (db *DB) DeleteUser(id int) error {
 func (db *DB) UpdateUser(user *models.User) error {
 	_, err := db.Exec(`
         UPDATE users 
-        SET username = $1, email = $2, role = $3, status = $4, updated_at = $5
-        WHERE id = $6`,
-		user.Username, user.Email, user.Role, user.Status, time.Now(), user.ID,
+        SET username = $1, name = $2, email = $3, role = $4, status = $5, updated_at = $6
+        WHERE id = $7`,
+		user.Username, user.Name, user.Email, user.Role, user.Status, time.Now(), user.ID,
 	)
 	return err
 }
@@ -211,11 +243,28 @@ func (db *DB) CreateUser(user *models.User) error {
 		return err
 	}
 
+	// Проверка на пустое имя - используем username если имя не задано
+	if user.Name == "" {
+		user.Name = user.Username
+		log.Printf("CreateUser DB: Имя было пустым, используем username: %q", user.Name)
+	}
+
+	// Отладка: перед выполнением запроса
+	log.Printf("CreateUser DB: Saving user - Username: %q, Name: %q, Email: %q, Role: %q, Status: %q",
+		user.Username, user.Name, user.Email, user.Role, user.Status)
+
 	_, err = db.Exec(`
-        INSERT INTO users (username, email, password, role, status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $6)`,
-		user.Username, user.Email, string(hashedPassword), user.Role, user.Status, time.Now(),
+        INSERT INTO users (username, name, email, password, role, status, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $7)`,
+		user.Username, user.Name, user.Email, string(hashedPassword), user.Role, user.Status, time.Now(),
 	)
+
+	if err != nil {
+		log.Printf("CreateUser DB: Error creating user: %v", err)
+	} else {
+		log.Printf("CreateUser DB: User created successfully")
+	}
+
 	return err
 }
 

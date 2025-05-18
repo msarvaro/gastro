@@ -16,12 +16,48 @@
     font-family: "Inter", sans-serif;
     font-size: 18px;
     font-weight: 800;
-    letter-spacing: 0.18px;
-    padding: 24px 93px;
+    padding: 16px 40px;
     background-color: #006ffd;
     display: flex;
     justify-content: space-between;
     align-items: center;
+  }
+  
+  .admin-title {
+    font-weight: 700;
+    letter-spacing: 0.18px;
+  }
+  
+  .main-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .nav-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+  }
+  
+  .nav-item.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+  
+  .nav-item svg {
+    width: 20px;
+    height: 20px;
   }
   
   .logout-btn {
@@ -42,8 +78,8 @@
   }
   
   .main-content {
-    padding: 40px 93px;
-    min-height: 100vh;
+    padding: 30px 40px;
+    min-height: calc(100vh - 60px);
     background-color: #dbdbdb;
   }
   
@@ -540,4 +576,206 @@
   .user-count {
     font-size: 14px;
     color: #6B7280;
+  }
+  
+  /* Стили для вкладок и секций */
+  /* Стили навигации перемещены в верхнюю часть файла */
+  
+  .section {
+    display: none;
+  }
+  
+  .section.active {
+    display: block;
+  }
+  
+  /* Стили для секции "Смены" */
+  #section-shifts .title-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  
+  #section-shifts .user-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+  
+  #section-shifts .user-table th {
+    text-align: left;
+    padding: 16px;
+    color: #6B7280;
+    font-weight: 500;
+    border-bottom: 1px solid #E5E7EB;
+    font-size: 14px;
+  }
+  
+  #section-shifts .user-table td {
+    padding: 16px;
+    border-bottom: 1px solid #E5E7EB;
+    color: #374151;
+  }
+  
+  #section-shifts .user-table tbody tr:hover {
+    background-color: #F9FAFB;
+  }
+  
+  #section-shifts .search-section {
+    margin-bottom: 24px;
+  }
+  
+  #section-shifts .search-bar {
+    display: flex;
+    align-items: center;
+    position: relative;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    padding: 8px 16px;
+    max-width: 100%;
+    background: #fff;
+  }
+  
+  #section-shifts .search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 8px 0;
+    font-size: 14px;
+  }
+  
+  #section-shifts .search-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    opacity: 0.5;
+  }
+  
+  /* Стили для модального окна смены */
+  #shiftModal .modal-content {
+    width: 520px;
+    max-width: 90%;
+  }
+  
+  #shiftModal .input-group {
+    margin-bottom: 16px;
+  }
+  
+  #shiftModal .time-inputs {
+    display: flex;
+    gap: 16px;
+  }
+  
+  #shiftModal .time-input {
+    flex: 1;
+  }
+  
+  #shiftModal select[multiple] {
+    width: 100%;
+    height: auto;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background-color: white;
+  }
+  
+  #shiftModal optgroup {
+    font-weight: 600;
+    color: #333;
+    margin-top: 4px;
+  }
+  
+  #shiftModal option {
+    padding: 6px 8px;
+    font-weight: normal;
+  }
+  
+  #shiftModal option:checked {
+    background-color: #e9f0ff;
+    color: #006ffd;
+  }
+  
+  #shiftModal .select-hint {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+    font-style: italic;
+  }
+  
+  #shiftModal textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    resize: vertical;
+  }
+  
+  /* Стили для шапки секций */
+  .title-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+    flex-grow: 1;
+  }
+  
+  /* Кнопка "Добавить" для обеих секций */
+  .add-user-btn {
+    background: #006FFD;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+  }
+  
+  .add-user-btn:hover {
+    background: #0056cc;
+  }
+  
+  /* Обновленные стили для модального окна смены */
+  #shiftModal .employees-container {
+    margin-top: 10px;
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px;
+  }
+  
+  #shiftModal .employee-group {
+    margin-bottom: 15px;
+  }
+  
+  #shiftModal .employee-group-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+  }
+  
+  #shiftModal .employee-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  
+  #shiftModal .employee-item input[type="checkbox"] {
+    margin-right: 8px;
   }

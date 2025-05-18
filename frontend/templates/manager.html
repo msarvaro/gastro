@@ -172,7 +172,115 @@
             <div class="menu-items"></div>
         </div>
     </section>
-    <section id="staff-section" class="section" style="display:none;"><div class="header">Персонал (заглушка)</div></section>
+    <section id="staff-section" class="section" style="display:none;">
+        <div class="header">Управление персоналом</div>
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="users">Пользователи</button>
+            <button class="tab-btn" data-tab="shifts">Смены</button>
+        </div>
+
+        <!-- Вкладка Пользователи -->
+        <div id="staff-users-tab" class="tab-content">
+            <div class="filters">
+                <input type="text" id="userSearch" placeholder="Поиск пользователей...">
+                <select id="userRoleFilter">
+                    <option value="">Роль</option>
+                    <option value="manager">Менеджер</option>
+                    <option value="waiter">Официант</option>
+                    <option value="cook">Повар</option>
+                    <option value="client">Клиент</option>
+                </select>
+                <select id="userStatusFilter">
+                    <option value="">Статус</option>
+                    <option value="active">Активные</option>
+                    <option value="inactive">Неактивные</option>
+                </select>
+                <button id="addUserBtn">Добавить пользователя</button>
+            </div>
+
+            <div class="cards">
+                <div class="card">Всего пользователей<br><span id="total-users" class="value">0</span></div>
+                <div class="card">Активные пользователи<br><span class="value">0</span></div>
+                <div class="card">Новых за неделю<br><span class="value">0</span></div>
+            </div>
+
+            <div class="table-section">
+                <table id="users-table" class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Пользователь</th>
+                            <th>Имя</th>
+                            <th>Роль</th>
+                            <th>Статус</th>
+                            <th>Последняя активность</th>
+                            <th>Дата регистрации</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Table content will be dynamically populated -->
+                    </tbody>
+                </table>
+                <div class="pagination">
+                    <div>
+                        <svg class="prev" width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11.875 14.25L7.125 9.5L11.875 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                    <span>1 из 1 страниц</span>
+                    <div>
+                        <svg class="next" width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7.125 14.25L11.875 9.5L7.125 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка Смены -->
+        <div id="staff-shifts-tab" class="tab-content" style="display:none;">
+            <div class="filters">
+                <input type="text" id="shiftSearch" placeholder="Поиск смен...">
+                <select id="shiftStatusFilter">
+                    <option value="">Статус</option>
+                    <option value="active">Активные</option>
+                    <option value="pending">Ожидающие</option>
+                    <option value="completed">Завершённые</option>
+                </select>
+                <button id="addShiftBtn">Добавить смену</button>
+            </div>
+
+            <div class="table-section">
+                <table class="user-table shift-table">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Время</th>
+                            <th>Ответственный менеджер</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shifts-tbody">
+                        <!-- Данные о сменах будут добавлены через JavaScript -->
+                    </tbody>
+                </table>
+                <div class="pagination">
+                    <div>
+                        <svg class="prev" width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11.875 14.25L7.125 9.5L11.875 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                    <span>1 из 1 страниц</span>
+                    <div>
+                        <svg class="next" width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7.125 14.25L11.875 9.5L7.125 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- Модальные окна -->
     <!-- Добавить продукт -->
@@ -402,6 +510,146 @@
 </div>
 
 <script src="../static/js/manager.js"></script>
+
+<!-- Модальные окна для управления персоналом -->
+<!-- Модальное окно добавления пользователя -->
+<div id="addUserModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <h3>Добавить пользователя</h3>
+    <form id="addUserForm">
+      <div class="form-group">
+        <label>Логин</label>
+        <input type="text" name="username" required>
+      </div>
+      <div class="form-group">
+        <label>Имя</label>
+        <input type="text" name="name" required>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" name="password" required>
+      </div>
+      <div class="form-group">
+        <label>Роль</label>
+        <select name="role" required>
+          <option value="waiter">Официант</option>
+          <option value="cook">Повар</option>
+          <option value="manager">Менеджер</option>
+          <option value="client">Клиент</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary close-modal">Отмена</button>
+        <button type="submit" class="btn-primary">Добавить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Модальное окно редактирования пользователя -->
+<div id="editUserModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <h3>Редактировать пользователя</h3>
+    <form id="editUserForm">
+      <div class="form-group">
+        <label>Логин</label>
+        <input type="text" name="username" required>
+      </div>
+      <div class="form-group">
+        <label>Имя</label>
+        <input type="text" name="name" required>
+      </div>
+      <div class="form-group">
+        <label>Роль</label>
+        <select name="role" required>
+          <option value="waiter">Официант</option>
+          <option value="cook">Повар</option>
+          <option value="manager">Менеджер</option>
+          <option value="client">Клиент</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Статус</label>
+        <select name="status" required>
+          <option value="active">Активен</option>
+          <option value="inactive">Неактивен</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary close-modal">Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Модальное окно для добавления/редактирования смены -->
+<div id="shiftModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <h3 id="shiftModalTitle">Добавить смену</h3>
+    <form id="shiftForm">
+      <input type="hidden" id="shift-id">
+      <div class="form-group">
+        <label for="shift-date">Дата</label>
+        <input type="date" id="shift-date" required>
+      </div>
+      
+      <div class="form-group time-inputs">
+        <div class="time-input">
+          <label for="shift-start-time">Время начала</label>
+          <input type="time" id="shift-start-time" required>
+        </div>
+        
+        <div class="time-input">
+          <label for="shift-end-time">Время окончания</label>
+          <input type="time" id="shift-end-time" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="shift-manager">Ответственный менеджер</label>
+        <select id="shift-manager" required>
+          <option value="">Выберите менеджера</option>
+          <!-- Список менеджеров будет добавлен через JavaScript -->
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="shift-status">Статус смены</label>
+        <select id="shift-status">
+          <option value="active">Активна</option>
+          <option value="pending">Ожидает</option>
+          <option value="completed">Завершена</option>
+          <option value="canceled">Отменена</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="shift-notes">Примечания</label>
+        <textarea id="shift-notes" rows="2"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="shift-employees-container">Сотрудники смены</label>
+        <div id="shift-employees-container" class="employees-container">
+          <!-- Списки сотрудников будут добавлены через JavaScript -->
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="cancelShiftBtn" class="btn-secondary">Отмена</button>
+        <button type="submit" id="saveShiftBtn" class="btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
 </body>
 </html>
 

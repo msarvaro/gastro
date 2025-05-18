@@ -317,7 +317,7 @@ func (h *WaiterHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request
 	respondWithJSON(w, http.StatusOK, order) // Return the updated order
 }
 
-// GetProfile returns the waiter's profile information (placeholder)
+// GetProfile returns the waiter's profile information
 func (h *WaiterHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	userID32, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
@@ -326,16 +326,22 @@ func (h *WaiterHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := int(userID32)
 
-	user, err := h.db.GetUserByID(userID)
+	log.Printf("GetProfile: Получение профиля для пользователя ID=%d", userID)
+
+	// Получаем расширенную информацию профиля
+	profile, err := h.db.GetWaiterProfile(userID)
 	if err != nil {
-		log.Printf("Error GetProfile - fetching user %d: %v", userID, err)
+		log.Printf("Error GetProfile - fetching profile for user %d: %v", userID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to fetch profile information")
 		return
 	}
-	if user == nil {
-		respondWithError(w, http.StatusNotFound, "User profile not found")
-		return
-	}
-	// For security, create a specific profile response model if not all user fields should be returned
-	respondWithJSON(w, http.StatusOK, user)
+
+	// Отладка: вывести все поля профиля
+	log.Printf("GetProfile: Профиль получен - ID: %d, Username: %q, Name: %q, Email: %q",
+		profile.ID, profile.Username, profile.Name, profile.Email)
+
+	// Защищаем чувствительные данные
+	// (пароль не включен в WaiterProfileResponse)
+
+	respondWithJSON(w, http.StatusOK, profile)
 }

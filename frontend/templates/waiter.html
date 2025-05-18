@@ -187,52 +187,21 @@
 
         <!-- Секция: Профиль -->
         <section id="section-profile" style="display:none">
-            <div class="profile-status" style="background:#1976FF;color:#fff;">
-                <div>Смена #658305</div>
-                <div>11.02.2025,14:00</div>
-            </div>
+            <div class="profile-status"></div>
             <div class="content-wrapper">
-                <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
-                    <div style="width:64px;height:64px;background:#E5E5E5;border-radius:50%;"></div>
-                    <div>
-                        <div style="font-size:20px;font-weight:600;">Лукас Скотт</div>
-                        <div style="font-size:15px;color:#888;">Официант</div>
+                <div class="profile-info-card">
+                    <div class="profile-info-card__header">
+                        <img src="../static/images/profile.svg" alt="Profile" class="profile-info-card__icon">
+                        <div class="profile-info-card__title"></div>
+                    </div>
+                    <div class="profile-info-card__content">
+                        <div class="profile-info-card__content-item"></div>
                     </div>
                 </div>
-                <div style="margin-bottom:16px;">
-                    <div style="font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;"><img src="../static/images/history.svg" style="width:20px;vertical-align:middle;"> Информация о смене</div>
-                    <div style="display:flex;justify-content:space-between;font-size:15px;">
-                        <span>Начало смены<br><b>14:00</b></span>
-                        <span>Окончание<br><b>23:00</b></span>
-                        <span>До конца смены<br><b>5 часов 45 минут</b></span>
-                        <span>Менеджер<br><b>Анна К.</b></span>
-                    </div>
-                </div>
-                <div style="margin-bottom:16px;">
-                    <div style="font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;"><img src="../static/images/tables.svg" style="width:20px;vertical-align:middle;"> Назначенные столы</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <div class="profile-table">#1<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
-                        <div class="profile-table">#2<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
-                        <div class="profile-table">#3<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
-                        <div class="profile-table">#4<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
-                        <div class="profile-table">#5<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
-                        <div class="profile-table">#6<br><span style="font-size:12px;color:#888;">c 15:00</span></div>
-                    </div>
-                </div>
-                <div style="margin-bottom:16px;">
-                    <div style="font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;"><img src="../static/images/orders.svg" style="width:20px;vertical-align:middle;"> Активные заказы</div>
-                    <div style="display:flex;gap:24px;font-size:15px;">
-                        <span>Новые<br><b>2 заказа</b></span>
-                        <span>Готовятся<br><b>3 заказа</b></span>
-                        <span>Готовы<br><b>1 заказ</b></span>
-                        <span>Поданы<br><b>4 заказа</b></span>
-                    </div>
-                </div>
-                <div>
-                    <div style="font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;"><img src="../static/images/star.svg" style="width:20px;vertical-align:middle;"> Показатели эффективности</div>
-                    <div style="display:flex;gap:24px;font-size:15px;">
-                        <span>Обслужено столов<br><b>12</b></span>
-                        <span>Среднее время<br><b>45 минут</b></span>
+                <div class="profile-tables-card">
+                    <div class="profile-tables-card__header">
+                        <img src="../static/images/tables.svg" alt="Tables" class="profile-tables-card__icon">
+                        <div class="profile-tables-card__title"></div>
                     </div>
                 </div>
             </div>
