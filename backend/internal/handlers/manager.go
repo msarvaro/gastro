@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"restaurant-management/internal/database"
+	"restaurant-management/internal/middleware"
 	"restaurant-management/internal/models"
 )
 
@@ -28,7 +29,13 @@ func (h *ManagerHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ManagerHandler) GetOrderHistory(w http.ResponseWriter, r *http.Request) {
-	orders, err := h.db.GetOrderHistoryWithItems()
+	// Extract business_id from context
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		businessID = 0 // Fallback to 0 if not available
+	}
+
+	orders, err := h.db.GetOrderHistoryWithItems(businessID)
 	if err != nil {
 		log.Printf("DEBUG: GetOrderHistoryWithItems returned error: %v (type: %T)", err, err)
 		if errors.Is(err, sql.ErrNoRows) {

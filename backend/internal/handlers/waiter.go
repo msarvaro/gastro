@@ -50,7 +50,13 @@ type TableStatusUpdateRequest struct {
 
 // GetTables returns all tables with their current status
 func (h *WaiterHandler) GetTables(w http.ResponseWriter, r *http.Request) {
-	tables, err := h.db.GetAllTables()
+	// Extract business_id from context
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		businessID = 0 // Fallback to 0 if not available
+	}
+
+	tables, err := h.db.GetAllTables(businessID)
 	if err != nil {
 		log.Printf("Error GetTables - fetching tables: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to fetch tables")
@@ -184,14 +190,20 @@ func (h *WaiterHandler) UpdateTableStatus(w http.ResponseWriter, r *http.Request
 
 // GetOrders returns all active orders with items
 func (h *WaiterHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	orders, err := h.db.GetActiveOrdersWithItems()
+	// Extract business_id from context
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		businessID = 0 // Fallback to 0 if not available
+	}
+
+	orders, err := h.db.GetActiveOrdersWithItems(businessID)
 	if err != nil {
 		log.Printf("Error GetOrders - fetching active orders: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to fetch active orders")
 		return
 	}
 
-	stats, err := h.db.GetOrderStatus()
+	stats, err := h.db.GetOrderStatus(businessID)
 	if err != nil {
 		log.Printf("Error GetOrders - fetching order stats: %v", err)
 		stats = &models.OrderStats{} // Default to empty stats on error
@@ -209,7 +221,13 @@ func (h *WaiterHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 
 // GetOrderHistory returns completed and cancelled orders
 func (h *WaiterHandler) GetOrderHistory(w http.ResponseWriter, r *http.Request) {
-	orders, err := h.db.GetOrderHistoryWithItems()
+	// Extract business_id from context
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		businessID = 0 // Fallback to 0 if not available
+	}
+
+	orders, err := h.db.GetOrderHistoryWithItems(businessID)
 	if err != nil {
 		log.Printf("Error GetOrderHistory - fetching order history: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to fetch order history")
@@ -217,7 +235,7 @@ func (h *WaiterHandler) GetOrderHistory(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Assuming stats are not strictly necessary for history or can be defaulted
-	stats, err := h.db.GetOrderStatus()
+	stats, err := h.db.GetOrderStatus(businessID)
 	if err != nil {
 		log.Printf("Error GetOrders - fetching order stats: %v", err)
 		stats = &models.OrderStats{} // Default to empty stats on error
@@ -334,7 +352,13 @@ func (h *WaiterHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		order.TotalAmount += orderItem.Total
 	}
 
-	createdOrder, err := h.db.CreateOrderAndItems(&order)
+	// Extract business_id from context
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		businessID = 0 // Fallback to 0 if not available
+	}
+
+	createdOrder, err := h.db.CreateOrderAndItems(&order, businessID)
 	if err != nil {
 		log.Printf("Error CreateOrder - saving order: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to create order in database")
@@ -378,7 +402,13 @@ func (h *WaiterHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	order, err := h.db.GetOrderByID(orderID)
+	// Extract business_id from context
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		businessID = 0 // Fallback to 0 if not available
+	}
+
+	order, err := h.db.GetOrderByID(orderID, businessID)
 	if err != nil {
 		log.Printf("Error UpdateOrderStatus - fetching order %d: %v", orderID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to get order details")
@@ -439,12 +469,18 @@ func (h *WaiterHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := int(userID32)
 
-	log.Printf("GetProfile: Получение профиля для пользователя ID=%d", userID)
+	// Extract business_id from context
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		businessID = 0 // Fallback to 0 if not available
+	}
+
+	log.Printf("GetProfile: Получение профиля для пользователя ID=%d в бизнесе ID=%d", userID, businessID)
 
 	// Получаем расширенную информацию профиля
-	profile, err := h.db.GetWaiterProfile(userID)
+	profile, err := h.db.GetWaiterProfile(userID, businessID)
 	if err != nil {
-		log.Printf("Error GetProfile - fetching profile for user %d: %v", userID, err)
+		log.Printf("Error GetProfile - fetching profile for user %d in business %d: %v", userID, businessID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to fetch profile information")
 		return
 	}

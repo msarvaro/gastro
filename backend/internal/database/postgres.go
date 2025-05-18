@@ -62,7 +62,7 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			log.Printf("No user found with username: %s", username)
 			return nil, fmt.Errorf("user not found")
 		}
@@ -536,8 +536,8 @@ func (db *DB) DeleteRequest(id int) error {
 }
 
 // Table methods
-func (db *DB) GetAllTables() ([]models.Table, error) {
-	rows, err := db.Query("SELECT id, number, seats, status, reserved_at, occupied_at FROM tables ORDER BY number ASC")
+func (db *DB) GetAllTables(businessID int) ([]models.Table, error) {
+	rows, err := db.Query("SELECT id, number, seats, status, reserved_at, occupied_at FROM tables WHERE business_id = $1 OR business_id IS NULL ORDER BY number ASC", businessID)
 	if err != nil {
 		log.Printf("Error GetAllTables - querying tables: %v", err)
 		return nil, err
@@ -556,9 +556,9 @@ func (db *DB) GetAllTables() ([]models.Table, error) {
 		orderRows, err := db.Query(`
             SELECT id, created_at, comment 
             FROM orders 
-            WHERE table_id = $1 AND status NOT IN ('completed', 'cancelled') 
+            WHERE table_id = $1 AND status NOT IN ('completed', 'cancelled') AND (business_id = $2 OR business_id IS NULL)
             ORDER BY created_at ASC`,
-			t.ID,
+			t.ID, businessID,
 		)
 		if err != nil {
 			log.Printf("Error GetAllTables - querying active orders for table %d: %v", t.ID, err)
@@ -707,7 +707,7 @@ func (db *DB) GetDishByID(id int) (*models.Dish, error) {
 }
 
 // GetActiveOrdersWithItems retrieves all active orders along with their items.
-func (db *DB) GetActiveOrdersWithItems() ([]models.Order, error) {
+func (db *DB) GetActiveOrdersWithItems(businessID int) ([]models.Order, error) {
 	query := `
         SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total_amount, 
                o.created_at, o.updated_at, o.completed_at, o.cancelled_at,
@@ -728,10 +728,11 @@ func (db *DB) GetActiveOrdersWithItems() ([]models.Order, error) {
         LEFT JOIN order_items oi ON o.id = oi.order_id
         LEFT JOIN dishes d ON oi.dish_id = d.id
         WHERE o.status IN ('new', 'accepted', 'preparing', 'ready', 'served')
+        AND (o.business_id = $1 OR o.business_id IS NULL)
         GROUP BY o.id
         ORDER BY o.created_at DESC
     `
-	rows, err := db.Query(query)
+	rows, err := db.Query(query, businessID)
 	if err != nil {
 		log.Printf("Error in GetActiveOrdersWithItems query: %v", err)
 		return nil, err
@@ -775,7 +776,16 @@ func (db *DB) GetActiveOrdersWithItems() ([]models.Order, error) {
 }
 
 // GetOrderByID retrieves a specific order by its ID, including its items.
-func (db *DB) GetOrderByID(id int) (*models.Order, error) {
+func (db *DB) GetOrderByID(id int, businessID ...int) (*models.Order, error) {
+	// If businessID is provided, use it for filtering
+	whereClause := "WHERE o.id = $1"
+	args := []interface{}{id}
+
+	if len(businessID) > 0 && businessID[0] > 0 {
+		whereClause += " AND (o.business_id = $2 OR o.business_id IS NULL)"
+		args = append(args, businessID[0])
+	}
+
 	query := `
         SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total_amount, 
                o.created_at, o.updated_at, o.completed_at, o.cancelled_at,
@@ -795,14 +805,14 @@ func (db *DB) GetOrderByID(id int) (*models.Order, error) {
         FROM orders o
         LEFT JOIN order_items oi ON o.id = oi.order_id
         LEFT JOIN dishes d ON oi.dish_id = d.id
-        WHERE o.id = $1
+        ` + whereClause + `
         GROUP BY o.id`
 
 	var o models.Order
 	var itemsJSON []byte
 	var completedAt, cancelledAt pq.NullTime
 
-	err := db.QueryRow(query, id).Scan(
+	err := db.QueryRow(query, args...).Scan(
 		&o.ID, &o.TableID, &o.WaiterID, &o.Status, &o.Comment, &o.TotalAmount,
 		&o.CreatedAt, &o.UpdatedAt, &completedAt, &cancelledAt, &itemsJSON,
 	)
@@ -830,7 +840,7 @@ func (db *DB) GetOrderByID(id int) (*models.Order, error) {
 
 // CreateOrderAndItems creates a new order and its associated items in a transaction.
 // It updates the order.ID and order.Items[i].ID upon successful creation.
-func (db *DB) CreateOrderAndItems(order *models.Order) (*models.Order, error) {
+func (db *DB) CreateOrderAndItems(order *models.Order, businessID int) (*models.Order, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("Error starting transaction for creating order: %v", err)
@@ -841,20 +851,20 @@ func (db *DB) CreateOrderAndItems(order *models.Order) (*models.Order, error) {
 	order.CreatedAt = now
 	order.UpdatedAt = now
 
-	orderSQL := `INSERT INTO orders (table_id, waiter_id, status, comment, total_amount, created_at, updated_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at, updated_at`
-	err = tx.QueryRow(orderSQL, order.TableID, order.WaiterID, order.Status, order.Comment, order.TotalAmount, order.CreatedAt, order.UpdatedAt).Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
+	orderSQL := `INSERT INTO orders (table_id, waiter_id, status, comment, total_amount, created_at, updated_at, business_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, created_at, updated_at`
+	err = tx.QueryRow(orderSQL, order.TableID, order.WaiterID, order.Status, order.Comment, order.TotalAmount, order.CreatedAt, order.UpdatedAt, businessID).Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
 	if err != nil {
 		tx.Rollback()
 		log.Printf("Error inserting order: %v", err)
 		return nil, err
 	}
 
-	itemSQL := `INSERT INTO order_items (order_id, dish_id, quantity, price, notes)
-                VALUES ($1, $2, $3, $4, $5) RETURNING id`
+	itemSQL := `INSERT INTO order_items (order_id, dish_id, quantity, price, notes, business_id)
+                VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
 	for i := range order.Items {
 		item := &order.Items[i]
-		err = tx.QueryRow(itemSQL, order.ID, item.DishID, item.Quantity, item.Price, item.Notes).Scan(&item.ID)
+		err = tx.QueryRow(itemSQL, order.ID, item.DishID, item.Quantity, item.Price, item.Notes, businessID).Scan(&item.ID)
 		if err != nil {
 			tx.Rollback()
 			log.Printf("Error inserting order item for dish %d (name: %s): %v", item.DishID, err)
@@ -893,7 +903,7 @@ func (db *DB) UpdateOrder(order *models.Order) error {
 	return nil
 }
 
-func (db *DB) GetOrderStatus() (*models.OrderStats, error) {
+func (db *DB) GetOrderStatus(businessID int) (*models.OrderStats, error) {
 	query := `
         SELECT 
             COUNT(CASE WHEN status NOT IN ('completed', 'cancelled') THEN 1 END) as total_active_orders,
@@ -905,10 +915,11 @@ func (db *DB) GetOrderStatus() (*models.OrderStats, error) {
             COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_total,
             COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_total,
             COALESCE(SUM(CASE WHEN status = 'completed' THEN total_amount ELSE 0 END), 0) as completed_amount_total
-        FROM orders`
+        FROM orders
+        WHERE (business_id = $1 OR business_id IS NULL)`
 
 	var stats models.OrderStats
-	err := db.QueryRow(query).Scan(
+	err := db.QueryRow(query, businessID).Scan(
 		&stats.TotalActiveOrders, &stats.New, &stats.Accepted, &stats.Preparing,
 		&stats.Ready, &stats.Served, &stats.CompletedTotal, &stats.CancelledTotal,
 		&stats.CompletedAmountTotal)
@@ -920,7 +931,7 @@ func (db *DB) GetOrderStatus() (*models.OrderStats, error) {
 }
 
 // GetOrderHistoryWithItems retrieves completed or cancelled orders along with their items.
-func (db *DB) GetOrderHistoryWithItems() ([]models.Order, error) {
+func (db *DB) GetOrderHistoryWithItems(businessID int) ([]models.Order, error) {
 	query := `
     	SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total_amount, 
        o.created_at, o.updated_at, o.completed_at, o.cancelled_at,
@@ -941,10 +952,11 @@ func (db *DB) GetOrderHistoryWithItems() ([]models.Order, error) {
 		LEFT JOIN order_items oi ON o.id = oi.order_id
 		LEFT JOIN dishes d ON oi.dish_id = d.id 
 		WHERE o.status IN ('completed', 'cancelled')
+		AND (o.business_id = $1 OR o.business_id IS NULL)
 		GROUP BY o.id 
 		ORDER BY COALESCE(o.completed_at, o.cancelled_at, o.updated_at) DESC`
 
-	rows, err := db.Query(query)
+	rows, err := db.Query(query, businessID)
 	if err != nil {
 		log.Printf("Error in GetOrderHistoryWithItems query: %v", err)
 		return nil, err
@@ -1006,7 +1018,7 @@ func (db *DB) IsLastActiveOrderForTable(tableID, currentOrderID int) (bool, erro
 }
 
 // GetOrdersByStatus retrieves all orders with a specific status along with their items and dish categories.
-func (db *DB) GetOrdersByStatus(status string) ([]models.Order, error) {
+func (db *DB) GetOrdersByStatus(status string, businessID int) ([]models.Order, error) {
 	query := `
         SELECT o.id, o.table_id, o.waiter_id, o.status, o.comment, o.total_amount, 
                o.created_at, o.updated_at, o.completed_at, o.cancelled_at,
@@ -1029,10 +1041,11 @@ func (db *DB) GetOrdersByStatus(status string) ([]models.Order, error) {
         LEFT JOIN dishes d ON oi.dish_id = d.id
         LEFT JOIN categories c ON d.category_id = c.id
         WHERE o.status = $1
+        AND (o.business_id = $2 OR o.business_id IS NULL)
         GROUP BY o.id
         ORDER BY o.created_at DESC
     `
-	rows, err := db.Query(query, status)
+	rows, err := db.Query(query, status, businessID)
 	if err != nil {
 		return nil, err
 	}
@@ -1107,4 +1120,68 @@ func (db *DB) UpdateTableStatusWithTimes(tableID int, status string, reservedAt,
 	}
 
 	return nil
+}
+
+// GetUserBusinessID retrieves the business ID associated with a user
+func (db *DB) GetUserBusinessID(userID int) (int, error) {
+	var businessID int
+
+	// First check the users table for a direct association
+	err := db.QueryRow(`
+        SELECT business_id FROM users WHERE id = $1
+    `, userID).Scan(&businessID)
+
+	if err == nil && businessID > 0 {
+		log.Printf("Found business ID %d for user %d in users table", businessID, userID)
+		return businessID, nil
+	}
+
+	// If not found in users table, check user_businesses table if it exists
+	// This is for systems with many-to-many user-business relationships
+	var exists bool
+	err = db.QueryRow(`
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_name = 'user_businesses'
+        )
+    `).Scan(&exists)
+
+	if err != nil {
+		log.Printf("Error checking if user_businesses table exists: %v", err)
+		return 0, err
+	}
+
+	if exists {
+		// Check for the user's primary business in user_businesses table
+		err = db.QueryRow(`
+            SELECT business_id FROM user_businesses 
+            WHERE user_id = $1 AND is_primary = true
+        `, userID).Scan(&businessID)
+
+		if err == nil && businessID > 0 {
+			log.Printf("Found primary business ID %d for user %d in user_businesses table", businessID, userID)
+			return businessID, nil
+		}
+
+		// If no primary business found, get the first business associated with the user
+		err = db.QueryRow(`
+            SELECT business_id FROM user_businesses 
+            WHERE user_id = $1 
+            LIMIT 1
+        `, userID).Scan(&businessID)
+
+		if err == nil && businessID > 0 {
+			log.Printf("Found business ID %d for user %d in user_businesses table", businessID, userID)
+			return businessID, nil
+		}
+	}
+
+	// If no business found or there was an error
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Error retrieving business ID for user %d: %v", userID, err)
+		return 0, err
+	}
+
+	log.Printf("No business found for user %d", userID)
+	return 0, nil
 }

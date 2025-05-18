@@ -1,0 +1,89 @@
+<div class="business-header">
+    <div class="business-info">
+        <div class="business-name" id="currentBusinessName">...</div>
+        <button class="business-switch-btn" id="switchBusinessBtn" onclick="switchBusiness()">Сменить заведение</button>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        // Get user role
+        const userRole = localStorage.getItem('role');
+        
+        // Only admin users can switch business
+        if (userRole !== 'admin') {
+            const switchBtn = document.getElementById('switchBusinessBtn');
+            if (switchBtn) {
+                switchBtn.style.display = 'none';
+            }
+        }
+        
+        // Get business ID from cookie
+        const businessId = window.api.getBusinessId();
+        if (!businessId) {
+            // No business selected
+            if (userRole === 'admin') {
+                // Only redirect admins to business selection
+                window.location.href = '/select-business';
+                return;
+            }
+        }
+        
+        // Try to get business info
+        try {
+            if (businessId) {
+                const businessData = await window.api.call(`/api/businesses/${businessId}`);
+                if (businessData && businessData.name) {
+                    document.getElementById('currentBusinessName').textContent = businessData.name;
+                }
+            } else {
+                // For non-admin users without a business, just show a placeholder
+                document.getElementById('currentBusinessName').textContent = 'Основное заведение';
+            }
+        } catch (error) {
+            console.error('Failed to load business info:', error);
+            document.getElementById('currentBusinessName').textContent = 'Заведение не выбрано';
+        }
+    });
+    
+    function switchBusiness() {
+        const userRole = localStorage.getItem('role');
+        if (userRole === 'admin') {
+            window.location.href = '/select-business';
+        }
+    }
+</script>
+
+<style>
+    .business-header {
+        background-color: #f8f9fa;
+        padding: 8px 16px;
+        border-bottom: 1px solid #e1e4e8;
+        margin-bottom: 16px;
+    }
+    
+    .business-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .business-name {
+        font-weight: 600;
+        color: #1a73e8;
+    }
+    
+    .business-switch-btn {
+        background: none;
+        border: 1px solid #1a73e8;
+        color: #1a73e8;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+    }
+    
+    .business-switch-btn:hover {
+        background-color: #e8f0fe;
+    }
+</style> 

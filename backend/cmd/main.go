@@ -11,6 +11,7 @@ import (
 	"restaurant-management/internal/middleware"
 	"strings"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 )
 
@@ -58,13 +59,27 @@ func main() {
 	waiterHandler := handlers.NewWaiterHandler(db)
 	kitchenHandler := handlers.NewKitchenHandler(db)
 	shiftHandler := handlers.NewShiftHandler(db)
+	businessHandler := handlers.NewBusinessHandler(db)
 
 	// Публичные API
 	r.HandleFunc("/api/login", authHandler.Login).Methods("POST")
 
+	// Business selection API (public for login purposes)
+	r.HandleFunc("/api/businesses", businessHandler.GetAllBusinesses).Methods("GET")
+	r.HandleFunc("/api/businesses/{id}", businessHandler.GetBusinessByID).Methods("GET")
+	r.HandleFunc("/api/businesses/{id}/select", businessHandler.SetBusinessCookie).Methods("POST")
+
+	// Add business middleware to all protected APIs
 	// Защищенные API маршруты
 	api := r.PathPrefix("/api").Subrouter()
 	api.Use(middleware.AuthMiddleware(config.Server.JWTKey))
+	api.Use(middleware.BusinessMiddleware())
+
+	// Business management routes (admin only)
+	businessAdmin := api.PathPrefix("/admin/businesses").Subrouter()
+	businessAdmin.HandleFunc("", businessHandler.CreateBusiness).Methods("POST")
+	businessAdmin.HandleFunc("/{id}", businessHandler.UpdateBusiness).Methods("PUT")
+	businessAdmin.HandleFunc("/{id}", businessHandler.DeleteBusiness).Methods("DELETE")
 
 	// API маршруты для админа
 	admin := api.PathPrefix("/admin").Subrouter()
@@ -135,7 +150,50 @@ func main() {
 	apiRouter := api.PathPrefix("/shifts").Subrouter()
 	apiRouter.HandleFunc("", shiftHandler.GetEmployeeShifts).Methods("GET")
 
-	// HTML страницы (теперь защищены middleware)
+	// HTML страницы
+	// Add business selection page
+	r.HandleFunc("/select-business", func(w http.ResponseWriter, r *http.Request) {
+		// Check for auth token cookie
+		authCookie, err := r.Cookie("auth_token")
+		if err == nil && authCookie != nil {
+			// Parse the token to get user role
+			token, err := jwt.Parse(authCookie.Value, func(token *jwt.Token) (interface{}, error) {
+				return []byte(config.Server.JWTKey), nil
+			})
+
+			if err == nil && token.Valid {
+				// Get claims and user role
+				if claims, ok := token.Claims.(jwt.MapClaims); ok {
+					if role, ok := claims["role"].(string); ok {
+						// Only allow admins to access this page
+						if role != "admin" {
+							// Redirect non-admin users to their appropriate pages
+							var redirectPath string
+							switch role {
+							case "manager":
+								redirectPath = "/manager"
+							case "waiter":
+								redirectPath = "/waiter"
+							case "cook":
+								redirectPath = "/kitchen"
+							default:
+								redirectPath = "/"
+							}
+
+							log.Printf("Non-admin user (role: %s) attempted to access business selection page. Redirecting to %s", role, redirectPath)
+							http.Redirect(w, r, redirectPath, http.StatusFound)
+							return
+						}
+					}
+				}
+			}
+		}
+
+		// For admins or if token parsing failed, show the business selection page
+		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "select-business.html"))
+	}).Methods("GET")
+
+	// Other HTML routes with auth middleware
 	htmlRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "login.html"))
 	}).Methods("GET")

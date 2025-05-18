@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выбор заведения</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <script src="../static/js/common.js" defer></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+        body {
+            background-color: #f8f9fa;
+            color: #212529;
+            line-height: 1.5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #1a73e8;
+        }
+        .subtitle {
+            color: #5f6368;
+            margin-bottom: 2rem;
+        }
+        .business-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .business-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .business-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-color: #e8f0fe;
+        }
+        .business-card.active {
+            border-color: #1a73e8;
+            background-color: #e8f0fe;
+        }
+        .business-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1a73e8;
+        }
+        .business-details {
+            color: #5f6368;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .business-status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .status-active {
+            background-color: #e6f4ea;
+            color: #137333;
+        }
+        .status-inactive {
+            background-color: #fce8e6;
+            color: #c5221f;
+        }
+        .actions {
+            text-align: center;
+            margin-top: 2rem;
+        }
+        .btn {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #1557b0;
+        }
+        .btn:disabled {
+            background-color: #dadce0;
+            color: #5f6368;
+            cursor: not-allowed;
+        }
+        .error-message {
+            color: #c5221f;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .success-message {
+            color: #137333;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .loading {
+            text-align: center;
+            margin: 2rem 0;
+            color: #5f6368;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Выбор заведения</h1>
+            <p class="subtitle">Выберите заведение, с которым хотите работать</p>
+        </header>
+        
+        <div id="loading" class="loading">Загрузка списка заведений...</div>
+        
+        <div id="business-list" class="business-list" style="display: none;"></div>
+        
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="success-message" class="success-message" style="display: none;"></div>
+        
+        <div class="actions">
+            <button id="select-btn" class="btn" disabled>Выбрать</button>
+        </div>
+    </div>
+    
+    <script>
+        // DOM elements
+        const businessList = document.getElementById('business-list');
+        const loadingElement = document.getElementById('loading');
+        const errorElement = document.getElementById('error-message');
+        const successElement = document.getElementById('success-message');
+        const selectButton = document.getElementById('select-btn');
+        
+        // State
+        let selectedBusinessId = null;
+        let businesses = [];
+        
+        // Fetch businesses data
+        async function fetchBusinesses() {
+            try {
+                const response = await fetch('/api/businesses');
+                
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                businesses = data.businesses || [];
+                
+                renderBusinesses();
+                
+                loadingElement.style.display = 'none';
+                businessList.style.display = 'grid';
+            } catch (error) {
+                console.error('Failed to fetch businesses:', error);
+                loadingElement.style.display = 'none';
+                errorElement.textContent = 'Не удалось загрузить список заведений. Пожалуйста, попробуйте позже.';
+                errorElement.style.display = 'block';
+            }
+        }
+        
+        // Render business cards
+        function renderBusinesses() {
+            if (businesses.length === 0) {
+                businessList.innerHTML = '<p class="no-businesses">Нет доступных заведений</p>';
+                return;
+            }
+            
+            businessList.innerHTML = businesses.map(business => `
+                <div class="business-card" data-id="${business.id}">
+                    <div class="business-name">${business.name}</div>
+                    <div class="business-details">
+                        ${business.address ? `<div>${business.address}</div>` : ''}
+                        ${business.phone ? `<div>Тел: ${business.phone}</div>` : ''}
+                        ${business.email ? `<div>${business.email}</div>` : ''}
+                    </div>
+                    <div class="business-status status-${business.status.toLowerCase()}">
+                        ${getStatusText(business.status)}
+                    </div>
+                </div>
+            `).join('');
+            
+            // Add click event listeners to business cards
+            document.querySelectorAll('.business-card').forEach(card => {
+                card.addEventListener('click', () => selectBusiness(card));
+            });
+        }
+        
+        // Select a business
+        function selectBusiness(card) {
+            // Clear previously selected
+            document.querySelectorAll('.business-card').forEach(c => c.classList.remove('active'));
+            
+            // Mark as selected
+            card.classList.add('active');
+            selectedBusinessId = card.dataset.id;
+            
+            // Enable select button
+            selectButton.disabled = false;
+        }
+        
+        // Get human-readable status text
+        function getStatusText(status) {
+            switch (status.toLowerCase()) {
+                case 'active':
+                    return 'Активно';
+                case 'inactive':
+                    return 'Неактивно';
+                default:
+                    return status;
+            }
+        }
+        
+        // Select button click handler
+        selectButton.addEventListener('click', async () => {
+            if (!selectedBusinessId) return;
+            
+            try {
+                errorElement.style.display = 'none';
+                successElement.style.display = 'none';
+                selectButton.disabled = true;
+                selectButton.textContent = 'Загрузка...';
+                
+                const response = await fetch(`/api/businesses/${selectedBusinessId}/select`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+                
+                successElement.textContent = 'Заведение выбрано успешно! Перенаправление...';
+                successElement.style.display = 'block';
+                
+                // Get the redirection target after successful selection
+                const responseData = await response.json();
+                
+                // Get user role from local storage
+                const userRole = localStorage.getItem('role');
+                
+                // Add client-side check for the cookie to make sure it was set
+                const businessId = window.api.getBusinessId();
+                if (!businessId) {
+                    console.log("Cookie not set by server, setting it client-side as fallback");
+                    window.api.setBusinessId(selectedBusinessId);
+                }
+                
+                // Determine redirect path based on user role
+                let redirectPath = '/';
+                if (userRole) {
+                    switch (userRole) {
+                        case 'admin':
+                            redirectPath = '/admin';
+                            break;
+                        case 'manager':
+                            redirectPath = '/manager';
+                            break;
+                        case 'waiter':
+                            redirectPath = '/waiter';
+                            break;
+                        case 'cook':
+                            redirectPath = '/kitchen';
+                            break;
+                    }
+                }
+                
+                console.log(`Business selected, redirecting to ${redirectPath}`);
+                
+                // Redirect after a short delay
+                setTimeout(() => {
+                    window.location.href = redirectPath;
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Failed to select business:', error);
+                errorElement.textContent = 'Не удалось выбрать заведение. Пожалуйста, попробуйте еще раз.';
+                errorElement.style.display = 'block';
+                selectButton.disabled = false;
+                selectButton.textContent = 'Выбрать';
+            }
+        });
+        
+        // Load businesses when page loads
+        document.addEventListener('DOMContentLoaded', fetchBusinesses);
+    </script>
+</body>
+</html> 

@@ -7,8 +7,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../static/css/waiter.css">
     <link rel="icon" href="../static/images/favicon.svg" type="image/svg+xml">
+    <script src="../static/js/common.js"></script>
 </head>
 <body>
+    <!-- Business header component -->
+    <div id="business-header-container"></div>
+
     <div class="waiter">
         <!-- Секция: Столы -->
         <section id="section-tables">
@@ -229,6 +233,19 @@
         </nav>
     </div>
 
+    <script>
+        // Load business header component
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/templates/components/business-header.html')
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('business-header-container').innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Failed to load business header component:', error);
+                });
+        });
+    </script>
     <script src="../static/js/waiter.js"></script>
 </body>
 </html> 

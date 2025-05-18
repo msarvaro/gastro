@@ -6,12 +6,13 @@
     <title>Вход</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../static/css/login.css">
+    <script src="../static/js/common.js" defer></script>
 </head>
 <body>
     <div class="form-container">
 
         <h1 class="form-title">Вход</h1>
-        <form class="signup-form">
+        <form class="signup-form" id="loginForm">
             <div class="form-group">
                 <input type="text" id="username" class="form-input" placeholder="email/имя" required>
             </div>
@@ -35,6 +36,88 @@
             
         </form>
     </div>
-    <script src="../static/js/auth.js"></script>
+    <script>
+    // Add event listener to form submission
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                login();
+            });
+        }
+        
+        // Toggle password visibility
+        const toggleBtn = document.querySelector('.password-toggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function() {
+                const passwordInput = document.getElementById('password');
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                } else {
+                    passwordInput.type = 'password';
+                }
+            });
+        }
+    });
+    
+    function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        if (!username || !password) {
+            showError('Пожалуйста, введите логин и пароль');
+            return;
+        }
+        
+        const submitButton = document.querySelector('.submit-button');
+        
+        submitButton.disabled = true;
+        submitButton.textContent = 'Вход...';
+        
+        fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password }),
+            credentials: 'include'
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                throw new Error('Неверный логин или пароль');
+            }
+        })
+        .then(data => {
+            // Store token and role
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('role', data.role);
+            
+            // Redirect to the appropriate page based on the server response
+            window.location.href = data.redirect;
+        })
+        .catch(error => {
+            showError(error.message);
+            submitButton.disabled = false;
+            submitButton.textContent = 'Вход';
+        });
+    }
+    
+    function showError(message) {
+        // Create error element if it doesn't exist
+        let errorElement = document.getElementById('errorMessage');
+        if (!errorElement) {
+            errorElement = document.createElement('div');
+            errorElement.id = 'errorMessage';
+            errorElement.className = 'error-message';
+            document.querySelector('.signup-form').prepend(errorElement);
+        }
+        
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+    }
+    </script>
 </body>
 </html>

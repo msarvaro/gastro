@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"restaurant-management/internal/database"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -46,6 +47,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Login handler: Login attempt for username: %s", req.Username)
 
+	// Get user without business constraint first
 	user, err := h.db.GetUserByUsername(req.Username)
 	if err != nil {
 		log.Printf("Login handler: GetUserByUsername error: %v", err)
@@ -63,12 +65,22 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Login handler: Password verified successfully")
 
+	// Get user's associated business from database
+	businessID, err := h.db.GetUserBusinessID(user.ID)
+	if err != nil {
+		log.Printf("Login handler: Error getting user's business: %v", err)
+		// Continue without business ID (admin might not have a specific business)
+	}
+
+	log.Printf("Login handler: User's business ID: %d", businessID)
+
 	expirationTime := time.Now().Add(24 * time.Hour)
 
 	claims := jwt.MapClaims{
-		"user_id": user.ID,
-		"role":    user.Role,
-		"exp":     expirationTime.Unix(),
+		"user_id":     user.ID,
+		"role":        user.Role,
+		"business_id": businessID,
+		"exp":         expirationTime.Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -81,6 +93,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Login handler: Token generated successfully")
 
+	// Set auth token cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "auth_token",
 		Value:    tokenString,
@@ -90,19 +103,41 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	redirectPath := "/"
-	switch user.Role {
-	case "admin":
-		redirectPath = "/admin"
-	case "manager":
-		redirectPath = "/manager"
-	case "waiter":
-		redirectPath = "/waiter"
-	case "cook":
-		redirectPath = "/kitchen"
+	// Set business ID cookie
+	if businessID > 0 {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "business_id",
+			Value:    strconv.Itoa(businessID),
+			Expires:  expirationTime,
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+		log.Printf("Login handler: Business ID cookie set to: %d", businessID)
 	}
 
-	log.Printf("Login handler: Sending successful response with redirect to: %s", redirectPath)
+	// Determine the redirect path based on role
+	redirectPath := "/"
+
+	// Only admins without a business should see business selection
+	if businessID == 0 && user.Role == "admin" {
+		// Redirect admin to business selection if no business is associated
+		redirectPath = "/select-business"
+		log.Printf("Login handler: Admin user without business, redirecting to: %s", redirectPath)
+	} else {
+		// For all other roles, or if business ID is already set, redirect to role-specific page
+		switch user.Role {
+		case "admin":
+			redirectPath = "/admin"
+		case "manager":
+			redirectPath = "/manager"
+		case "waiter":
+			redirectPath = "/waiter"
+		case "cook":
+			redirectPath = "/kitchen"
+		}
+		log.Printf("Login handler: Redirecting to: %s", redirectPath)
+	}
 
 	response := LoginResponse{
 		Token:    tokenString,

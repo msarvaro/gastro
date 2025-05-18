@@ -44,6 +44,11 @@ window.menuApi = {
 // Основная инициализация
 let currentOrderData = { tableId: null, items: [], comment: '', total: 0 };
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if business is selected before proceeding
+    if (!window.api.checkBusinessSelected()) {
+        return; // Will redirect to business selection page
+    }
+    
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     if (!token || role !== 'waiter') {
@@ -117,12 +122,8 @@ function showSection(section) {
 // Пример функций для загрузки данных (реализуйте по аналогии с вашими API)
 async function loadTables() {
     try {
-        const resp = await fetch('/api/waiter/tables', { 
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-            credentials: 'include'
-        });
-        if (!resp.ok) throw new Error('Failed to load tables');
-        const data = await resp.json();
+        const data = await window.api.call('/api/waiter/tables');
+        if (!data) return; // Request failed or redirect happened
         
         const tablesStatusInfo = document.getElementById('tablesStatusInfo');
         if (tablesStatusInfo && data.stats) {
@@ -178,13 +179,10 @@ async function loadTables() {
 }
 
 async function loadOrders() {
-  
-        const resp = await fetch('/api/waiter/orders', { 
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-            credentials: 'include'
-        });
-        if (!resp.ok) throw new Error('Failed to load orders');
-        const data = await resp.json();
+    try {
+        const data = await window.api.call('/api/waiter/orders');
+        if (!data) return; // Request failed or redirect happened
+        
         document.getElementById('ordersStatusInfo').textContent = `${data.stats.total_active_orders || 0} активных заказов`;
         const list = document.getElementById('ordersList');
         if (!data.orders || data.orders.length === 0) {
@@ -209,15 +207,15 @@ async function loadOrders() {
                 </div>
             </div>
         `).join('');
+    } catch (e) {
+        console.error('Failed to load orders:', e);
+        document.getElementById('ordersList').innerHTML = '<div class="error-message">Ошибка загрузки заказов</div>';
+    }
 }
 async function loadHistory() {
     try {
-        const resp = await fetch('/api/waiter/history', { 
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-            credentials: 'include'
-        });
-        if (!resp.ok) throw new Error('Failed to load history');
-        const data = await resp.json();
+        const data = await window.api.call('/api/waiter/history');
+        if (!data) return; // Request failed or redirect happened
 
         const historyMainStatEl = document.getElementById('historyMainStat');
         const historySubStatEl = document.getElementById('historySubStat');
@@ -269,6 +267,7 @@ async function loadHistory() {
             </div>
         `).join('');
     } catch (e) {
+        console.error('Failed to load history:', e);
         document.getElementById('historyList').innerHTML = '<div class="error-message">Ошибка загрузки истории</div>';
         const historyMainStatEl = document.getElementById('historyMainStat');
         const historySubStatEl = document.getElementById('historySubStat');
@@ -308,17 +307,9 @@ const formatDate = (date) => {
 
 async function loadProfile() {
     try {
-        // Получаем данные профиля
-        const response = await fetch('/api/waiter/profile', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-            credentials: 'include'
-        });
+        const profileData = await window.api.call('/api/waiter/profile');
+        if (!profileData) return; // Request failed or redirect happened
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const profileData = await response.json();
         console.log("Профиль загружен:", profileData);
         console.log("Имя:", profileData.name, "Тип:", typeof profileData.name);
         console.log("Логин:", profileData.username, "Тип:", typeof profileData.username);
@@ -590,12 +581,10 @@ function getNextStatus(status) {
     return flow[status] || status;
 }
 async function renderTables() {
-        const resp = await fetch('/api/waiter/tables', { 
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-            credentials: 'include' 
-        });
-        if (!resp.ok) throw new Error('Failed to load tables');
-        const data = await resp.json();
+    try {
+        const data = await window.api.call('/api/waiter/tables');
+        if (!data) return; // Request failed or redirect happened
+        
         const grid = document.querySelector('.table-modal__grid');
         console.log(data);
         grid.innerHTML = data.tables.map(table => `
@@ -642,7 +631,11 @@ async function renderTables() {
                 setCreateOrderInteractive(true);
             });
         });
+    } catch (e) {
+        console.error('Failed to render tables:', e);
+        alert('Ошибка загрузки столов');
     }
+}
 
 function showTableModal() {
     document.getElementById('tableModal').classList.add('active');
@@ -713,30 +706,9 @@ async function createOrder() {
     console.log(payload);
 
     try {
-        const response = await fetch('/api/waiter/orders', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            let errorMsg = `Ошибка создания заказа: ${response.status}`;
-            try {
-                const errorData = await response.json(); // Attempt to parse JSON error response
-                if (errorData && errorData.error) {
-                    errorMsg = errorData.error; // Use specific error from backend
-                }
-            } catch (e) {
-                // If response is not JSON or errorData.error is not present, stick to generic
-                console.warn("Could not parse error response as JSON from backend", e);
-            }
-            throw new Error(errorMsg);
-        }
-
-        const createdOrder = await response.json();
+        const createdOrder = await window.api.call('/api/waiter/orders', 'POST', payload);
+        if (!createdOrder) return; // Request failed or redirect happened
+        
         console.log('Order created:', createdOrder);
         alert('Заказ успешно создан!');
         
@@ -930,15 +902,7 @@ function decrementOrderItem(dishId) {
 
 async function updateOrderStatus(orderId, newStatus) {
     try {
-        await fetch(`/api/waiter/orders/${orderId}/status`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            credentials: 'include',
-            body: JSON.stringify({ status: newStatus })
-        });
+        await window.api.call(`/api/waiter/orders/${orderId}/status`, 'PUT', { status: newStatus });
         loadOrders();
     } catch (e) {
         alert('Ошибка при обновлении статуса заказа');
@@ -1029,7 +993,18 @@ function formatShiftDate(dateString) {
     }
 } 
 
-// Function to handle table click for status update
+// Add this function to handle table status updates
+async function updateTableStatus(tableId, newStatus) {
+    try {
+        const response = await window.api.call(`/api/waiter/tables/${tableId}/status`, 'PUT', { status: newStatus });
+        return true; // Success
+    } catch (error) {
+        console.error('Error updating table status:', error);
+        return false; // Failed
+    }
+}
+
+// Update the function that shows the modal to use the new updateTableStatus function
 function showTableStatusModal(tableId, currentStatus) {
     // Create modal if it doesn't exist
     let modal = document.getElementById('tableStatusModal');
@@ -1114,43 +1089,26 @@ function showTableStatusModal(tableId, currentStatus) {
             button.classList.add('active');
             
             if (newStatus) {
-                try {
-                    const response = await fetch(`/api/waiter/tables/${tableId}/status`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ status: newStatus }),
-                        credentials: 'include'
-                    });
+                const messageElement = modal.querySelector('.modal__message');
+                const success = await updateTableStatus(tableId, newStatus);
+                
+                if (success) {
+                    // Update was successful
+                    messageElement.textContent = 'Статус стола успешно обновлен';
+                    messageElement.style.color = 'green';
+                    messageElement.style.display = 'block';
                     
-                    const messageElement = modal.querySelector('.modal__message');
+                    // Refresh tables data
+                    await loadTables();
                     
-                    if (response.ok) {
-                        // Update was successful
-                        messageElement.textContent = 'Статус стола успешно обновлен';
-                        messageElement.style.color = 'green';
-                        messageElement.style.display = 'block';
-                        
-                        // Refresh tables data
-                        await loadTables();
-                        
-                        // Close modal after a delay
-                        setTimeout(() => {
-                            modal.style.display = 'none';
-                            messageElement.style.display = 'none';
-                        }, 1500);
-                    } else {
-                        // Handle error
-                        const errorData = await response.json();
-                        messageElement.textContent = errorData.error || 'Ошибка при обновлении статуса стола';
-                        messageElement.style.color = 'red';
-                        messageElement.style.display = 'block';
-                    }
-                } catch (error) {
-                    console.error('Error updating table status:', error);
-                    const messageElement = modal.querySelector('.modal__message');
-                    messageElement.textContent = 'Ошибка сети при обновлении статуса стола';
+                    // Close modal after a delay
+                    setTimeout(() => {
+                        modal.style.display = 'none';
+                        messageElement.style.display = 'none';
+                    }, 1500);
+                } else {
+                    // Handle error
+                    messageElement.textContent = 'Ошибка при обновлении статуса стола';
                     messageElement.style.color = 'red';
                     messageElement.style.display = 'block';
                 }
