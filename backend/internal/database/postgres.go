@@ -1064,3 +1064,47 @@ func (db *DB) GetOrdersByStatus(status string) ([]models.Order, error) {
 	}
 	return orders, nil
 }
+
+// TableHasActiveOrders checks if a table has any active orders
+func (db *DB) TableHasActiveOrders(tableID int) (bool, error) {
+	var count int
+	err := db.QueryRow(`
+		SELECT COUNT(*) 
+		FROM orders 
+		WHERE table_id = $1 
+		AND status NOT IN ('completed', 'cancelled')`,
+		tableID,
+	).Scan(&count)
+
+	if err != nil {
+		log.Printf("Error checking for active orders for table %d: %v", tableID, err)
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// UpdateTableStatusWithTimes updates a table's status and timestamp fields
+func (db *DB) UpdateTableStatusWithTimes(tableID int, status string, reservedAt, occupiedAt *time.Time) error {
+	query := `
+		UPDATE tables 
+		SET status = $1, reserved_at = $2, occupied_at = $3
+		WHERE id = $4`
+
+	result, err := db.Exec(query, status, reservedAt, occupiedAt, tableID)
+	if err != nil {
+		log.Printf("Error updating table %d status and timestamps: %v", tableID, err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting affected rows for table %d status update: %v", tableID, err)
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("table with ID %d not found", tableID)
+	}
+
+	return nil
+}

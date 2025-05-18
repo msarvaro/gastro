@@ -43,6 +43,11 @@ func NewWaiterHandler(db *database.DB) *WaiterHandler {
 	return &WaiterHandler{db: db}
 }
 
+// TableStatusUpdateRequest defines the request structure for updating a table's status
+type TableStatusUpdateRequest struct {
+	Status string `json:"status"` // "free", "occupied", or "reserved"
+}
+
 // GetTables returns all tables with their current status
 func (h *WaiterHandler) GetTables(w http.ResponseWriter, r *http.Request) {
 	tables, err := h.db.GetAllTables()
@@ -67,6 +72,114 @@ func (h *WaiterHandler) GetTables(w http.ResponseWriter, r *http.Request) {
 		Stats:  stats,
 	}
 	respondWithJSON(w, http.StatusOK, response)
+}
+
+// UpdateTableStatus updates a table's status (free, occupied, or reserved)
+func (h *WaiterHandler) UpdateTableStatus(w http.ResponseWriter, r *http.Request) {
+	// Extract table ID from URL parameters
+	vars := mux.Vars(r)
+	tableIDStr, ok := vars["id"]
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Missing table ID")
+		return
+	}
+
+	tableID, err := strconv.Atoi(tableIDStr)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid table ID format")
+		return
+	}
+
+	// Parse request body
+	var reqBody TableStatusUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		log.Printf("Error UpdateTableStatus - decoding request for table %d: %v", tableID, err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	// Validate status
+	if reqBody.Status == "" {
+		respondWithError(w, http.StatusBadRequest, "Status is required")
+		return
+	}
+
+	// Convert string to TableStatus type
+	newStatus := models.TableStatus(reqBody.Status)
+
+	// Check if status is valid
+	validStatuses := map[models.TableStatus]bool{
+		models.TableStatusFree:     true,
+		models.TableStatusOccupied: true,
+		models.TableStatusReserved: true,
+	}
+
+	if !validStatuses[newStatus] {
+		respondWithError(w, http.StatusBadRequest, "Invalid status. Must be one of: free, occupied, reserved")
+		return
+	}
+
+	// Get the table to check if it exists
+	table, err := h.db.GetTableByID(tableID)
+	if err != nil {
+		log.Printf("Error UpdateTableStatus - fetching table %d: %v", tableID, err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to get table details")
+		return
+	}
+
+	if table == nil {
+		respondWithError(w, http.StatusNotFound, "Table not found")
+		return
+	}
+
+	// Check if the table has active orders when marking it as free
+	if newStatus == models.TableStatusFree && table.Status == models.TableStatusOccupied {
+		hasActiveOrders, err := h.db.TableHasActiveOrders(tableID)
+		if err != nil {
+			log.Printf("Error UpdateTableStatus - checking active orders for table %d: %v", tableID, err)
+			respondWithError(w, http.StatusInternalServerError, "Failed to check active orders")
+			return
+		}
+
+		if hasActiveOrders {
+			respondWithError(w, http.StatusConflict, "Нельзя поменять статус на свободный: есть активные заказы")
+			return
+		}
+	}
+
+	// Update timestamp fields based on status
+	now := time.Now()
+	var reservedAt, occupiedAt *time.Time
+
+	if newStatus == models.TableStatusReserved {
+		reservedAt = &now
+		occupiedAt = nil
+	} else if newStatus == models.TableStatusOccupied {
+		occupiedAt = &now
+		reservedAt = nil
+	} else {
+		// For free status, set both to nil
+		reservedAt = nil
+		occupiedAt = nil
+	}
+
+	// Update the table's status
+	if err := h.db.UpdateTableStatusWithTimes(tableID, string(newStatus), reservedAt, occupiedAt); err != nil {
+		log.Printf("Error UpdateTableStatus - updating table %d: %v", tableID, err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to update table status")
+		return
+	}
+
+	// Fetch the updated table to return in the response
+	updatedTable, err := h.db.GetTableByID(tableID)
+	if err != nil {
+		log.Printf("Warning: UpdateTableStatus - failed to fetch updated table %d: %v", tableID, err)
+		// Still return success even if we can't fetch the updated table
+		respondWithJSON(w, http.StatusOK, map[string]string{"message": "Table status updated successfully"})
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, updatedTable)
 }
 
 // GetOrders returns all active orders with items
