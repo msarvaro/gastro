@@ -100,7 +100,6 @@ func (h *ShiftHandler) GetShiftByID(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, "Failed to verify user")
 		return
 	}
-
 	// Проверяем роль пользователя
 	if user.Role != "manager" && user.Role != "admin" {
 		respondWithError(w, http.StatusForbidden, "Access denied: Requires manager or admin role")
