@@ -55,15 +55,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Login handler: User found - ID: %d, Role: %s", user.ID, user.Role)
-
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		log.Printf("Login handler: Password comparison failed: %v", err)
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
-
-	log.Printf("Login handler: Password verified successfully")
 
 	// Get user's associated business from database
 	businessID, err := h.db.GetUserBusinessID(user.ID)
@@ -71,8 +67,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Login handler: Error getting user's business: %v", err)
 		// Continue without business ID (admin might not have a specific business)
 	}
-
-	log.Printf("Login handler: User's business ID: %d", businessID)
 
 	expirationTime := time.Now().Add(24 * time.Hour)
 
@@ -90,9 +84,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error generating token", http.StatusInternalServerError)
 		return
 	}
-
-	log.Printf("Login handler: Token generated successfully")
-
 	// Set auth token cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "auth_token",
@@ -120,15 +111,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	redirectPath := "/"
 
 	// Only admins without a business should see business selection
-	if businessID == 0 && user.Role == "admin" {
+	if user.Role == "admin" {
 		// Redirect admin to business selection if no business is associated
 		redirectPath = "/select-business"
 		log.Printf("Login handler: Admin user without business, redirecting to: %s", redirectPath)
 	} else {
 		// For all other roles, or if business ID is already set, redirect to role-specific page
 		switch user.Role {
-		case "admin":
-			redirectPath = "/admin"
 		case "manager":
 			redirectPath = "/manager"
 		case "waiter":
@@ -136,7 +125,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		case "cook":
 			redirectPath = "/kitchen"
 		}
-		log.Printf("Login handler: Redirecting to: %s", redirectPath)
 	}
 
 	response := LoginResponse{

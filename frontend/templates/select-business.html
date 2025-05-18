@@ -254,9 +254,6 @@
                 successElement.textContent = 'Заведение выбрано успешно! Перенаправление...';
                 successElement.style.display = 'block';
                 
-                // Get the redirection target after successful selection
-                const responseData = await response.json();
-                
                 // Get user role from local storage
                 const userRole = localStorage.getItem('role');
                 

@@ -10,28 +10,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         window.location.href = '/';
         return;
     }
-    
-    // Проверим валидность токена
-    try {
-        const response = await fetch('/api/auth/validate', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include'
-        });
-        
-        if (!response.ok) {
-            console.error(`Token validation failed: ${response.status} ${response.statusText}`);
-            console.log("Will continue anyway, but this might cause API errors");
-        } else {
-            console.log("Token validated successfully");
-        }
-    } catch (error) {
-        console.error("Error validating token:", error);
-        console.log("Will continue anyway, but this might cause API errors");
-    }
 
     // Initialize sidebar state
     const sidebar = document.getElementById('sidebar');
@@ -217,15 +195,12 @@ async function handleAddRequest(event) {
 }
 
 async function loadDashboardData() {
-    console.log("loadDashboardData: Attempting to load data...");
     try {
         const token = localStorage.getItem('token');
         
-        console.log("loadDashboardData: Fetching /api/manager/orders/history...");
         const response = await fetch('/api/manager/orders/history', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        console.log("loadDashboardData: /api/manager/orders/history response status:", response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -234,12 +209,10 @@ async function loadDashboardData() {
         }
 
         const data = await response.json();
-        console.log("loadDashboardData: Successfully fetched and parsed data:", data);
-        
+
         // Проверяем структуру ответа и получаем массив заказов
         const orders = Array.isArray(data) ? data : (data.orders || []);
-        console.log("loadDashboardData: Processing orders array:", orders);
-        
+
         const completedOrders = orders.filter(order => order.status === 'completed');
         
         const totalRevenue = completedOrders.reduce((sum, order) => sum + (order.total || 0), 0);
@@ -291,9 +264,6 @@ async function loadDashboardData() {
         } else {
             console.warn("loadDashboardData: Could not find all dashboard indicator spans to update.");
         }
-
-        console.log("loadDashboardData: Successfully updated dashboard UI.");
-
     } catch (error) {
         console.error('loadDashboardData: CRITICAL ERROR caught inside loadDashboardData:', error.message, error.stack);
         throw error; 
@@ -2439,267 +2409,4 @@ async function loadEmployees() {
         showError('Ошибка при загрузке списка сотрудников');
         return [];
     }
-}
-
-// Загрузка административной панели
-async function loadAdminPanel() {
-    try {
-        const token = localStorage.getItem('token');
-        const role = localStorage.getItem('role');
-        
-        // Получаем элемент контейнера админ-панели
-        const adminContainer = document.getElementById('staff-admin-tab');
-        if (!adminContainer) {
-            console.error('Admin container not found');
-            return;
-        }
-        
-        // Проверяем права доступа
-        if (role !== 'admin' && role !== 'manager') {
-            adminContainer.innerHTML = '<p class="error-message">У вас нет прав для доступа к административным функциям</p>';
-            return;
-        }
-        
-        // Создаем содержимое админ-панели
-        adminContainer.innerHTML = `
-            <div class="admin-dashboard">
-                <div class="admin-header">
-                    <h3>Административная панель</h3>
-                    <button id="refreshAdminBtn" class="secondary-btn">Обновить</button>
-                </div>
-                
-                <div class="admin-cards">
-                    <div class="card">
-                        <div class="card-title">Пользователи</div>
-                        <div class="card-value" id="total-admin-users">-</div>
-                        <div class="card-actions">
-                            <button id="manageUsersBtn" class="action-btn">Управление</button>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-title">Филиалы</div>
-                        <div class="card-value" id="total-branches">-</div>
-                        <div class="card-actions">
-                            <button id="manageBranchesBtn" class="action-btn">Управление</button>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-title">Системные настройки</div>
-                        <div class="card-subtitle">Управление параметрами</div>
-                        <div class="card-actions">
-                            <button id="systemSettingsBtn" class="action-btn">Настроить</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="admin-sections">
-                    <!-- Секция управления пользователями -->
-                    <div class="admin-section" id="admin-users-section" style="display:none;">
-                        <h4>Управление пользователями</h4>
-                        <div class="admin-section-content">
-                            <div class="actions-bar">
-                                <button id="createUserAdminBtn" class="primary-btn">Создать пользователя</button>
-                                <div class="filter-group">
-                                    <select id="adminUserRoleFilter">
-                                        <option value="">Все роли</option>
-                                        <option value="admin">Администраторы</option>
-                                        <option value="manager">Менеджеры</option>
-                                        <option value="waiter">Официанты</option>
-                                        <option value="cook">Повара</option>
-                                        <option value="client">Клиенты</option>
-                                    </select>
-                                    <select id="adminUserStatusFilter">
-                                        <option value="">Все статусы</option>
-                                        <option value="active">Активные</option>
-                                        <option value="inactive">Неактивные</option>
-                                        <option value="blocked">Заблокированные</option>
-                                    </select>
-                                    <input type="text" id="adminUserSearch" placeholder="Поиск пользователей...">
-                                </div>
-                            </div>
-                            
-                            <div class="table-container">
-                                <table id="admin-users-table" class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Логин</th>
-                                            <th>Имя</th>
-                                            <th>Email</th>
-                                            <th>Роль</th>
-                                            <th>Статус</th>
-                                            <th>Дата регистрации</th>
-                                            <th>Действия</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Данные загружаются динамически -->
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <div class="pagination">
-                                <button id="prevUserPageBtn">← Назад</button>
-                                <span id="userPageInfo">Страница 1</span>
-                                <button id="nextUserPageBtn">Вперед →</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Секция управления филиалами -->
-                    <div class="admin-section" id="admin-branches-section" style="display:none;">
-                        <h4>Управление филиалами</h4>
-                        <div class="admin-section-content">
-                            <div class="actions-bar">
-                                <button id="createBranchBtn" class="primary-btn">Добавить филиал</button>
-                                <div class="filter-group">
-                                    <select id="branchStatusFilter">
-                                        <option value="">Все статусы</option>
-                                        <option value="active">Активные</option>
-                                        <option value="closed">Закрытые</option>
-                                    </select>
-                                    <input type="text" id="branchSearch" placeholder="Поиск филиалов...">
-                                </div>
-                            </div>
-                            
-                            <div class="table-container">
-                                <table id="branches-table" class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Название</th>
-                                            <th>Адрес</th>
-                                            <th>Телефон</th>
-                                            <th>Менеджер</th>
-                                            <th>Статус</th>
-                                            <th>Действия</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Данные загружаются динамически -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Секция системных настроек -->
-                    <div class="admin-section" id="admin-settings-section" style="display:none;">
-                        <h4>Системные настройки</h4>
-                        <div class="admin-section-content">
-                            <form id="systemSettingsForm">
-                                <div class="settings-group">
-                                    <h5>Основные настройки</h5>
-                                    <div class="form-row">
-                                        <label for="companyName">Название компании</label>
-                                        <input type="text" id="companyName" name="companyName">
-                                    </div>
-                                    <div class="form-row">
-                                        <label for="contactEmail">Контактный email</label>
-                                        <input type="email" id="contactEmail" name="contactEmail">
-                                    </div>
-                                    <div class="form-row">
-                                        <label for="contactPhone">Контактный телефон</label>
-                                        <input type="text" id="contactPhone" name="contactPhone">
-                                    </div>
-                                </div>
-                                
-                                <div class="settings-group">
-                                    <h5>Настройки безопасности</h5>
-                                    <div class="form-row">
-                                        <label for="sessionTimeout">Таймаут сессии (минуты)</label>
-                                        <input type="number" id="sessionTimeout" name="sessionTimeout" min="5" max="120">
-                                    </div>
-                                    <div class="form-row">
-                                        <label for="passwordPolicy">Политика паролей</label>
-                                        <select id="passwordPolicy" name="passwordPolicy">
-                                            <option value="simple">Простая (мин. 6 символов)</option>
-                                            <option value="medium">Средняя (мин. 8 символов, цифры)</option>
-                                            <option value="strong">Строгая (мин. 10 символов, цифры, спец. символы)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-actions">
-                                    <button type="submit" class="primary-btn">Сохранить настройки</button>
-                                    <button type="button" id="resetSettingsBtn" class="secondary-btn">Сбросить</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Инициализация обработчиков событий админ-панели
-        setupAdminPanelEventListeners();
-        
-        // Загружаем количество пользователей
-        loadAdminUserStats();
-        
-        // Загружаем количество филиалов
-        loadBranchStats();
-        
-    } catch (error) {
-        console.error('Error loading admin panel:', error);
-        showError('Ошибка при загрузке административной панели');
-    }
-}
-
-function populateDummyShifts(tbody) {
-    const dummyShifts = [
-        {
-            id: 'dummy1',
-            date: '2023-06-15',
-            start_time: '09:00',
-            end_time: '18:00',
-            manager_name: 'Иванов Иван',
-            status: 'active'
-        },
-        {
-            id: 'dummy2',
-            date: '2023-06-16',
-            start_time: '10:00',
-            end_time: '19:00',
-            manager_name: 'Петров Петр',
-            status: 'completed'
-        },
-        {
-            id: 'dummy3',
-            date: '2023-06-17',
-            start_time: '08:00',
-            end_time: '17:00',
-            manager_name: 'Сидоров Сидор',
-            status: 'pending'
-        }
-    ];
-
-    tbody.innerHTML = '';
-    
-    dummyShifts.forEach(shift => {
-        const date = formatShiftDate(shift.date);
-        const startTime = formatShiftTime(shift.start_time);
-        const endTime = formatShiftTime(shift.end_time);
-        const timeRange = `${startTime} - ${endTime}`;
-        const status = translateShiftStatus(shift.status || 'active');
-        
-        const row = document.createElement('tr');
-        row.setAttribute('data-shift-id', shift.id);
-        row.innerHTML = `
-            <td>${date}</td>
-            <td>${timeRange}</td>
-            <td>${shift.manager_name || 'Не назначен'}</td>
-            <td><span class="status-${shift.status || 'active'}">${status}</span></td>
-            <td class="actions">
-                <button onclick="editShift('${shift.id}')" class="edit-btn" title="Редактировать смену">
-                    <img src="../static/images/edit.svg" alt="Редактировать" class="icon">
-                </button>
-                <button onclick="confirmDeleteShift('${shift.id}')" class="delete-btn" title="Удалить смену">
-                    <img src="../static/images/delete.svg" alt="Удалить" class="icon">
-                </button>
-            </td>
-        `;
-        
-        tbody.appendChild(row);
-    });
 }

@@ -237,7 +237,7 @@ func (db *DB) UpdateUser(user *models.User) error {
 	return err
 }
 
-func (db *DB) CreateUser(user *models.User) error {
+func (db *DB) CreateUser(user *models.User, businessID int) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -250,19 +250,19 @@ func (db *DB) CreateUser(user *models.User) error {
 	}
 
 	// Отладка: перед выполнением запроса
-	log.Printf("CreateUser DB: Saving user - Username: %q, Name: %q, Email: %q, Role: %q, Status: %q",
-		user.Username, user.Name, user.Email, user.Role, user.Status)
+	log.Printf("CreateUser DB: Saving user - Username: %q, Name: %q, Email: %q, Role: %q, Status: %q, BusinessID: %d",
+		user.Username, user.Name, user.Email, user.Role, user.Status, businessID)
 
 	_, err = db.Exec(`
-        INSERT INTO users (username, name, email, password, role, status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $7)`,
-		user.Username, user.Name, user.Email, string(hashedPassword), user.Role, user.Status, time.Now(),
+        INSERT INTO users (username, name, email, password, role, status, business_id, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)`,
+		user.Username, user.Name, user.Email, string(hashedPassword), user.Role, user.Status, businessID, time.Now(),
 	)
 
 	if err != nil {
 		log.Printf("CreateUser DB: Error creating user: %v", err)
 	} else {
-		log.Printf("CreateUser DB: User created successfully")
+		log.Printf("CreateUser DB: User created successfully with business ID: %d", businessID)
 	}
 
 	return err
@@ -867,7 +867,6 @@ func (db *DB) CreateOrderAndItems(order *models.Order, businessID int) (*models.
 		err = tx.QueryRow(itemSQL, order.ID, item.DishID, item.Quantity, item.Price, item.Notes, businessID).Scan(&item.ID)
 		if err != nil {
 			tx.Rollback()
-			log.Printf("Error inserting order item for dish %d (name: %s): %v", item.DishID, err)
 			return nil, err
 		}
 	}
