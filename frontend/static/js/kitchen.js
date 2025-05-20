@@ -1,43 +1,67 @@
 // kitchen.js
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Add event listeners for tab switching
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.addEventListener('click', () => {
-            const tab = button.dataset.tab;
+    // Инициализируем активную вкладку на основе URL или используем 'queue' по умолчанию
+    const defaultTab = window.location.hash.substring(1) || 'queue';
+    initNav();
+    openTab(defaultTab);
+    
+    // Обновляем данные каждые 30 секунд
+    setInterval(() => {
+        const activeTab = document.querySelector('.nav-link.active').dataset.tab;
+        if (activeTab) {
+            openTab(activeTab, false);
+        }
+    }, 30000);
+});
+
+function initNav() {
+    // Добавляем обработчики на навигацию
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const tab = link.dataset.tab;
+            
+            // Обновляем хэш без автоматической прокрутки
+            history.pushState(null, '', `#${tab}`);
+            
             openTab(tab);
         });
     });
+}
 
-    // Load user info on page load
-    loadUserInfo();
-
-    // Load the default tab (queue)
-    openTab('queue');
-});
-
-function openTab(tabName) {
-    // Hide all tab panes
+function openTab(tabName, updateUI = true) {
+    // Скрываем все вкладки
     document.querySelectorAll('.tab-pane').forEach(pane => {
         pane.classList.remove('active');
     });
-
-    // Deactivate all tab buttons
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.classList.remove('active');
+    
+    // Деактивируем все кнопки навигации
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
     });
-
-    // Show the selected tab pane and activate the button
-    document.getElementById(tabName).classList.add('active');
-    document.querySelector(`.tab-button[data-tab="${tabName}"]`).classList.add('active');
-
-    // Load data based on the tab
+    
+    // Показываем выбранную вкладку и активируем кнопку
+    const tabPane = document.getElementById(tabName);
+    if (tabPane) {
+        tabPane.classList.add('active');
+    }
+    
+    const navLink = document.querySelector(`.nav-link[data-tab="${tabName}"]`);
+    if (navLink) {
+        navLink.classList.add('active');
+    }
+    
+    // Прокрутка в начало страницы при смене вкладки
+    window.scrollTo(0, 0);
+    
+    // Загружаем данные в зависимости от выбранной вкладки
     if (tabName === 'queue') {
         loadKitchenOrders();
-    } else if (tabName === 'history') {
-        loadKitchenHistory();
     } else if (tabName === 'inventory') {
         loadInventory();
+    } else if (tabName === 'history') {
+        loadKitchenHistory();
     }
 }
 
@@ -96,21 +120,35 @@ async function loadUserInfo() {
 async function loadKitchenOrders() {
     const ordersListEl = document.getElementById('kitchenOrdersList');
     ordersListEl.innerHTML = '<div class="loading">Загрузка заказов...</div>';
+    
     try {
-        const resp = await fetch('/api/kitchen/orders', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
-        if (!resp.ok) throw new Error('Failed to load kitchen orders');
-        const data = await resp.json();
-        console.log('Kitchen Orders:', data);
-
+        const response = await fetch('/api/kitchen/orders', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Ошибка загрузки заказов: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Обновляем счетчик активных заказов
+        const queueStatus = document.querySelector('#queueStatus span');
+        if (queueStatus) {
+            queueStatus.textContent = data.orders?.length || 0;
+        }
+        
+        // Если нет заказов
         if (!data.orders || data.orders.length === 0) {
-            ordersListEl.innerHTML = '<div class="no-orders">Нет заказов в очереди</div>';
+            ordersListEl.innerHTML = '<div class="no-orders">Нет активных заказов</div>';
             return;
         }
-
+        
+        // Отрисовываем заказы
         ordersListEl.innerHTML = data.orders.map(order => `
             <div class="order-card order-card--${order.status}">
                 <div class="order-card__header">
-                    <div class="order-card__id">#${order.id}</div>
+                    <div class="order-card__id">Заказ #${order.id}</div>
                     <div class="order-card__info">
                         <div class="order-card__table">Стол ${order.table_id}</div>
                         <div class="order-card__time">${formatOrderTime(order.created_at)}</div>
@@ -118,96 +156,128 @@ async function loadKitchenOrders() {
                 </div>
                 <div class="order-card__items">
                     ${order.items.map(item => `
-                        <div>${item.quantity} x ${item.name} (${item.category})</div>
+                        <div>${item.quantity} × ${item.name}</div>
                     `).join('')}
                 </div>
-                 <div class="order-card__footer">
-                     <div class="order-card__waiter">Официант: ${order.waiter_id}</div>
-                     <button class="status-button status-button--ready" onclick="updateOrderStatusByCook(${order.id}, 'ready')">Готово</button>
-                 </div>
+                <div class="order-card__footer">
+                    <div class="order-card__waiter">официант: ${order.waiter_name || order.waiter_id}</div>
+                    <button class="status-button status-button--ready" onclick="updateOrderStatusByCook(${order.id}, 'ready')">Готово</button>
+                </div>
             </div>
         `).join('');
-
+        
     } catch (error) {
-        console.error('Error loading kitchen orders:', error);
-        ordersListEl.innerHTML = '<div class="error">Ошибка загрузки заказов.</div>';
+        console.error('Ошибка загрузки заказов:', error);
+        ordersListEl.innerHTML = `<div class="error">Ошибка загрузки заказов: ${error.message}</div>`;
     }
 }
 
 async function loadKitchenHistory() {
-     const historyListEl = document.getElementById('kitchenHistoryList');
-     historyListEl.innerHTML = '<div class="loading">Загрузка истории...</div>';
+    const historyListEl = document.getElementById('kitchenHistoryList');
+    historyListEl.innerHTML = '<div class="loading">Загрузка истории...</div>';
+    
     try {
-        const resp = await fetch('/api/kitchen/history', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
-        if (!resp.ok) throw new Error('Failed to load kitchen history');
-        const data = await resp.json();
-        console.log('Kitchen History Data:', data);
-
+        const response = await fetch('/api/kitchen/history', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Ошибка загрузки истории: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Обновляем счетчик заказов в истории
+        const historyStatus = document.querySelector('#historyStatus span');
+        if (historyStatus) {
+            historyStatus.textContent = data.total || data.orders?.length || 0;
+        }
+        
+        // Если нет заказов в истории
         if (!data.orders || data.orders.length === 0) {
             historyListEl.innerHTML = '<div class="no-orders">История заказов пуста</div>';
             return;
         }
-
+        
+        // Отрисовываем историю заказов
         historyListEl.innerHTML = data.orders.map(order => `
-            <div class="order-card order-card--${order.status}">
+            <div class="order-card ${order.status === 'completed' ? 'order-card--completed' : ''}">
                 <div class="order-card__header">
-                    <div class="order-card__id">#${order.id}</div>
+                    <div class="order-card__id">Заказ #${order.id}</div>
                     <div class="order-card__info">
                         <div class="order-card__table">Стол ${order.table_id}</div>
-                        <div class="order-card__time">${formatOrderTime(order.created_at)}</div>
+                        <div class="order-card__time">${formatOrderTime(order.completed_at || order.created_at)}</div>
                     </div>
                 </div>
                 <div class="order-card__items">
                     ${order.items.map(item => `
-                        <div>${item.quantity} x ${item.name} (${item.category})</div>
+                        <div>${item.quantity} × ${item.name}</div>
                     `).join('')}
                 </div>
-                 <div class="order-card__footer">
-                     <div class="order-card__waiter">Официант: ${order.waiter_id}</div>
-                     <div class="status-badge status-badge--${order.status}">${getStatusText(order.status)}</div>
-                 </div>
+                <div class="order-card__footer">
+                    <div class="order-card__waiter">официант: ${order.waiter_name || order.waiter_id}</div>
+                    <div class="status-badge status-badge--${order.status}">${getStatusText(order.status)}</div>
+                </div>
             </div>
         `).join('');
-
+        
     } catch (error) {
-        console.error('Error loading kitchen history:', error);
-        historyListEl.innerHTML = '<div class="error">Ошибка загрузки истории.</div>';
+        console.error('Ошибка загрузки истории заказов:', error);
+        historyListEl.innerHTML = `<div class="error">Ошибка загрузки истории: ${error.message}</div>`;
     }
 }
 
 async function loadInventory() {
-     const inventoryListEl = document.getElementById('inventoryList');
-     inventoryListEl.innerHTML = '<div class="loading">Загрузка запасов...</div>';
+    const inventoryTableEl = document.getElementById('inventoryList');
+    inventoryTableEl.innerHTML = '<tr><td colspan="6" class="loading-cell">Загрузка запасов...</td></tr>';
+    
     try {
-        const resp = await fetch('/api/kitchen/inventory', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
-        if (!resp.ok) throw new Error('Failed to load inventory');
-        const data = await resp.json();
-        console.log('Inventory:', data);
-
+        const response = await fetch('/api/kitchen/inventory', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Ошибка загрузки запасов: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Обновляем статус последнего обновления
+        const inventoryStatus = document.querySelector('#inventoryStatus span');
+        if (inventoryStatus && data.last_updated) {
+            inventoryStatus.textContent = formatTimeAgo(data.last_updated);
+        }
+        
+        // Если нет запасов
         if (!data.items || data.items.length === 0) {
-            inventoryListEl.innerHTML = '<div class="no-inventory">Запасы не найдены</div>';
+            inventoryTableEl.innerHTML = '<tr><td colspan="6" class="loading-cell">Нет данных о запасах</td></tr>';
             return;
         }
-
-        inventoryListEl.innerHTML = data.items.map(item => `
-            <div class="inventory-item">
-                <div class="item-name">${item.name}</div>
-                <div class="item-quantity">Количество: <span id="inventory-quantity-${item.id}">${item.quantity}</span> ${item.unit}</div>
-                <div class="item-actions">
-                    <button onclick="promptUpdateInventory(${item.id}, '${item.name}', ${item.quantity})">Редактировать</button>
-                </div>
-            </div>
+        
+        // Отрисовываем таблицу запасов
+        inventoryTableEl.innerHTML = data.items.map(item => `
+            <tr>
+                <td>
+                    ${getStatusIndicator(item.quantity, item.critical_level)}
+                    ${item.name}
+                </td>
+                <td>${item.category}</td>
+                <td>${item.quantity} ${item.unit}</td>
+                <td>${item.used_today || 0} ${item.unit}</td>
+                <td>${item.waste_today || 0} ${item.unit}</td>
+                <td>${formatTimeAgo(item.updated_at)}</td>
+            </tr>
         `).join('');
-
+        
     } catch (error) {
-        console.error('Error loading inventory:', error);
-        inventoryListEl.innerHTML = '<div class="error">Ошибка загрузки запасов.</div>';
+        console.error('Ошибка загрузки запасов:', error);
+        inventoryTableEl.innerHTML = `<tr><td colspan="6" class="loading-cell error">Ошибка загрузки запасов: ${error.message}</td></tr>`;
     }
 }
 
 async function updateOrderStatusByCook(orderId, status) {
     try {
-        const resp = await fetch(`/api/kitchen/orders/${orderId}/status`, {
+        const response = await fetch(`/api/kitchen/orders/${orderId}/status`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -216,17 +286,16 @@ async function updateOrderStatusByCook(orderId, status) {
             body: JSON.stringify({ status: status })
         });
 
-        if (!resp.ok) {
-            const errorText = await resp.text();
-            throw new Error(`Failed to update order status: ${resp.status} - ${errorText}`);
+        if (!response.ok) {
+            throw new Error(`Ошибка при обновлении статуса: ${response.status}`);
         }
 
-        // Reload the queue after successful update
+        // Обновляем список заказов
         loadKitchenOrders();
-
+        
     } catch (error) {
-        console.error('Error updating order status:', error);
-        alert('Не удалось обновить статус заказа: ' + error.message);
+        console.error('Ошибка при обновлении статуса заказа:', error);
+        alert(`Ошибка при обновлении статуса заказа: ${error.message}`);
     }
 }
 
@@ -270,15 +339,15 @@ async function promptUpdateInventory(itemId, itemName, currentQuantity) {
     }
 }
 
-// Helper functions (can be reused or adapted from waiter.js)
+// Вспомогательные функции
 function formatOrderTime(dateString) {
-     if (!dateString) {
-        return "Не указано"; 
-    }
+    if (!dateString) return "Не указано";
+    
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) { 
+    if (isNaN(date.getTime())) {
         return "Некорректная дата";
     }
+    
     return date.toLocaleString('ru-RU', {
         day: '2-digit',
         month: '2-digit',
@@ -289,16 +358,45 @@ function formatOrderTime(dateString) {
 }
 
 function getStatusText(status) {
-    switch (status) {
-        case 'new': return 'Новый';
-        case 'accepted': return 'Принят';
-        case 'preparing': return 'Готовится';
-        case 'ready': return 'Готов';
-        case 'served': return 'Подан';
-        case 'completed': return 'Завершен';
-        case 'cancelled': return 'Отменен';
-        default: return status;
+    const statusMap = {
+        'new': 'Новый',
+        'accepted': 'Принят',
+        'preparing': 'Готовится',
+        'ready': 'Готов',
+        'served': 'Подан',
+        'completed': 'Завершен',
+        'cancelled': 'Отменен'
+    };
+    
+    return statusMap[status] || status;
+}
+
+function getStatusIndicator(quantity, criticalLevel) {
+    if (quantity <= criticalLevel) {
+        return '<span class="status-indicator status-indicator--red"></span>';
+    } else if (quantity <= criticalLevel * 2) {
+        return '<span class="status-indicator status-indicator--yellow"></span>';
+    } else {
+        return '<span class="status-indicator status-indicator--green"></span>';
     }
+}
+
+function formatTimeAgo(timestamp) {
+    if (!timestamp) return "Не указано";
+    
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+        return "Некорректная дата";
+    }
+    
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000); // разница в секундах
+    
+    if (diff < 60) return "Только что";
+    if (diff < 3600) return `${Math.floor(diff / 60)} минут назад`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} часов назад`;
+    
+    return date.toLocaleDateString('ru-RU');
 }
 
 // Add more helper functions if needed, e.g., for fetching user info for the header 

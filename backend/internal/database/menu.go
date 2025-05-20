@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"restaurant-management/internal/models"
 	"strings"
 
@@ -468,6 +469,29 @@ func (r *MenuRepository) GetCategories(ctx context.Context) ([]models.Category, 
 	return categories, nil
 }
 
+func (r *MenuRepository) GetCategoryByID(ctx context.Context, id int) (*models.Category, error) {
+	query := `
+		SELECT id, name, business_id, created_at, updated_at
+		FROM categories
+		WHERE id = $1`
+
+	var category models.Category
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&category.ID,
+		&category.Name,
+		&category.BusinessID,
+		&category.CreatedAt,
+		&category.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &category, nil
+}
+
 func (r *MenuRepository) CreateCategory(ctx context.Context, category models.CategoryCreate) (*models.Category, error) {
 	query := `
 		INSERT INTO categories (name, business_id, created_at, updated_at)
@@ -486,6 +510,9 @@ func (r *MenuRepository) CreateCategory(ctx context.Context, category models.Cat
 		&created.UpdatedAt,
 	)
 	if err != nil {
+		log.Println("Error creating category:", err)
+		log.Println("Query:", query)
+		log.Println("Params:", category.Name, category.BusinessID)
 		return nil, err
 	}
 	return &created, nil

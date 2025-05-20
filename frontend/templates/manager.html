@@ -64,7 +64,11 @@
             <div class="notification-item"><a href="#">Новая заявка на найм</a> — От: Аскар Ахметов, администратор | Должность: Официант | Опыт работы: 6 мес. | Coffee Boom, Мангилик ел 17</div>
             <div class="notification-item">Отчет за неделю готов — Показатели выше плановых на 12% | Основные метрики: выручка +15%, посещаемость +8%</div>
             <div class="notification-item"><a href="#">Новая заявка на найм</a> — От: Нургуль Науканова, шеф повар | Должность: Соус мейкер | Опыт работы: 2 года. | Coffee Boom, Мангилик ел 57</div>
-            <div class="pagination">1 из 1 страниц</div>
+            <div class="pagination">
+                <button class="pagination-arrow prev"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M13.125 15L7.875 10L13.125 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <span class="pagination-text"></span>
+                <button class="pagination-arrow next"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M7.875 15L13.125 10L7.875 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
         </div>
     </section>
 
@@ -79,10 +83,17 @@
         </div>
         <!-- Склад -->
         <div id="inventory-stock-tab" class="tab-content">
-            <div class="filters">
+            <div class="search-bar">
+                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
                 <input type="text" id="productSearch" placeholder="Поиск продукта...">
-                <select id="productCategoryFilter"><option value="">Категория</option><option value="Кофе">Кофе</option><option value="Молочные продукты">Молочные продукты</option><option value="Сиропы">Сиропы</option><option value="Расходники">Расходники</option><option value="Чай">Чай</option></select>
-                <select id="productBranchFilter"><option value="">Филиал</option><option value="Достык">Достык</option><option value="Мангилик">Мангилик</option><option value="Керуен">Керуен</option><option value="Mega">Mega</option></select>
+                <select id="productCategoryFilter">
+                    <option value="">Категория</option>
+                    <option value="Кофе">Кофе</option>
+                    <option value="Молочные продукты">Молочные продукты</option>
+                    <option value="Сиропы">Сиропы</option>
+                    <option value="Расходники">Расходники</option>
+                    <option value="Чай">Чай</option>
+                </select>
                 <button id="addProductBtn">Добавить</button>
             </div>
             <div class="cards">
@@ -105,15 +116,25 @@
                         <!-- Динамические строки -->
                     </tbody>
                 </table>
-                <div class="pagination"></div>
+                <div class="pagination">
+                    <button class="pagination-arrow prev"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M13.125 15L7.875 10L13.125 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <span class="pagination-text"></span>
+                    <button class="pagination-arrow next"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M7.875 15L13.125 10L7.875 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
             </div>
         </div>
         <!-- Заявки -->
         <div id="inventory-requests-tab" class="tab-content" style="display:none;">
-            <div class="filters">
+            <div class="search-bar">
+                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
                 <input type="text" id="requestSearch" placeholder="Поиск заявки...">
-                <select id="requestStatusFilter"><option value="">Статус</option><option value="pending">Ожидает одобрения</option><option value="active">В обработке</option><option value="completed">Выполнено</option><option value="rejected">Отклонено</option></select>
-                <select id="requestBranchFilter"><option value="">Филиал</option><option value="Coffee Boom, Достык">Достык</option><option value="Coffee Boom, Мангилик">Мангилик</option><option value="Coffee Boom, Керуен">Керуен</option><option value="Coffee Boom, Mega">Mega</option></select>
+                <select id="requestStatusFilter">
+                    <option value="">Статус</option>
+                    <option value="pending">Ожидает одобрения</option>
+                    <option value="active">В обработке</option>
+                    <option value="completed">Выполнено</option>
+                    <option value="rejected">Отклонено</option>
+                </select>
                 <button id="addRequestBtn">Создать</button>
             </div>
             <div class="cards">
@@ -124,18 +145,23 @@
             <div class="table-section">
                 <table>
                     <thead>
-                        <tr><th>Товары</th><th>Филиал</th><th>Создана</th><th>Статус</th><th>Действия</th></tr>
+                        <tr><th>Товары</th><th>Создана</th><th>Статус</th><th>Действия</th></tr>
                     </thead>
                     <tbody>
                         <!-- Динамические строки -->
                     </tbody>
                 </table>
-                <div class="pagination">1 из 1 страниц</div>
+                <div class="pagination">
+                    <button class="pagination-arrow prev"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M13.125 15L7.875 10L13.125 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <span class="pagination-text"></span>
+                    <button class="pagination-arrow next"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M7.875 15L13.125 10L7.875 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
             </div>
         </div>
         <!-- Поставщики -->
         <div id="inventory-suppliers-tab" class="tab-content" style="display:none;">
-            <div class="filters">
+            <div class="search-bar">
+                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
                 <input type="text" id="supplierSearch" placeholder="Поиск поставщика...">
                 <select id="supplierCategoryFilter"><option value="">Категория</option><option value="Кофе, чай">Кофе, чай</option><option value="Молочные продукты">Молочные продукты</option><option value="Сиропы">Сиропы</option><option value="Расходные материалы">Расходные материалы</option><option value="Выпечка, кондитерские изделия">Выпечка, кондитерские изделия</option><option value="Фрукты, ягоды">Фрукты, ягоды</option></select>
                 <button id="addSupplierBtn">Добавить поставщика</button>
@@ -149,7 +175,11 @@
                         <!-- Динамические строки -->
                     </tbody>
                 </table>
-                <div class="pagination">1 из 1 страниц</div>
+                <div class="pagination">
+                    <button class="pagination-arrow prev"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M13.125 15L7.875 10L13.125 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <span class="pagination-text"></span>
+                    <button class="pagination-arrow next"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M7.875 15L13.125 10L7.875 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
             </div>
         </div>
         <!-- История -->
@@ -162,7 +192,12 @@
 
     <!-- Другие секции -->
     <section id="menu-section" class="section" style="display:none;">
-        <div class="header">Управление меню</div>
+        <div class="header">Меню</div>
+        
+        <div class="search-bar">
+            <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
+            <input type="text" id="dishSearchInput" placeholder="Поиск блюда..." autocomplete="off">
+        </div>
         
         <div class="menu-content">
             <div class="categories-sidebar">
@@ -183,33 +218,27 @@
                 <div class="add-item-btn-container">
                     <button class="add-btn" id="addMenuItemBtn">+ Добавить блюдо</button>
                 </div>
+                
                 <div class="pagination">
-                    <div class="pagination-arrow prev">
-                        <svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11.875 14.25L7.125 9.5L11.875 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </div>
-                    <span class="pagination-text">1 из 3 страниц</span>
-                    <div class="pagination-arrow next">
-                        <svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7.125 14.25L11.875 9.5L7.125 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </div>
+                    <button class="pagination-arrow prev"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M13.125 15L7.875 10L13.125 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <span class="pagination-text"></span>
+                    <button class="pagination-arrow next"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M7.875 15L13.125 10L7.875 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 </div>
             </div>
         </div>
     </section>
     
     <section id="staff-section" class="section" style="display:none;">
-        <div class="header">Управление персоналом</div>
+        <div class="header">Персоналом</div>
         <div class="tabs">
             <button class="tab-btn active" data-tab="users">Пользователи</button>
             <button class="tab-btn" data-tab="shifts">Смены</button>
         </div>
 
         <!-- Вкладка Пользователи -->
-        <div id="staff-users-tab" class="tab-content">
-            <div class="filters">
+        <div id="staff-users-tab" class="tab-content">  
+            <div class="search-bar">
+                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
                 <input type="text" id="userSearch" placeholder="Поиск пользователей...">
                 <select id="userRoleFilter">
                     <option value="">Роль</option>
@@ -225,7 +254,6 @@
                 </select>
                 <button id="addUserBtn">Добавить пользователя</button>
             </div>
-
             <div class="cards">
                 <div class="card">Всего пользователей<br><span id="total-users" class="value">0</span></div>
                 <div class="card">Активные пользователи<br><span class="value">0</span></div>
@@ -240,7 +268,6 @@
                             <th>Имя</th>
                             <th>Роль</th>
                             <th>Статус</th>
-                            <th>Последняя активность</th>
                             <th>Дата регистрации</th>
                             <th>Действия</th>
                         </tr>
@@ -250,24 +277,17 @@
                     </tbody>
                 </table>
                 <div class="pagination">
-                    <div>
-                        <svg class="prev" width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11.875 14.25L7.125 9.5L11.875 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </div>
-                    <span>1 из 1 страниц</span>
-                    <div>
-                        <svg class="next" width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7.125 14.25L11.875 9.5L7.125 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </div>
+                    <button class="pagination-arrow prev"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M13.125 15L7.875 10L13.125 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <span class="pagination-text"></span>
+                    <button class="pagination-arrow next"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M7.875 15L13.125 10L7.875 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 </div>
             </div>
         </div>
 
         <!-- Вкладка Смены -->
         <div id="staff-shifts-tab" class="tab-content" style="display:none;">
-            <div class="filters">
+            <div class="search-bar">
+                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
                 <input type="text" id="shiftSearch" placeholder="Поиск смен...">
                 <select id="shiftStatusFilter">
                     <option value="">Статус</option>
@@ -294,17 +314,9 @@
                     </tbody>
                 </table>
                 <div class="pagination">
-                    <div>
-                        <svg class="prev" width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11.875 14.25L7.125 9.5L11.875 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </div>
-                    <span>1 из 1 страниц</span>
-                    <div>
-                        <svg class="next" width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7.125 14.25L11.875 9.5L7.125 4.75" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </div>
+                    <button class="pagination-arrow prev"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M13.125 15L7.875 10L13.125 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <span class="pagination-text"></span>
+                    <button class="pagination-arrow next"><svg xmlns="http://www.w3.org/2000/svg" width="21" height="20" viewBox="0 0 21 20" fill="none"><path d="M7.875 15L13.125 10L7.875 5" stroke="#6A6A6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 </div>
             </div>
         </div>
@@ -357,13 +369,6 @@
             <span class="close-modal">&times;</span>
             <h3>Создание новой заявки</h3>
             <form id="addRequestForm">
-                <select name="requestBranch" required>
-                    <option value="">Филиал*</option>
-                    <option value="Coffee Boom, Достык">Coffee Boom, Достык</option>
-                    <option value="Coffee Boom, Мангилик">Coffee Boom, Мангилик</option>
-                    <option value="Coffee Boom, Керуен">Coffee Boom, Керуен</option>
-                    <option value="Coffee Boom, Mega">Coffee Boom, Mega</option>
-                </select>
                 <select name="requestSupplier" id="requestSupplierSelect" required>
                     <option value="">Поставщик*</option>
                     <!-- Динамически -->

@@ -1,54 +1,72 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kitchen Panel</title>
-    <link rel="stylesheet" href="/static/css/styles.css"> <!-- Assume a general styles.css exists -->
-    <link rel="stylesheet" href="/static/css/kitchen.css"> <!-- Specific styles for kitchen -->
+    <title>Панель кухни</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/kitchen.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Kitchen Panel</h1>
-            <div class="user-info">
-                <!-- User info will be populated by JS -->
-            </div>
-        </header>
-
-        <nav class="tabs">
-            <button class="tab-button active" data-tab="queue">Order Queue</button>
-            <button class="tab-button" data-tab="history">Order History</button>
-            <button class="tab-button" data-tab="inventory">Inventory</button>
+    <header class="main-header">
+        <nav class="main-nav">
+            <a href="#queue" class="nav-link" data-tab="queue">Очередь заказов</a>
+            <a href="#inventory" class="nav-link" data-tab="inventory">Управление запасами</a>
+            <a href="#history" class="nav-link" data-tab="history">История заказов</a>
         </nav>
+    </header>
 
-        <main class="tab-content">
-            <section id="queue" class="tab-pane active">
-                <h2>Order Queue</h2>
-                <div id="kitchenOrdersList" class="order-list">
-                    <!-- Orders with status 'preparing' will be loaded here -->
-                    <div class="loading">Loading orders...</div>
-                </div>
-            </section>
+    <main class="tab-content">
+        <section id="queue" class="tab-pane active">
+            <div class="section-header">
+                <h1>Очередь заказов</h1>
+                <p id="queueStatus">Активных заказов: <span>0</span></p>
+            </div>
+            <div id="kitchenOrdersList" class="order-list">
+                <!-- Orders will be loaded here -->
+                <div class="loading">Загрузка заказов...</div>
+            </div>
+        </section>
 
-            <section id="history" class="tab-pane">
-                <h2>Order History</h2>
-                <div id="kitchenHistoryList" class="order-list">
-                    <!-- Orders with status 'ready' will be loaded here -->
-                     <div class="loading">Loading history...</div>
-                </div>
-            </section>
+        <section id="inventory" class="tab-pane">
+            <div class="section-header">
+                <h1>Управление запасами</h1>
+                <p id="inventoryStatus">Последнее обновление: <span></span></p>
+            </div>
+            <div class="inventory-container">
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Продукт</th>
+                            <th>Категория</th>
+                            <th>Текущий запас</th>
+                            <th>Использовано сегодня</th>
+                            <th>Отходы сегодня</th>
+                            <th>Обновлено</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryList">
+                        <!-- Inventory items will be loaded here -->
+                        <tr>
+                            <td colspan="6" class="loading-cell">Загрузка запасов...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
-            <section id="inventory" class="tab-pane">
-                <h2>Inventory</h2>
-                <div id="inventoryList">
-                    <!-- Inventory items will be loaded here -->
-                    <div class="loading">Loading inventory...</div>
-                </div>
-            </section>
-        </main>
-    </div>
+        <section id="history" class="tab-pane">
+            <div class="section-header">
+                <h1>История заказов</h1>
+                <p id="historyStatus">Всего заказов: <span>0</span></p>
+            </div>
+            <div id="kitchenHistoryList" class="order-list">
+                <!-- Order history will be loaded here -->
+                <div class="loading">Загрузка истории...</div>
+            </div>
+        </section>
+    </main>
 
-    <script src="/static/js/kitchen.js"></script> <!-- Kitchen specific script -->
+    <script src="/static/js/kitchen.js"></script>
 </body>
 </html> 
