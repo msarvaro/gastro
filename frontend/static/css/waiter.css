@@ -1517,33 +1517,33 @@ body {
 /* Styles for Modals (Table Select & Confirm Order) - from old create-order.css */
 
 .table-modal, .modal {
-    display: none; /* Hidden by default, JS toggles with .active */
+    display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
     z-index: 1000;
-    align-items: center;
-    justify-content: center;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
 }
 
 .table-modal.active, .modal.active {
     display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .table-modal__content, .modal__content {
-    background: #fff;
-    border-radius: 16px;
+    background-color: #fff;
+    border-radius: 12px;
+    padding: 20px;
     width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
     max-height: 90vh;
     overflow-y: auto;
-    padding: 20px;
 }
-
-.table-modal__content { max-width: 360px; }
-.modal__content { max-width: 400px; padding: 24px; }
 
 .table-modal__header, .modal__header {
     display: flex;
@@ -1584,10 +1584,9 @@ body {
 
 .table-option.occupied {
     background: rgba(113, 114, 122, 0.1);
-    cursor: not-allowed;
 }
 
-.table-option:not(.occupied):hover {
+.table-option:hover {
     border-color: #006FFD;
     background: rgba(0, 111, 253, 0.05);
 }
@@ -1959,3 +1958,4 @@ button::-moz-focus-inner {
     margin-top: 10px;
     font-weight: 500;
 }
+

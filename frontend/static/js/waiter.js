@@ -108,6 +108,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Инициализируем счетчики фильтров при загрузке страницы
     updateTableFilterBadge();
+
+    // Настраиваем фильтры заказов и истории, даже если соответствующие секции не активны сейчас
+    console.log('Инициализирую фильтры заказов из DOMContentLoaded');
+    setupOrderFilters();
+    setupHistoryFilters();
 });
 
 function showSection(section) {
@@ -148,10 +153,11 @@ async function loadTables() {
                 <span class="occupancy-status__subtitle">Количество свободных столов: ${data.stats.free} из ${data.stats.total}</span>
             `;
         }
-
+        
         // Сохраняем данные столов в глобальной переменной для использования в фильтрации
         window.allTables = data.tables || [];
         
+        // Отрисовываем столы с учетом фильтров
         renderTablesWithFilter();
         
         // Добавляем обработчик для кнопки фильтра
@@ -263,12 +269,42 @@ function setupOrderFilters() {
     const timeFilterBtn = document.querySelector('#section-orders .filter-button--time');
     const statusFilterBtn = document.querySelector('#section-orders .filter-button--filter');
     
+    console.log('setupOrderFilters вызвана');
+    console.log('timeFilterBtn:', timeFilterBtn);
+    console.log('statusFilterBtn:', statusFilterBtn);
+    
     if (timeFilterBtn) {
-        timeFilterBtn.addEventListener('click', showOrderTimeFilterModal);
+        console.log('Добавляем обработчик click для timeFilterBtn');
+        
+        // Проверим, есть ли уже обработчик клика
+        const oldClone = timeFilterBtn.cloneNode(true);
+        timeFilterBtn.parentNode.replaceChild(oldClone, timeFilterBtn);
+        
+        oldClone.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Клик на кнопке фильтра времени');
+            showOrderTimeFilterModal();
+        });
+        
+        // Добавляем визуальную индикацию того, что обработчик привязан
+        oldClone.style.cursor = 'pointer';
     }
     
     if (statusFilterBtn) {
-        statusFilterBtn.addEventListener('click', showOrderStatusFilterModal);
+        console.log('Добавляем обработчик click для statusFilterBtn');
+        
+        // Проверим, есть ли уже обработчик клика
+        const oldClone = statusFilterBtn.cloneNode(true);
+        statusFilterBtn.parentNode.replaceChild(oldClone, statusFilterBtn);
+        
+        oldClone.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Клик на кнопке фильтра статусов');
+            showOrderStatusFilterModal();
+        });
+        
+        // Добавляем визуальную индикацию того, что обработчик привязан
+        oldClone.style.cursor = 'pointer';
     }
 }
 
@@ -356,8 +392,10 @@ function updateOrderFilterBadges() {
 
 // Модальное окно для фильтра по времени
 function showOrderTimeFilterModal() {
+    console.log('showOrderTimeFilterModal вызвана');
     let modal = document.getElementById('orderTimeFilterModal');
     if (!modal) {
+        console.log('Создаю модальное окно для фильтра по времени');
         modal = document.createElement('div');
         modal.id = 'orderTimeFilterModal';
         modal.className = 'modal';
@@ -378,15 +416,18 @@ function showOrderTimeFilterModal() {
         `;
         
         document.body.appendChild(modal);
+        console.log('Модальное окно добавлено в DOM');
         
         // Закрытие модального окна
         modal.querySelector('.close-modal-btn').addEventListener('click', () => {
-            modal.style.display = 'none';
+            console.log('Нажата кнопка закрытия модального окна по времени');
+            modal.classList.remove('active');
         });
         
         window.addEventListener('click', (event) => {
             if (event.target === modal) {
-                modal.style.display = 'none';
+                console.log('Клик вне модального окна по времени');
+                modal.classList.remove('active');
             }
         });
     }
@@ -408,6 +449,7 @@ function showOrderTimeFilterModal() {
         
         // Добавляем новые обработчики
         newOption.addEventListener('click', function() {
+            console.log('Выбран фильтр времени:', this.textContent);
             filterOptions.forEach(opt => opt.classList.remove('active'));
             this.classList.add('active');
             
@@ -424,17 +466,20 @@ function showOrderTimeFilterModal() {
             }, 100);
             
             renderOrdersWithFilter();
-            modal.style.display = 'none';
+            modal.classList.remove('active');
         });
     });
     
-    modal.style.display = 'block';
+    console.log('Отображаю модальное окно по времени (добавляю класс active)');
+    modal.classList.add('active');
 }
 
 // Модальное окно для фильтра по статусу
 function showOrderStatusFilterModal() {
+    console.log('showOrderStatusFilterModal вызвана');
     let modal = document.getElementById('orderStatusFilterModal');
     if (!modal) {
+        console.log('Создаю модальное окно для фильтра по статусу');
         modal = document.createElement('div');
         modal.id = 'orderStatusFilterModal';
         modal.className = 'modal';
@@ -477,20 +522,24 @@ function showOrderStatusFilterModal() {
         `;
         
         document.body.appendChild(modal);
+        console.log('Модальное окно для статусов добавлено в DOM');
         
         // Закрытие модального окна
         modal.querySelector('.close-modal-btn').addEventListener('click', () => {
-            modal.style.display = 'none';
+            console.log('Нажата кнопка закрытия модального окна статусов');
+            modal.classList.remove('active');
         });
         
         window.addEventListener('click', (event) => {
             if (event.target === modal) {
-                modal.style.display = 'none';
+                console.log('Клик вне модального окна статусов');
+                modal.classList.remove('active');
             }
         });
         
         // Кнопки действий
         modal.querySelector('.clear-filters-btn').addEventListener('click', () => {
+            console.log('Нажата кнопка сброса фильтров');
             modal.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
                 checkbox.checked = false;
             });
@@ -502,12 +551,14 @@ function showOrderStatusFilterModal() {
         });
         
         modal.querySelector('.apply-filters-btn').addEventListener('click', () => {
+            console.log('Нажата кнопка применения фильтров');
             const selectedStatuses = [];
             modal.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
                 selectedStatuses.push(checkbox.value);
             });
             
             window.orderFilters.statuses = selectedStatuses;
+            console.log('Выбранные статусы:', selectedStatuses);
             
             // Убираем фокус с кнопки
             setTimeout(() => {
@@ -515,7 +566,7 @@ function showOrderStatusFilterModal() {
             }, 100);
             
             renderOrdersWithFilter();
-            modal.style.display = 'none';
+            modal.classList.remove('active');
         });
     }
     
@@ -524,7 +575,8 @@ function showOrderStatusFilterModal() {
         checkbox.checked = window.orderFilters.statuses.includes(checkbox.value);
     });
     
-    modal.style.display = 'block';
+    console.log('Отображаю модальное окно статусов (добавляю класс active)');
+    modal.classList.add('active');
 }
 
 async function loadHistory() {
@@ -586,15 +638,45 @@ async function loadHistory() {
 
 // Функция для настройки фильтров истории заказов
 function setupHistoryFilters() {
+    console.log('setupHistoryFilters вызвана');
     const timeFilterBtn = document.querySelector('#section-history .filter-button--time');
     const statusFilterBtn = document.querySelector('#section-history .filter-button--filter');
     
+    console.log('timeFilterBtn история:', timeFilterBtn);
+    console.log('statusFilterBtn история:', statusFilterBtn);
+    
     if (timeFilterBtn) {
-        timeFilterBtn.addEventListener('click', showHistoryTimeFilterModal);
+        console.log('Добавляем обработчик click для timeFilterBtn истории');
+        
+        // Проверим, есть ли уже обработчик клика
+        const oldClone = timeFilterBtn.cloneNode(true);
+        timeFilterBtn.parentNode.replaceChild(oldClone, timeFilterBtn);
+        
+        oldClone.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Клик на кнопке фильтра времени истории');
+            showHistoryTimeFilterModal();
+        });
+        
+        // Добавляем визуальную индикацию того, что обработчик привязан
+        oldClone.style.cursor = 'pointer';
     }
     
     if (statusFilterBtn) {
-        statusFilterBtn.addEventListener('click', showHistoryStatusFilterModal);
+        console.log('Добавляем обработчик click для statusFilterBtn истории');
+        
+        // Проверим, есть ли уже обработчик клика
+        const oldClone = statusFilterBtn.cloneNode(true);
+        statusFilterBtn.parentNode.replaceChild(oldClone, statusFilterBtn);
+        
+        oldClone.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Клик на кнопке фильтра статусов истории');
+            showHistoryStatusFilterModal();
+        });
+        
+        // Добавляем визуальную индикацию того, что обработчик привязан
+        oldClone.style.cursor = 'pointer';
     }
 }
 
@@ -724,12 +806,12 @@ function showHistoryTimeFilterModal() {
         
         // Закрытие модального окна
         modal.querySelector('.close-modal-btn').addEventListener('click', () => {
-            modal.style.display = 'none';
+            modal.classList.remove('active');
         });
         
         window.addEventListener('click', (event) => {
             if (event.target === modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('active');
             }
         });
     }
@@ -767,11 +849,11 @@ function showHistoryTimeFilterModal() {
             }, 100);
             
             renderHistoryWithFilter();
-            modal.style.display = 'none';
+            modal.classList.remove('active');
         });
     });
     
-    modal.style.display = 'block';
+    modal.classList.add('active');
 }
 
 // Модальное окно для фильтра истории по статусу и дате
@@ -825,12 +907,12 @@ function showHistoryStatusFilterModal() {
         
         // Закрытие модального окна
         modal.querySelector('.close-modal-btn').addEventListener('click', () => {
-            modal.style.display = 'none';
+            modal.classList.remove('active');
         });
         
         window.addEventListener('click', (event) => {
             if (event.target === modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('active');
             }
         });
         
@@ -881,7 +963,7 @@ function showHistoryStatusFilterModal() {
             }, 100);
             
             renderHistoryWithFilter();
-            modal.style.display = 'none';
+            modal.classList.remove('active');
         });
     }
     
@@ -899,36 +981,47 @@ function showHistoryStatusFilterModal() {
         modal.querySelector('#date-to').value = '';
     }
     
-    modal.style.display = 'block';
+    modal.classList.add('active');
 }
 
 const formatTime = (dateOrTimeString) => {
-    console.log(dateOrTimeString);
     if (!dateOrTimeString) return '';
     
-    // Если это строка даты-времени, извлекаем только время
-    if (typeof dateOrTimeString === 'string' && dateOrTimeString.includes('T')) {
-        const timePart = dateOrTimeString.split('T')[1] || '00:00';
-        return timePart.substring(0, 5); // HH:MM
+    try {
+        // Простое извлечение времени из строки ISO с T с помощью регулярного выражения
+        if (typeof dateOrTimeString === 'string' && dateOrTimeString.includes('T')) {
+            const match = dateOrTimeString.match(/T(\d{2}):(\d{2})/);
+            if (match && match.length >= 3) {
+                return `${match[1]}:${match[2]}`; // Просто часы и минуты
+            }
+        }
+        
+        // Если это строка времени в формате HH:MM:SS, возвращаем только HH:MM
+        if (typeof dateOrTimeString === 'string' && dateOrTimeString.includes(':')) {
+            return dateOrTimeString.substring(0, 5); // HH:MM
+        }
+        
+        // Если это объект Date
+        if (dateOrTimeString instanceof Date) {
+            const hours = dateOrTimeString.getUTCHours().toString().padStart(2, '0');
+            const minutes = dateOrTimeString.getUTCMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+        
+        return dateOrTimeString; // Если ничего не подходит, вернем как есть
+    } catch (e) {
+        console.error('Ошибка форматирования времени:', e);
+        return dateOrTimeString; // В случае ошибки возвращаем исходное значение
     }
-    
-    // Если это строка времени в формате HH:MM:SS, возвращаем только HH:MM
-    if (typeof dateOrTimeString === 'string' && dateOrTimeString.includes(':')) {
-        return dateOrTimeString.substring(0, 5); // HH:MM
-    }
-    
-    // Если это объект Date, извлекаем время напрямую без создания нового объекта Date
-    if (dateOrTimeString instanceof Date) {
-        const hours = dateOrTimeString.getHours().toString().padStart(2, '0');
-        const minutes = dateOrTimeString.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
-    }
-    
-    return dateOrTimeString; // Если ничего не подходит, вернем как есть
 };
 
 const formatDate = (date) => {
-    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString('ru-RU', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric',
+        timeZone: 'UTC'
+    });
 };
 
 async function loadProfile() {
@@ -1108,7 +1201,7 @@ async function loadProfile() {
             
             profileData.upcoming_shifts.forEach(shift => {
                 // Форматируем дату и время с использованием специальных функций
-                const formattedDate = formatShiftDate(shift.date);
+                const formattedDate = formatShiftDate(shift.date) || new Date().toLocaleDateString('ru-RU');
                 const startTime = formatTime(shift.start_time);
                 const endTime = formatTime(shift.end_time);
                 
@@ -1233,17 +1326,43 @@ function formatOrderTime(dateString) {
     if (!dateString) {
         return "Не указано"; 
     }
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) { 
-        return "Некорректная дата";
+    
+    try {
+        // Если строка уже содержит Z в конце, используем ее как есть
+        // в противном случае добавляем Z для указания UTC
+        const normalizedDateString = dateString.endsWith('Z') 
+            ? dateString 
+            : dateString + 'Z';
+
+        // Если формат ISO с T, можно просто извлечь дату и время через регулярное выражение
+        if (dateString.includes('T')) {
+            const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/) || [];
+            if (match.length >= 6) {
+                const [_, year, month, day, hour, minute] = match;
+                return `${day}.${month}.${year.substring(2)} ${hour}:${minute}`;
+            }
+        }
+        
+        // Если не удалось извлечь через регулярку, пробуем через Date
+        const date = new Date(normalizedDateString);
+        
+        if (isNaN(date.getTime())) {
+            console.warn('Некорректная дата:', dateString);
+            return dateString; // Возвращаем исходную строку вместо "Некорректная дата"
+        }
+        
+        return date.toLocaleString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'UTC' // Используем UTC как исходный часовой пояс
+        });
+    } catch (e) {
+        console.error('Ошибка форматирования времени заказа:', e, dateString);
+        return dateString; // Возвращаем исходную строку вместо "Ошибка даты"
     }
-    return date.toLocaleString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
 }
 function formatMoney(amount) {
     if (amount === undefined || amount === null) {
@@ -1293,8 +1412,8 @@ async function renderTables() {
             </div>
         `).join('');
 
-        // Добавляем обработчики для каждого стола
-        grid.querySelectorAll('.table-option:not(.occupied)').forEach(tableEl => {
+        // Добавляем обработчики для всех столов, независимо от статуса
+        grid.querySelectorAll('.table-option').forEach(tableEl => {
             tableEl.addEventListener('click', () => {
                 const rawTableId = tableEl.dataset.tableId;
                 const parsedTableId = parseInt(rawTableId);
@@ -1679,12 +1798,31 @@ function formatShiftDate(dateString) {
             return `${day}.${month}.${year}`;
         }
         
+        // Если это ISO строка даты с часовым поясом
+        if (typeof dateString === 'string' && dateString.includes('T')) {
+            // Добавляем Z, чтобы указать, что это UTC
+            const dateTimeString = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+            const date = new Date(dateTimeString);
+            
+            if (isNaN(date.getTime())) {
+                return dateString;
+            }
+            
+            // Получаем компоненты даты в UTC
+            const day = date.getUTCDate().toString().padStart(2, '0');
+            const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+            const year = date.getUTCFullYear();
+            
+            return `${day}.${month}.${year}`;
+        }
+        
+        // Для других форматов
         const date = new Date(dateString);
         if (isNaN(date.getTime())) {
             return dateString;
         }
         
-        return date.toLocaleDateString('ru-RU');
+        return date.toLocaleDateString('ru-RU', { timeZone: 'UTC' });
     } catch (error) {
         console.error('Ошибка при форматировании даты смены:', error);
         return dateString;
@@ -1735,13 +1873,13 @@ function showTableStatusModal(tableId, currentStatus) {
         
         // Add event listener to close button
         modal.querySelector('.close-modal-btn').addEventListener('click', () => {
-            modal.style.display = 'none';
+            modal.classList.remove('active');
         });
         
         // Close modal when clicking outside
         window.addEventListener('click', (event) => {
             if (event.target === modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('active');
             }
         });
     }
@@ -1802,7 +1940,7 @@ function showTableStatusModal(tableId, currentStatus) {
                     
                     // Close modal after a delay
                     setTimeout(() => {
-                        modal.style.display = 'none';
+                        modal.classList.remove('active');
                         messageElement.style.display = 'none';
                     }, 1500);
                 } else {
@@ -1816,7 +1954,7 @@ function showTableStatusModal(tableId, currentStatus) {
     });
     
     // Show the modal
-    modal.style.display = 'block';
+    modal.classList.add('active');
 }
 
 // Function to generate table elements in the grid
@@ -1878,7 +2016,32 @@ function translateTableStatus(status) {
 
 // Helper function to format time
 function formatTableTime(date) {
-    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    try {
+        // Если это строка
+        if (typeof date === 'string') {
+            if (date.includes('T')) {
+                const match = date.match(/T(\d{2}):(\d{2})/);
+                if (match && match.length >= 3) {
+                    return `${match[1]}:${match[2]}`;
+                }
+            }
+        }
+        
+        // Если это объект Date
+        if (date instanceof Date) {
+            return date.toLocaleTimeString('ru-RU', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                timeZone: 'UTC' 
+            });
+        }
+        
+        // Если ничего не сработало, возвращаем как есть или пустую строку
+        return date || '';
+    } catch (e) {
+        console.error('Ошибка форматирования времени стола:', e);
+        return date || '';
+    }
 }
 
 // Function to update tables statistics
@@ -1970,59 +2133,44 @@ function showTableFiltersModal() {
         
         document.body.appendChild(modal);
         
-        // Добавляем обработчик для закрытия модального окна
+        // Добавляем обработчик на кнопку закрытия
         modal.querySelector('.close-modal-btn').addEventListener('click', () => {
-            modal.style.display = 'none';
+            modal.classList.remove('active');
         });
         
-        // Закрытие модального окна при клике вне его содержимого
+        // Закрываем модальное окно при клике вне его
         window.addEventListener('click', (event) => {
             if (event.target === modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('active');
             }
         });
         
-        // Кнопка сброса фильтров
+        // Обработчик для кнопки "Сбросить"
         modal.querySelector('.clear-filters-btn').addEventListener('click', () => {
+            window.tableFilters.statuses = [];
             modal.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
                 checkbox.checked = false;
             });
-            
-            // Убираем фокус с кнопки
-            setTimeout(() => {
-                document.activeElement.blur();
-            }, 100);
         });
         
-        // Кнопка применения фильтров
+        // Обработчик для кнопки "Применить"
         modal.querySelector('.apply-filters-btn').addEventListener('click', () => {
-            // Собираем выбранные статусы
             const selectedStatuses = [];
             modal.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
                 selectedStatuses.push(checkbox.value);
             });
-            
-            // Обновляем фильтры
             window.tableFilters.statuses = selectedStatuses;
-            
-            // Убираем фокус с кнопки
-            setTimeout(() => {
-                document.activeElement.blur();
-            }, 100);
-            
-            // Обновляем отображение таблиц и счетчик фильтров
             renderTablesWithFilter();
             updateTableFilterBadge();
-            
-            modal.style.display = 'none';
+            modal.classList.remove('active');
         });
     }
     
-    // Устанавливаем текущие значения фильтров в чекбоксы
+    // Устанавливаем состояние чекбоксов в соответствии с текущими фильтрами
     modal.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
         checkbox.checked = window.tableFilters.statuses.includes(checkbox.value);
     });
     
-    // Отображаем модальное окно
-    modal.style.display = 'block';
+    // Показываем модальное окно
+    modal.classList.add('active');
 }

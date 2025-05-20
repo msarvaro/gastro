@@ -36,25 +36,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Проверяем токен через API
     try {
-        const token = localStorage.getItem('token'); // Ensure token is fetched here if not already available
-        const resp = await fetch('/api/manager/dashboard', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (!resp.ok) {
-            console.error('Auth check failed (dashboard API call):', resp.status, await resp.text().catch(() => 'Could not get error text')); 
-            localStorage.removeItem('token');
-            localStorage.removeItem('role');
-            document.cookie = 'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-            alert("DEBUG: Redirecting because /api/manager/dashboard call failed. Status: " + resp.status); 
-            window.location.href = '/';
-            return;
-        }
-
-        console.log("manager.js: /api/manager/dashboard call OK. Calling loadDashboardData...");
-        await loadDashboardData(); 
-        console.log("manager.js: loadDashboardData completed without throwing to outer catch.");
-        
         const currentPath = window.location.pathname;
         const sections = {
             '/manager': 'main',
@@ -84,6 +65,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         window.location.href = '/'; 
     }
 });
+
 
 async function handleAddProduct(event) {
     event.preventDefault();
@@ -172,7 +154,6 @@ async function handleAddRequest(event) {
     const itemsAsStrings = items.map(item => `${item.name} ${item.qty} ${item.unit}`);
 
     const newRequest = {
-        branch: form.requestBranch.value,
         supplier_id: parseInt(form.requestSupplier.value, 10),
         items: itemsAsStrings, // теперь массив строк
         priority: form.requestPriority.value,
@@ -200,76 +181,73 @@ async function handleAddRequest(event) {
 async function loadDashboardData() {
     try {
         const token = localStorage.getItem('token');
-        
-        const response = await fetch('/api/manager/orders/history', {
+        const response = await fetch('/api/manager/history', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error("loadDashboardData: /api/manager/orders/history failed. Status:", response.status, "Response text:", errorText);
-            throw new Error(`Failed to load order history. Status: ${response.status}. Details: ${errorText}`);
+            throw new Error(`Failed to load order history: ${response.status}`);
         }
 
         const data = await response.json();
-
-        // Проверяем структуру ответа и получаем массив заказов
         const orders = Array.isArray(data) ? data : (data.orders || []);
 
-        const completedOrders = orders.filter(order => order.status === 'completed');
-        
-        const totalRevenue = completedOrders.reduce((sum, order) => sum + (order.total || 0), 0);
-        const visitorCount = completedOrders.length;
-        const averageCheck = visitorCount > 0 ? totalRevenue / visitorCount : 0;
+        // Определяем даты сегодня и вчера
+        const today = new Date().toISOString().slice(0, 10);
+        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-        const cards = document.querySelectorAll('#main-section .card .value');
-        if (cards.length >= 3) {
-            cards[0].textContent = `${formatMoney(totalRevenue)}₸`;
-            cards[1].textContent = `${visitorCount}`;
-            cards[2].textContent = `${formatMoney(Math.round(averageCheck))}₸`;
-        } else {
-            console.warn("loadDashboardData: Could not find all dashboard cards to update values.");
+        // Фильтруем заказы по датам
+        const todayOrders = orders.filter(order => order.completed_at?.slice(0, 10) === today);
+        const yesterdayOrders = orders.filter(order => order.completed_at?.slice(0, 10) === yesterday);
+
+        // Получаем информацию о столах
+        const tablesResponse = await fetch('/api/waiter/tables', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!tablesResponse.ok) {
+            throw new Error('Failed to load tables data');
         }
+        const tables = (await tablesResponse.json()).tables || [];
 
-        const today = new Date().toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        // Функция для подсчета мест по ID столов
+        const getTableSeatsById = (tableIds) => {
+            return tableIds.reduce((sum, tableId) => {
+                const table = tables.find(t => t.id === tableId);
+                return sum + (table?.seats || 0);
+            }, 0);
+        };
+
+        // Вычисляем статистику
+        const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        const yesterdayRevenue = yesterdayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
         
-        const todayOrders = completedOrders.filter(order => 
-            order.completed_at && new Date(order.completed_at).toDateString() === today);
-        const yesterdayOrders = completedOrders.filter(order => 
-            order.completed_at && new Date(order.completed_at).toDateString() === yesterday);
-
-        const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.total || 0), 0);
-        const yesterdayRevenue = yesterdayOrders.reduce((sum, order) => sum + (order.total || 0), 0);
-        
-        let revenueChange = 0;
-        if (yesterdayRevenue !== 0) {
-            revenueChange = ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100);
-        }
-
-        let visitorChange = 0;
-        if (yesterdayOrders.length !== 0) {
-            visitorChange = ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length * 100);
-        }
+        const todayVisitors = getTableSeatsById(todayOrders.map(order => order.table_id));
+        const yesterdayVisitors = getTableSeatsById(yesterdayOrders.map(order => order.table_id));
         
         const todayAvgCheck = todayOrders.length ? todayRevenue / todayOrders.length : 0;
         const yesterdayAvgCheck = yesterdayOrders.length ? yesterdayRevenue / yesterdayOrders.length : 0;
-        let avgCheckChange = 0;
-        if (yesterdayAvgCheck !== 0) {
-            avgCheckChange = ((todayAvgCheck - yesterdayAvgCheck) / yesterdayAvgCheck * 100);
+
+        // Функция для расчета процента изменения
+        const percent = (curr, prev) => prev ? ((curr - prev) / prev) * 100 : 0;
+
+        // Обновляем карточки
+        const cards = document.querySelectorAll('#main-section .card .value');
+        if (cards.length >= 3) {
+            cards[0].textContent = formatMoney(todayRevenue);
+            cards[1].textContent = todayVisitors;
+            cards[2].textContent = formatMoney(Math.round(todayAvgCheck));
         }
 
+        // Обновляем индикаторы
         const indicators = document.querySelectorAll('#main-section .card .desc span');
         if (indicators.length >= 3) {
-            updateComparisonIndicator(indicators[0], revenueChange);
-            updateComparisonIndicator(indicators[1], visitorChange);
-            updateComparisonIndicator(indicators[2], avgCheckChange);
-        } else {
-            console.warn("loadDashboardData: Could not find all dashboard indicator spans to update.");
+            updateComparisonIndicator(indicators[0], percent(todayRevenue, yesterdayRevenue));
+            updateComparisonIndicator(indicators[1], percent(todayVisitors, yesterdayVisitors));
+            updateComparisonIndicator(indicators[2], percent(todayAvgCheck, yesterdayAvgCheck));
         }
     } catch (error) {
-        console.error('loadDashboardData: CRITICAL ERROR caught inside loadDashboardData:', error.message, error.stack);
-        throw error; 
+        console.error('loadDashboardData error:', error.message);
+        throw error;
     }
 }
 
@@ -346,11 +324,12 @@ function setupEventListeners() {
     // Navigation menu
     document.querySelectorAll('.sidebar nav ul li').forEach(item => {
         item.addEventListener('click', function() {
-            const section = this.getAttribute('data-section');
+
             const route = this.getAttribute('data-route');
             if (route) {
                 window.location.href = route;
             }
+           
         });
     });
     
@@ -489,6 +468,7 @@ function setupEventListeners() {
     
     // Обработчики для персонала
     setupStaffEventListeners();
+    
 }
 
 // Настройка обработчиков событий для секции персонала
@@ -688,7 +668,7 @@ function setupStaffEventListeners() {
     }
 }
 
-// Section switching
+
 function showSection(sectionName) { 
     const knownSectionNames = ['main', 'menu', 'inventory', 'staff']; 
 
@@ -717,7 +697,6 @@ function showSection(sectionName) {
     // The active menu item highlighting is handled in the DOMContentLoaded scope
     // based on currentPath, so it's removed from here to avoid the ReferenceError.
 }
-
 // Inventory tabs
 function showInventoryTab(tab) {
     const tabs = ['stock', 'requests', 'suppliers', 'history'];
@@ -764,17 +743,13 @@ async function loadInventoryData() {
 
         // Фильтрация
         const searchInput = document.getElementById('productSearch');
-        const categorySelect = document.getElementById('productCategoryFilter');
-        const branchSelect = document.getElementById('productBranchFilter');
-        
+        const categorySelect = document.getElementById('productCategoryFilter');    
         const search = searchInput ? searchInput.value.trim().toLowerCase() : '';
         const category = categorySelect ? categorySelect.value : '';
-        const branch = branchSelect ? branchSelect.value : '';
         
         let filteredItems = items;
         if (search) filteredItems = items.filter(i => i.name.toLowerCase().includes(search));
         if (category) filteredItems = filteredItems.filter(i => i.category === category);
-        if (branch) filteredItems = filteredItems.filter(i => i.branch === branch);
 
         // Update inventory cards
         const cards = document.querySelectorAll('#inventory-stock-tab .card .value');
@@ -844,11 +819,9 @@ async function loadRequestsData() {
         // Фильтрация
         const search = document.getElementById('requestSearch').value.trim().toLowerCase();
         const status = document.getElementById('requestStatusFilter').value;
-        const branch = document.getElementById('requestBranchFilter').value;
         let filteredRequests = requests;
         if (search) filteredRequests = requests.filter(r => r.items.join(', ').toLowerCase().includes(search));
         if (status) filteredRequests = filteredRequests.filter(r => r.status === status);
-        if (branch) filteredRequests = filteredRequests.filter(r => r.branch === branch);
 
         // Update requests cards
         document.querySelector('#inventory-requests-tab .card:nth-child(1) .value').textContent = 
@@ -867,7 +840,6 @@ async function loadRequestsData() {
                 tbody.innerHTML = filteredRequests.map(request => `
                     <tr>
                         <td>${request.items.join(', ')}</td>
-                        <td>${request.branch}</td>
                         <td>${formatDate(request.created_at)}</td>
                         <td><span class="status-${request.status}">${getRequestStatusText(request.status)}</span></td>
                         <td>
@@ -1080,7 +1052,6 @@ function updateMenuUI(categories, items) {
         categoriesContainer.innerHTML = categories.map((category, index) => {
             const itemCount = items.filter(item => item.category_id === category.id).length;
             const isActive = index === 0; // First category is active by default
-            
             return `
                 <div class="category-item ${isActive ? 'active' : ''}" data-category-id="${category.id}">
                     <span class="category-name">${category.name}</span>
@@ -1128,6 +1099,48 @@ function updateMenuUI(categories, items) {
             `).join('')}
         `;
     });
+
+    // After rendering categories and the add button
+    // Remove any previous action buttons to avoid duplicates
+    const oldActions = document.querySelector('.category-action-btns');
+    if (oldActions) oldActions.remove();
+
+    // Insert new action buttons below the add button
+    const addBtnContainer = document.querySelector('.add-category-btn-container');
+    if (addBtnContainer) {
+        addBtnContainer.insertAdjacentHTML('afterend', `
+            <div class="category-action-btns">
+                <button class="add-btn" id="editCategoryBtn" type="button">Изменить категорию</button>
+                <button class="add-btn" id="deleteCategoryBtn" type="button" style="color:#d32f2f; border-color:#d32f2f;">Удалить категорию</button>
+            </div>
+        `);
+    }
+
+    // Add event listeners for new buttons
+    const editBtn = document.getElementById('editCategoryBtn');
+    const deleteBtn = document.getElementById('deleteCategoryBtn');
+    function getActiveCategoryId() {
+        const active = document.querySelector('.category-item.active');
+        return active ? active.getAttribute('data-category-id') : null;
+    }
+    if (editBtn) {
+        editBtn.onclick = function() {
+            const id = getActiveCategoryId();
+            if (id) editCategory(id);
+        };
+    }
+    if (deleteBtn) {
+        deleteBtn.onclick = function() {
+            const id = getActiveCategoryId();
+            if (id) deleteCategory(id);
+        };
+    }
+    function updateCategoryActionButtons() {
+        const id = getActiveCategoryId();
+        if (editBtn) editBtn.disabled = !id;
+        if (deleteBtn) deleteBtn.disabled = !id;
+    }
+    updateCategoryActionButtons();
 }
 
 function displayMenuItemsByCategory(items, categoryId, page = 1) {
@@ -1160,10 +1173,9 @@ function displayMenuItemsByCategory(items, categoryId, page = 1) {
     const pageItems = filteredItems.slice(startIndex, endIndex);
     
     itemsContainer.innerHTML = pageItems.map(item => {
-        const status = item.status || 'active';
-        const statusText = status === 'active' ? 'Активно' : 'Скрыто';
-        const statusClass = status === 'active' ? 'status-active' : 'status-paused';
-        
+        const status = item.is_available || 'active';
+        const statusText = status === true ? 'Активно' : 'Скрыто';
+        const statusClass = status === true ? 'status-active' : 'status-paused';
         return `
             <div class="menu-item" data-item-id="${item.id}">
                 <img src="${item.image_url || DEFAULT_FOOD_IMAGE}" class="menu-item-image" alt="${item.name}">
@@ -1174,11 +1186,11 @@ function displayMenuItemsByCategory(items, categoryId, page = 1) {
                 </div>
                 <div class="menu-item-actions">
                     <div class="menu-item-price">${formatMoney(item.price)}</div>
-                    <span class="status-badge ${statusClass}">${statusText}</span>
-                    <div class="action-buttons">
-                        <button class="action-button info-btn" title="Подробнее" onclick="event.stopPropagation(); showMenuItemDetails(${item.id})">ⓘ</button>
-                        <button class="action-button edit-btn" title="Редактировать" onclick="event.stopPropagation(); editMenuItem(${item.id})">✏️</button>
-                        <button class="action-button delete-btn" title="Удалить" onclick="event.stopPropagation(); deleteMenuItem(${item.id})">🗑️</button>
+                    <div class="status-row">
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                        <button class="action-button more-btn" title="Подробнее" onclick="event.stopPropagation(); showMenuItemDetails(${item.id})">
+                            <img src="../static/images/vertical-dots.svg" class="more-btn-img" alt="Подробнее">
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1222,7 +1234,6 @@ async function addCategory(event) {
             body: JSON.stringify({
                 name: formData.get('categoryName'),
                 description: formData.get('categoryDescription'),
-                business_id: businessId
             })
         });
 
@@ -1246,20 +1257,40 @@ async function editCategory(categoryId) {
         const response = await fetch(`/api/menu/categories/${categoryId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-
         if (!response.ok) {
             throw new Error('Failed to load category data');
         }
-
         const category = await response.json();
-        
         // Fill the edit form
         const form = document.getElementById('editCategoryForm');
         form.querySelector('[name="categoryId"]').value = category.id;
         form.querySelector('[name="categoryName"]').value = category.name;
         form.querySelector('[name="categoryDescription"]').value = category.description || '';
-        
         showModal('editCategoryModal');
+        // Attach submit handler (prevent duplicate listeners)
+        form.onsubmit = async function(event) {
+            event.preventDefault();
+            const formData = new FormData(form);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/menu/categories/${categoryId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: formData.get('categoryName'),
+                    description: formData.get('categoryDescription')
+                })
+            });
+            if (!response.ok) {
+                showError('Ошибка при обновлении категории');
+                return;
+            }
+            closeModal('editCategoryModal');
+            await loadMenuData();
+            showSuccess('Категория успешно обновлена');
+        };
     } catch (error) {
         console.error('Error loading category:', error);
         showError('Ошибка при загрузке категории');
@@ -1720,6 +1751,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // ... existing code ...
     
     // Load menu data if we're on the menu section
+    if (window.location.pathname === '/manager') {
+        loadDashboardData();
+    }
     if (window.location.pathname === '/manager/menu') {
         loadMenuData();
     }
@@ -1731,6 +1765,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (window.location.pathname === '/manager/orders') {
         loadOrdersData();
+    }
+
+    // Dish search functionality
+    const dishSearchInput = document.getElementById('dishSearchInput');
+    if (dishSearchInput) {
+        dishSearchInput.addEventListener('input', debounce(function() {
+            const searchValue = dishSearchInput.value.trim().toLowerCase();
+            const activeCategory = document.querySelector('.category-item.active');
+            if (!activeCategory) return;
+            const categoryId = activeCategory.getAttribute('data-category-id');
+            const allItems = (window.menuData && window.menuData.items) || [];
+            let filtered = allItems.filter(item => String(item.category_id) === String(categoryId));
+            if (searchValue) {
+                filtered = filtered.filter(item => (item.name || '').toLowerCase().includes(searchValue));
+            }
+            displayMenuItemsByCategory(filtered, categoryId, 1);
+        }, 200));
     }
 });
 
@@ -1970,7 +2021,6 @@ async function loadUsers() {
         } else {
             users.forEach(user => {
                 // Преобразуем даты в правильный формат
-                const formattedLastActive = formatUserDate(user.last_active);
                 const formattedCreatedAt = formatUserDate(user.created_at);
                 
                 const tr = document.createElement('tr');
@@ -1979,8 +2029,7 @@ async function loadUsers() {
                     <td>${user.username || ''}</td>
                     <td>${user.name || ''}</td>
                     <td data-role="${user.role || ''}">${translateRole(user.role || '')}</td>
-                    <td><span class="status-badge ${user.status || ''}">${translateStatus(user.status || '')}</span></td>
-                    <td>${formattedLastActive}</td>
+                    <td><span class="status-${user.status || ''}">${translateStatus(user.status || '')}</span></td>
                     <td>${formattedCreatedAt}</td>
                     <td class="actions">
                         <button onclick="editUser(${user.id})" class="edit-btn" title="Редактировать">
@@ -2159,7 +2208,7 @@ function editUser(id) {
     form.elements['username'].value = userRow.cells[0].textContent;
     form.elements['name'].value = userRow.cells[1].textContent;
     form.elements['role'].value = userRow.cells[2].getAttribute('data-role');
-    form.elements['status'].value = userRow.querySelector('.status-badge').classList.contains('active') ? 'active' : 'inactive';
+    form.elements['status'].value = userRow.classList.contains('active') ? 'active' : 'inactive';
 
     // Сохраним ID пользователя в атрибуте формы
     form.setAttribute('data-user-id', id);
@@ -2308,7 +2357,7 @@ async function loadShifts() {
             row.innerHTML = `
                 <td>${date}</td>
                 <td>${timeRange}</td>
-                <td>${shift.manager_name || 'Не назначен'}</td>
+                <td>${shift.manager.name || 'Не назначен'}</td>
                 <td><span class="status-${shift.status || 'active'}">${status}</span></td>
                 <td class="actions">
                     <button onclick="editShift(${shift.id})" class="edit-btn" title="Редактировать смену">
@@ -2796,7 +2845,8 @@ async function showMenuItemDetails(itemId) {
                         </div>
                         <div class="item-details-row">
                             <span class="detail-label">Статус:</span>
-                            <span class="detail-value status-badge ${item.status === 'active' ? 'status-active' : 'status-paused'}">${item.status === 'active' ? 'Активно' : 'Скрыто'}</span>
+                            <span class="detail-value status-badge ${item.is_available === true ? 'status-active' : 'status-paused'}">
+                            ${item.is_available === true ? 'Активно' : 'Скрыто'}</span>
                         </div>
                         <div class="item-details-row">
                             <span class="detail-label">Описание:</span>
@@ -2817,8 +2867,9 @@ async function showMenuItemDetails(itemId) {
                     </div>
                 </div>
                 <div class="modal-buttons">
-                    <button onclick="closeModal('menuItemDetailsModal')" class="btn-secondary">Закрыть</button>
                     <button onclick="editMenuItem(${item.id}); closeModal('menuItemDetailsModal')" class="btn-primary">Редактировать</button>
+                    <button onclick="deleteMenuItem(${item.id}); closeModal('menuItemDetailsModal')" class="btn-secondary" style="color:#d32f2f; border:1px solid #d32f2f;">Удалить</button>
+                    <button onclick="closeModal('menuItemDetailsModal')" class="btn-secondary">Закрыть</button>
                 </div>
             </div>
         </div>
@@ -2846,4 +2897,3 @@ async function showMenuItemDetails(itemId) {
         showError('Ошибка при загрузке деталей блюда');
     }
 }
-
