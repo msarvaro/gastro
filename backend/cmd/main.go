@@ -88,9 +88,7 @@ func main() {
 
 	// API маршруты для менеджера
 	manager := api.PathPrefix("/manager").Subrouter()
-	manager.HandleFunc("/dashboard", managerHandler.GetDashboard).Methods("GET")
-	manager.HandleFunc("/orders/history", waiterHandler.GetOrderHistory).Methods("GET")
-
+	manager.HandleFunc("/history", managerHandler.GetOrderHistory).Methods("GET")
 	// Добавляем маршруты для пользователей, используя обработчики админа
 	manager.HandleFunc("/users", adminHandler.GetUsers).Methods("GET")
 	manager.HandleFunc("/users", adminHandler.CreateUser).Methods("POST")
@@ -144,7 +142,7 @@ func main() {
 	kitchen.HandleFunc("/inventory/{id}", kitchenHandler.UpdateInventory).Methods("PUT")
 
 	// API маршруты для меню
-	menuHandler.RegisterRoutes(r)
+	menuHandler.RegisterRoutes(api)
 
 	// Регистрация обработчиков API для смен
 	apiRouter := api.PathPrefix("/shifts").Subrouter()
