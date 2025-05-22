@@ -79,22 +79,25 @@
             <button class="tab-btn active" data-tab="stock">Склад</button>
             <button class="tab-btn" data-tab="requests">Заявки</button>
             <button class="tab-btn" data-tab="suppliers">Поставщики</button>
-            <button class="tab-btn" data-tab="history">История</button>
         </div>
         <!-- Склад -->
         <div id="inventory-stock-tab" class="tab-content">
             <div class="search-bar">
-                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
-                <input type="text" id="productSearch" placeholder="Поиск продукта...">
-                <select id="productCategoryFilter">
-                    <option value="">Категория</option>
-                    <option value="Кофе">Кофе</option>
-                    <option value="Молочные продукты">Молочные продукты</option>
-                    <option value="Сиропы">Сиропы</option>
-                    <option value="Расходники">Расходники</option>
-                    <option value="Чай">Чай</option>
-                </select>
-                <button id="addProductBtn">Добавить</button>
+                <div class="search-items">
+                    <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
+                    <input type="text" id="productSearch" placeholder="Поиск продукта...">
+                </div>
+                <div class="filters">
+                    <select id="productCategoryFilter">
+                        <option value="">Категория</option>
+                        <option value="Кофе">Кофе</option>
+                        <option value="Молочные продукты">Молочные продукты</option>
+                        <option value="Сиропы">Сиропы</option>
+                        <option value="Расходники">Расходники</option>
+                        <option value="Чай">Чай</option>
+                    </select>
+                    <button id="addProductBtn">Добавить</button>
+                </div>
             </div>
             <div class="cards">
                 <div class="card">Всего позиций<br><span class="value"></span></div>
@@ -105,11 +108,12 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Наименование</th>
+                            <th>Название</th>
                             <th>Категория</th>
                             <th>Количество</th>
                             <th>Мин. запас</th>
                             <th>Статус</th>
+                            <th>Действия</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -126,16 +130,20 @@
         <!-- Заявки -->
         <div id="inventory-requests-tab" class="tab-content" style="display:none;">
             <div class="search-bar">
-                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
-                <input type="text" id="requestSearch" placeholder="Поиск заявки...">
-                <select id="requestStatusFilter">
-                    <option value="">Статус</option>
-                    <option value="pending">Ожидает одобрения</option>
-                    <option value="active">В обработке</option>
-                    <option value="completed">Выполнено</option>
-                    <option value="rejected">Отклонено</option>
-                </select>
-                <button id="addRequestBtn">Создать</button>
+                <div class="search-items">
+                    <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
+                    <input type="text" id="requestSearch" placeholder="Поиск заявки...">
+                </div>
+                <div class="filters">
+                    <select id="requestStatusFilter">
+                        <option value="">Статус</option>
+                        <option value="pending">Ожидает одобрения</option>
+                        <option value="in_processing">В обработке</option>
+                        <option value="completed">Выполнено</option>
+                        <option value="rejected">Отклонено</option>
+                    </select>
+                    <button id="addRequestBtn">Создать</button>
+                </div>
             </div>
             <div class="cards">
                 <div class="card">Активные заявки<br><span class="value"></span></div>
@@ -161,10 +169,22 @@
         <!-- Поставщики -->
         <div id="inventory-suppliers-tab" class="tab-content" style="display:none;">
             <div class="search-bar">
-                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
-                <input type="text" id="supplierSearch" placeholder="Поиск поставщика...">
-                <select id="supplierCategoryFilter"><option value="">Категория</option><option value="Кофе, чай">Кофе, чай</option><option value="Молочные продукты">Молочные продукты</option><option value="Сиропы">Сиропы</option><option value="Расходные материалы">Расходные материалы</option><option value="Выпечка, кондитерские изделия">Выпечка, кондитерские изделия</option><option value="Фрукты, ягоды">Фрукты, ягоды</option></select>
-                <button id="addSupplierBtn">Добавить поставщика</button>
+                <div class="search-items">
+                    <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
+                    <input type="text" id="supplierSearch" placeholder="Поиск поставщика...">
+                </div>
+                <div class="filters">
+                    <select id="supplierCategoryFilter">
+                        <option value="">Категория</option>
+                        <option value="Кофе, чай">Кофе, чай</option>
+                        <option value="Молочные продукты">Молочные продукты</option>
+                        <option value="Сиропы">Сиропы</option>
+                        <option value="Расходные материалы">Расходные материалы</option>
+                        <option value="Выпечка, кондитерские изделия">Выпечка, кондитерские изделия</option>
+                        <option value="Фрукты, ягоды">Фрукты, ягоды</option>
+                    </select>
+                    <button id="addSupplierBtn">Добавить поставщика</button>
+                </div>
             </div>
             <div class="table-section">
                 <table id="suppliersTable">
@@ -183,11 +203,7 @@
             </div>
         </div>
         <!-- История -->
-        <div id="inventory-history-tab" class="tab-content" style="display:none;">
-            <div class="table-section">
-                <p>История операций (заглушка)</p>
-            </div>
-        </div>
+    
     </section>
 
     <!-- Другие секции -->
@@ -195,8 +211,10 @@
         <div class="header">Меню</div>
         
         <div class="search-bar">
-            <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
-            <input type="text" id="dishSearchInput" placeholder="Поиск блюда..." autocomplete="off">
+            <div class="search-items">
+                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
+                <input type="text" id="dishSearchInput" placeholder="Поиск блюда..." autocomplete="off">
+            </div>
         </div>
         
         <div class="menu-content">
@@ -238,21 +256,25 @@
         <!-- Вкладка Пользователи -->
         <div id="staff-users-tab" class="tab-content">  
             <div class="search-bar">
-                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
-                <input type="text" id="userSearch" placeholder="Поиск пользователей...">
-                <select id="userRoleFilter">
-                    <option value="">Роль</option>
-                    <option value="manager">Менеджер</option>
-                    <option value="waiter">Официант</option>
-                    <option value="cook">Повар</option>
-                    <option value="client">Клиент</option>
-                </select>
-                <select id="userStatusFilter">
-                    <option value="">Статус</option>
-                    <option value="active">Активные</option>
-                    <option value="inactive">Неактивные</option>
-                </select>
-                <button id="addUserBtn">Добавить пользователя</button>
+                <div class="search-items">
+                    <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
+                    <input type="text" id="userSearch" placeholder="Поиск пользователей...">
+                </div>
+                <div class="filters">
+                    <select id="userRoleFilter">
+                        <option value="">Роль</option>
+                        <option value="manager">Менеджер</option>
+                        <option value="waiter">Официант</option>
+                        <option value="cook">Повар</option>
+                        <option value="client">Клиент</option>
+                    </select>
+                    <select id="userStatusFilter">
+                        <option value="">Статус</option>
+                        <option value="active">Активные</option>
+                        <option value="inactive">Неактивные</option>
+                    </select>
+                    <button id="addUserBtn">Добавить пользователя</button>
+                </div>
             </div>
             <div class="cards">
                 <div class="card">Всего пользователей<br><span id="total-users" class="value">0</span></div>
@@ -287,15 +309,19 @@
         <!-- Вкладка Смены -->
         <div id="staff-shifts-tab" class="tab-content" style="display:none;">
             <div class="search-bar">
-                <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
-                <input type="text" id="shiftSearch" placeholder="Поиск смен...">
-                <select id="shiftStatusFilter">
-                    <option value="">Статус</option>
-                    <option value="active">Активные</option>
-                    <option value="pending">Ожидающие</option>
-                    <option value="completed">Завершённые</option>
-                </select>
-                <button id="addShiftBtn">Добавить смену</button>
+                <div class="search-items">
+                    <img src="../static/images/search.svg" class="search-icon" alt="Поиск">
+                    <input type="text" id="shiftSearch" placeholder="Поиск смен...">
+                </div>
+                <div class="filters">
+                    <select id="shiftStatusFilter">
+                        <option value="">Статус</option>
+                        <option value="active">Активные</option>
+                        <option value="pending">Ожидающие</option>
+                        <option value="completed">Завершённые</option>
+                    </select>
+                    <button id="addShiftBtn">Добавить смену</button>
+                </div>
             </div>
 
             <div class="table-section">
@@ -326,7 +352,7 @@
     <!-- Добавить продукт -->
     <div class="modal" id="addProductModal">
         <div class="modal-content">
-            <span class="close-modal">&times;</span>
+            <span class="close-modal" data-modal-id="addProductModal">&times;</span>
             <h3>Добавление нового продукта</h3>
             <form id="addProductForm">
                 <input type="text" name="productName" placeholder="Наименование*" required>
@@ -357,7 +383,7 @@
                     </select>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <button type="button" class="cancel">Отмена</button>
+                    <button type="button" class="cancel" onclick="closeModal('addProductModal')">Отмена</button>
                     <button type="submit">Добавить</button>
                 </div>
             </form>
@@ -366,7 +392,7 @@
     <!-- Создать заявку -->
     <div class="modal" id="addRequestModal">
         <div class="modal-content">
-            <span class="close-modal">&times;</span>
+            <span class="close-modal" data-modal-id="addRequestModal">&times;</span>
             <h3>Создание новой заявки</h3>
             <form id="addRequestForm">
                 <select name="requestSupplier" id="requestSupplierSelect" required>
@@ -400,12 +426,12 @@
     <!-- Добавить поставщика -->
     <div class="modal" id="addSupplierModal">
         <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <h3>Добавить нового поставщика</h3>
+            <span class="close-modal" data-modal-id="addSupplierModal">&times;</span>
+            <h3>Добавить поставщика</h3>
             <form id="addSupplierForm">
                 <input type="text" name="supplierName" placeholder="Название компании*" required>
                 <select name="supplierCategory" required>
-                    <option value="">Категория товаров*</option>
+                    <option value="">Категория*</option>
                     <option value="Кофе, чай">Кофе, чай</option>
                     <option value="Молочные продукты">Молочные продукты</option>
                     <option value="Сиропы">Сиропы</option>
@@ -413,42 +439,60 @@
                     <option value="Выпечка, кондитерские изделия">Выпечка, кондитерские изделия</option>
                     <option value="Фрукты, ягоды">Фрукты, ягоды</option>
                 </select>
-                <input type="tel" name="supplierPhone" placeholder="Телефон*" required>
+                <input type="text" name="supplierPhone" placeholder="Телефон">
                 <input type="email" name="supplierEmail" placeholder="Email">
-                <input type="text" name="supplierAddress" placeholder="Адрес">
-                <div style="display:flex; gap:8px;">
-                    <button type="button" class="cancel">Отмена</button>
-                    <button type="submit">Добавить</button>
-                </div>
+                <textarea name="supplierAddress" placeholder="Адрес"></textarea>
+                <button type="submit">Добавить</button>
+                <button type="button" class="cancel" onclick="closeModal('addSupplierModal')">Отмена</button>
             </form>
         </div>
     </div>
-    <!-- Редактировать поставщика -->
-    <div class="modal" id="editSupplierModal">
+    <!-- Модальное окно редактирования поставщика -->
+    <div id="editSupplierModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('editSupplierModal')">&times;</span>
-            <h3>Редактировать поставщика</h3>
-            <form onsubmit="handleEditSupplier(event)">
-                <input type="text" required>
-                <select required>
-                    <option value="Кофе, чай">Кофе, чай</option>
-                    <option value="Молочные продукты">Молочные продукты</option>
-                    <option value="Сиропы">Сиропы</option>
-                    <option value="Расходные материалы">Расходные материалы</option>
-                    <option value="Выпечка, кондитерские изделия">Выпечка, кондитерские изделия</option>
-                    <option value="Фрукты, ягоды">Фрукты, ягоды</option>
-                </select>
-                <input type="tel" required>
-                <input type="email">
-                <input type="text">
-                <select required>
-                    <option value="active">Активный</option>
-                    <option value="paused">На паузе</option>
-                    <option value="archived">Архивный</option>
-                </select>
-                <div style="display:flex; gap:8px;">
-                    <button type="button" class="cancel" onclick="closeModal('editSupplierModal')">Отмена</button>
-                    <button type="submit">Сохранить</button>
+            <span class="close-modal">&times;</span>
+            <h2>Редактировать поставщика</h2>
+            <form id="editSupplierForm" onsubmit="handleEditSupplier(event)">
+                <input type="hidden" name="supplierId">
+                <div class="form-group">
+                    <label>Название компании</label>
+                    <input type="text" name="supplierName" required>
+                </div>
+                <div class="form-group">
+                    <label>Категория</label>
+                    <select name="supplierCategory" required>
+                        <option value="">Выберите категорию</option>
+                        <option value="Кофе, чай">Кофе, чай</option>
+                        <option value="Молочные продукты">Молочные продукты</option>
+                        <option value="Сиропы">Сиропы</option>
+                        <option value="Расходные материалы">Расходные материалы</option>
+                        <option value="Выпечка, кондитерские изделия">Выпечка, кондитерские изделия</option>
+                        <option value="Фрукты, ягоды">Фрукты, ягоды</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Телефон</label>
+                    <input type="tel" name="supplierPhone">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="supplierEmail">
+                </div>
+                <div class="form-group">
+                    <label>Адрес</label>
+                    <textarea name="supplierAddress"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Статус</label>
+                    <select name="supplierStatus" required>
+                        <option value="active">Активный</option>
+                        <option value="inactive">Неактивный</option>
+                        <option value="blocked">Заблокирован</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('editSupplierModal')">Отмена</button>
+                    <button type="submit" class="btn-primary">Сохранить</button>
                 </div>
             </form>
         </div>
@@ -457,7 +501,7 @@
     <!-- Добавить категорию -->
     <div class="modal" id="addCategoryModal">
         <div class="modal-content">
-            <span class="close-modal">&times;</span>
+            <span class="close-modal" data-modal-id="addCategoryModal">&times;</span>
             <h3>Добавление новой категории</h3>
             <form id="addCategoryForm" onsubmit="addCategory(event)">
                 <input type="text" name="categoryName" placeholder="Название категории*" required>
@@ -473,7 +517,7 @@
     <!-- Добавить блюдо -->
     <div class="modal" id="addMenuItemModal">
         <div class="modal-content">
-            <span class="close-modal">&times;</span>
+            <span class="close-modal" data-modal-id="addMenuItemModal">&times;</span>
             <h3>Добавление нового блюда</h3>
             <form id="addMenuItemForm" onsubmit="addMenuItem(event)">
                 <div class="form-group">
@@ -625,139 +669,212 @@
 
     <div id="addUserModal" class="modal">
         <div class="modal-content">
-        <span class="close-modal">&times;</span>
-        <h3>Добавить пользователя</h3>
-        <form id="addUserForm">
-            <div class="form-group">
-            <label>Логин</label>
-            <input type="text" name="username" required>
-            </div>
-            <div class="form-group">
-            <label>Имя</label>
-            <input type="text" name="name" required>
-            </div>
-            <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email" required>
-            </div>
-            <div class="form-group">
-            <label>Пароль</label>
-            <input type="password" name="password" required>
-            </div>
-            <div class="form-group">
-            <label>Роль</label>
-            <select name="role" required>
-                <option value="waiter">Официант</option>
-                <option value="cook">Повар</option>
-                <option value="manager">Менеджер</option>
-                <option value="client">Клиент</option>
-            </select>
-            </div>
-            <div class="modal-actions">
-            <button type="button" class="btn-secondary close-modal">Отмена</button>
-            <button type="submit" class="btn-primary">Добавить</button>
-            </div>
-        </form>
+            <span class="close-modal" data-modal-id="addUserModal">&times;</span>
+            <h3>Добавить пользователя</h3>
+            <form id="addUserForm">
+                <div class="form-group">
+                    <label>Логин</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Имя</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label>Роль</label>
+                    <select name="role" required>
+                        <option value="waiter">Официант</option>
+                        <option value="cook">Повар</option>
+                        <option value="manager">Менеджер</option>
+                        <option value="client">Клиент</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Добавить</button>
+                </div>
+            </form>
         </div>
     </div>
     
     <!-- Модальное окно редактирования пользователя -->
     <div id="editUserModal" class="modal">
         <div class="modal-content">
-        <span class="close-modal">&times;</span>
-        <h3>Редактировать пользователя</h3>
-        <form id="editUserForm">
-            <div class="form-group">
-            <label>Логин</label>
-            <input type="text" name="username" required>
-            </div>
-            <div class="form-group">
-            <label>Имя</label>
-            <input type="text" name="name" required>
-            </div>
-            <div class="form-group">
-            <label>Роль</label>
-            <select name="role" required>
-                <option value="waiter">Официант</option>
-                <option value="cook">Повар</option>
-                <option value="manager">Менеджер</option>
-                <option value="client">Клиент</option>
-            </select>
-            </div>
-            <div class="form-group">
-            <label>Статус</label>
-            <select name="status" required>
-                <option value="active">Активен</option>
-                <option value="inactive">Неактивен</option>
-            </select>
-            </div>
-            <div class="modal-actions">
-            <button type="button" class="btn-secondary close-modal">Отмена</button>
-            <button type="submit" class="btn-primary">Сохранить</button>
-            </div>
-        </form>
+            <span class="close-modal">&times;</span>
+            <h3>Редактировать пользователя</h3>
+            <form id="editUserForm">
+                <div class="form-group">
+                    <label>Логин</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Имя</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Роль</label>
+                    <select name="role" required>
+                        <option value="waiter">Официант</option>
+                        <option value="cook">Повар</option>
+                        <option value="manager">Менеджер</option>
+                        <option value="client">Клиент</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Статус</label>
+                    <select name="status" required>
+                        <option value="active">Активен</option>
+                        <option value="inactive">Неактивен</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Сохранить</button>
+                </div>
+            </form>
         </div>
     </div>
     
     <!-- Модальное окно для добавления/редактирования смены -->
     <div id="shiftModal" class="modal">
         <div class="modal-content">
-        <span class="close-modal">&times;</span>
-        <h3 id="shiftModalTitle">Добавить смену</h3>
-        <form id="shiftForm">
-            <input type="hidden" id="shift-id">
-            <div class="form-group">
-            <label for="shift-date">Дата</label>
-            <input type="date" id="shift-date" required>
+            <span class="close-modal" data-modal-id="shiftModal">&times;</span>
+            <h3 id="shiftModalTitle">Добавить смену</h3>
+            <form id="shiftForm">
+                <input type="hidden" id="shift-id">
+                <div class="form-group">
+                    <label for="shift-date">Дата</label>
+                    <input type="date" id="shift-date" required>
+                </div>
+                
+                <div class="form-group time-inputs">
+                    <div class="time-input">
+                        <label for="shift-start-time">Время начала</label>
+                        <input type="time" id="shift-start-time" required>
+                    </div>
+                    
+                    <div class="time-input">
+                        <label for="shift-end-time">Время окончания</label>
+                        <input type="time" id="shift-end-time" required>
+                    </div>
+                </div>
+        
+                <div class="form-group">
+                    <label for="shift-manager">Ответственный менеджер</label>
+                    <select id="shift-manager" required>
+                        <option value="">Выберите менеджера</option>
+                        <!-- Список менеджеров будет добавлен через JavaScript -->
+                    </select>
+                </div>
+        
+                <div class="form-group">
+                    <label for="shift-status">Статус смены</label>
+                    <select id="shift-status">
+                        <option value="active">Активна</option>
+                        <option value="pending">Ожидает</option>
+                        <option value="completed">Завершена</option>
+                        <option value="canceled">Отменена</option>
+                    </select>
+                </div>
+        
+                <div class="form-group">
+                    <label for="shift-notes">Примечания</label>
+                    <textarea id="shift-notes" rows="2"></textarea>
+                </div>
+        
+                <div class="form-group">
+                    <label for="shift-employees-container">Сотрудники смены</label>
+                    <div id="shift-employees-container" class="employees-container">
+                        <!-- Списки сотрудников будут добавлены через JavaScript -->
+                    </div>
+                </div>
+        
+                <div class="modal-actions">
+                    <button type="submit" id="saveShiftBtn" class="btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Request Details Modal -->
+    <div class="modal" id="requestDetailsModal">
+        <div class="modal-content">
+            <span class="close-modal" data-modal-id="requestDetailsModal">&times;</span>
+            <h3>Детали заявки <span id="requestDetailsId"></span></h3>
+            <div id="requestDetailsContent">
+                <!-- Request details will be loaded here -->
+                <p>Загрузка...</p>
             </div>
-            
-            <div class="form-group time-inputs">
-            <div class="time-input">
-                <label for="shift-start-time">Время начала</label>
-                <input type="time" id="shift-start-time" required>
+            <div class="modal-buttons">
+                <!-- Action buttons will be added here based on status -->
+                 <button class="btn-secondary" onclick="closeModal('requestDetailsModal')">Закрыть</button>
             </div>
-            
-            <div class="time-input">
-                <label for="shift-end-time">Время окончания</label>
-                <input type="time" id="shift-end-time" required>
-            </div>
-            </div>
-    
-            <div class="form-group">
-            <label for="shift-manager">Ответственный менеджер</label>
-            <select id="shift-manager" required>
-                <option value="">Выберите менеджера</option>
-                <!-- Список менеджеров будет добавлен через JavaScript -->
-            </select>
-            </div>
-    
-            <div class="form-group">
-            <label for="shift-status">Статус смены</label>
-            <select id="shift-status">
-                <option value="active">Активна</option>
-                <option value="pending">Ожидает</option>
-                <option value="completed">Завершена</option>
-                <option value="canceled">Отменена</option>
-            </select>
-            </div>
-    
-            <div class="form-group">
-            <label for="shift-notes">Примечания</label>
-            <textarea id="shift-notes" rows="2"></textarea>
-            </div>
-    
-            <div class="form-group">
-            <label for="shift-employees-container">Сотрудники смены</label>
-            <div id="shift-employees-container" class="employees-container">
-                <!-- Списки сотрудников будут добавлены через JavaScript -->
-            </div>
-            </div>
-    
-            <div class="modal-actions">
-            <button type="button" id="cancelShiftBtn" class="btn-secondary">Отмена</button>
-            <button type="submit" id="saveShiftBtn" class="btn-primary">Сохранить</button>
-            </div>
-        </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования продукта -->
+    <div id="editProductModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Редактировать продукт</h2>
+            <form id="editProductForm" onsubmit="handleEditProduct(event)">
+                <input type="hidden" name="productId">
+                <div class="form-group">
+                    <label>Название продукта</label>
+                    <input type="text" name="productName" required>
+                </div>
+                <div class="form-group">
+                    <label>Категория</label>
+                    <select name="productCategory" required>
+                        <option value="">Выберите категорию</option>
+                        <option value="Кофе">Кофе</option>
+                        <option value="Молочные продукты">Молочные продукты</option>
+                        <option value="Сиропы">Сиропы</option>
+                        <option value="Расходники">Расходники</option>
+                        <option value="Чай">Чай</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label>Количество</label>
+                        <input type="number" name="productQuantity" required step="0.1" min="0">
+                    </div>
+                    <div class="form-group half">
+                        <label>Единица измерения</label>
+                        <select name="productUnit" required>
+                            <option value="кг">кг</option>
+                            <option value="л">л</option>
+                            <option value="шт">шт</option>
+                            <option value="уп.">уп.</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label>Минимальный запас</label>
+                        <input type="number" name="productMinQuantity" required step="0.1" min="0">
+                    </div>
+                    <div class="form-group half">
+                        <label>Единица измерения</label>
+                        <select name="productMinUnit" required>
+                            <option value="кг">кг</option>
+                            <option value="л">л</option>
+                            <option value="шт">шт</option>
+                            <option value="уп.">уп.</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('editProductModal')">Отмена</button>
+                    <button type="submit" class="btn-primary">Сохранить</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

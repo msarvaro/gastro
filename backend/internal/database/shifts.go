@@ -8,25 +8,26 @@ import (
 )
 
 // GetAllShifts возвращает все смены с ограниченными данными
-func (db *DB) GetAllShifts(page, limit int) ([]models.ShiftWithEmployees, int, error) {
+func (db *DB) GetAllShifts(page, limit int, businessID int) ([]models.ShiftWithEmployees, int, error) {
 	// Базовый запрос для получения смен
 	query := `
 		SELECT 
 			s.id, s.date, s.start_time, s.end_time, 
-			s.manager_id, s.notes, s.created_at, s.updated_at,
+			s.manager_id, s.notes, s.created_at, s.updated_at, s.business_id,
 			COUNT(se.employee_id) as employee_count
 		FROM shifts s
 		LEFT JOIN shift_employees se ON s.id = se.shift_id
+		WHERE s.business_id = $1
 		GROUP BY s.id
 		ORDER BY s.date DESC, s.start_time DESC
 	`
 
 	// Запрос для получения общего количества
-	countQuery := "SELECT COUNT(*) FROM shifts"
+	countQuery := "SELECT COUNT(*) FROM shifts WHERE business_id = $1"
 
 	// Получаем общее количество
 	var total int
-	err := db.QueryRow(countQuery).Scan(&total)
+	err := db.QueryRow(countQuery, businessID).Scan(&total)
 	if err != nil {
 		log.Printf("Error counting shifts: %v", err)
 		return nil, 0, err
@@ -34,15 +35,15 @@ func (db *DB) GetAllShifts(page, limit int) ([]models.ShiftWithEmployees, int, e
 
 	// Добавляем пагинацию
 	if limit > 0 {
-		query += " LIMIT $1 OFFSET $2"
+		query += " LIMIT $2 OFFSET $3"
 	}
 
 	var rows *sql.Rows
 	var queryErr error
 	if limit > 0 {
-		rows, queryErr = db.Query(query, limit, (page-1)*limit)
+		rows, queryErr = db.Query(query, businessID, limit, (page-1)*limit)
 	} else {
-		rows, queryErr = db.Query(query)
+		rows, queryErr = db.Query(query, businessID)
 	}
 
 	if queryErr != nil {
@@ -58,7 +59,7 @@ func (db *DB) GetAllShifts(page, limit int) ([]models.ShiftWithEmployees, int, e
 
 		err := rows.Scan(
 			&shift.ID, &shift.Date, &shift.StartTime, &shift.EndTime,
-			&shift.ManagerID, &shift.Notes, &shift.CreatedAt, &shift.UpdatedAt,
+			&shift.ManagerID, &shift.Notes, &shift.CreatedAt, &shift.UpdatedAt, &shift.BusinessID,
 			&employeeCount,
 		)
 		if err != nil {
@@ -67,15 +68,16 @@ func (db *DB) GetAllShifts(page, limit int) ([]models.ShiftWithEmployees, int, e
 		}
 
 		// Получаем данные менеджера
-		manager, err := db.GetUserByID(shift.ManagerID)
+		manager, err := db.GetUserByID(shift.ManagerID, shift.BusinessID)
 		if err != nil {
 			log.Printf("Warning: Could not get manager details for shift %d: %v", shift.ID, err)
+			shift.Manager = &models.User{Name: "", Username: ""}
 		} else {
 			shift.Manager = manager
 		}
 
 		// Получаем сотрудников для этой смены
-		shift.Employees, err = db.GetShiftEmployees(shift.ID)
+		shift.Employees, err = db.GetShiftEmployees(shift.ID, shift.BusinessID)
 		if err != nil {
 			log.Printf("Warning: Could not get employees for shift %d: %v", shift.ID, err)
 		}
@@ -92,20 +94,21 @@ func (db *DB) GetAllShifts(page, limit int) ([]models.ShiftWithEmployees, int, e
 }
 
 // GetShiftByID возвращает информацию о конкретной смене
-func (db *DB) GetShiftByID(shiftID int) (*models.ShiftWithEmployees, error) {
+func (db *DB) GetShiftByID(shiftID int, businessID int) (*models.ShiftWithEmployees, error) {
 	var shift models.ShiftWithEmployees
 
 	// Получаем основную информацию о смене
 	err := db.QueryRow(`
-		SELECT id, date, start_time, end_time, manager_id, notes, created_at, updated_at 
+		SELECT id, date, start_time, end_time, manager_id, notes, created_at, updated_at, business_id 
 		FROM shifts 
-		WHERE id = $1`,
+		WHERE id = $1 AND business_id = $2`,
 		shiftID,
+		businessID,
 	).Scan(
 		&shift.ID, &shift.Date, &shift.StartTime, &shift.EndTime,
-		&shift.ManagerID, &shift.Notes, &shift.CreatedAt, &shift.UpdatedAt,
+		&shift.ManagerID, &shift.Notes, &shift.CreatedAt, &shift.UpdatedAt, &shift.BusinessID,
 	)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // Смена не найдена
@@ -115,15 +118,17 @@ func (db *DB) GetShiftByID(shiftID int) (*models.ShiftWithEmployees, error) {
 	}
 
 	// Получаем данные менеджера
-	manager, err := db.GetUserByID(shift.ManagerID)
+	manager, err := db.GetUserByID(shift.ManagerID, shift.BusinessID)
 	if err != nil {
 		log.Printf("Warning: Could not get manager details for shift %d: %v", shift.ID, err)
+		shift.Manager = &models.User{Name: "", Username: ""}
 	} else {
 		shift.Manager = manager
+		log.Println(shift.Manager.Name)
 	}
 
 	// Получаем сотрудников для этой смены
-	shift.Employees, err = db.GetShiftEmployees(shift.ID)
+	shift.Employees, err = db.GetShiftEmployees(shift.ID, businessID)
 	if err != nil {
 		log.Printf("Warning: Could not get employees for shift %d: %v", shift.ID, err)
 	}
@@ -132,16 +137,16 @@ func (db *DB) GetShiftByID(shiftID int) (*models.ShiftWithEmployees, error) {
 }
 
 // GetShiftEmployees возвращает список сотрудников, назначенных на смену
-func (db *DB) GetShiftEmployees(shiftID int) ([]models.User, error) {
+func (db *DB) GetShiftEmployees(shiftID int, businessID int) ([]models.User, error) {
 	query := `
 		SELECT u.id, u.username, u.name, u.email, u.role, u.status
 		FROM users u
 		JOIN shift_employees se ON u.id = se.employee_id
-		WHERE se.shift_id = $1
+		WHERE se.shift_id = $1 AND se.business_id = $2
 		ORDER BY u.role, u.name, u.username
 	`
 
-	rows, err := db.Query(query, shiftID)
+	rows, err := db.Query(query, shiftID, businessID)
 	if err != nil {
 		log.Printf("Error querying shift employees: %v", err)
 		return nil, err
@@ -179,7 +184,7 @@ func (db *DB) GetShiftEmployees(shiftID int) ([]models.User, error) {
 }
 
 // CreateShift создает новую смену и связывает ее с сотрудниками
-func (db *DB) CreateShift(shift *models.Shift, employeeIDs []int) (*models.Shift, error) {
+func (db *DB) CreateShift(shift *models.Shift, employeeIDs []int, businessID int) (*models.Shift, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return nil, err
@@ -190,7 +195,7 @@ func (db *DB) CreateShift(shift *models.Shift, employeeIDs []int) (*models.Shift
 		INSERT INTO shifts (date, start_time, end_time, manager_id, business_id, notes, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
 		RETURNING id, created_at, updated_at
-	`, shift.Date, shift.StartTime, shift.EndTime, shift.ManagerID, shift.BusinessID, shift.Notes, time.Now()).
+	`, shift.Date, shift.StartTime, shift.EndTime, shift.ManagerID, businessID, shift.Notes, time.Now()).
 		Scan(&shift.ID, &shift.CreatedAt, &shift.UpdatedAt)
 
 	if err != nil {
@@ -204,7 +209,7 @@ func (db *DB) CreateShift(shift *models.Shift, employeeIDs []int) (*models.Shift
 		_, err := tx.Exec(`
 			INSERT INTO shift_employees (shift_id, employee_id, business_id, created_at)
 			VALUES ($1, $2, $3, $4)
-		`, shift.ID, employeeID, shift.BusinessID, time.Now())
+		`, shift.ID, employeeID, businessID, time.Now())
 
 		if err != nil {
 			tx.Rollback()
@@ -222,7 +227,7 @@ func (db *DB) CreateShift(shift *models.Shift, employeeIDs []int) (*models.Shift
 }
 
 // UpdateShift обновляет информацию о смене и перераспределяет сотрудников
-func (db *DB) UpdateShift(shift *models.Shift, employeeIDs []int) error {
+func (db *DB) UpdateShift(shift *models.Shift, employeeIDs []int, businessID int) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -232,8 +237,8 @@ func (db *DB) UpdateShift(shift *models.Shift, employeeIDs []int) error {
 	_, err = tx.Exec(`
 		UPDATE shifts
 		SET date = $1, start_time = $2, end_time = $3, manager_id = $4, notes = $5, updated_at = $6
-		WHERE id = $7
-	`, shift.Date, shift.StartTime, shift.EndTime, shift.ManagerID, shift.Notes, time.Now(), shift.ID)
+		WHERE id = $7 AND business_id = $8
+	`, shift.Date, shift.StartTime, shift.EndTime, shift.ManagerID, shift.Notes, time.Now(), shift.ID, businessID)
 
 	if err != nil {
 		tx.Rollback()
@@ -264,7 +269,7 @@ func (db *DB) UpdateShift(shift *models.Shift, employeeIDs []int) error {
 		_, err := tx.Exec(`
 			INSERT INTO shift_employees (shift_id, employee_id, business_id, created_at)
 			VALUES ($1, $2, $3, $4)
-		`, shift.ID, employeeID, shift.BusinessID, time.Now())
+		`, shift.ID, employeeID, businessID, time.Now())
 
 		if err != nil {
 			tx.Rollback()
@@ -282,9 +287,9 @@ func (db *DB) UpdateShift(shift *models.Shift, employeeIDs []int) error {
 }
 
 // DeleteShift удаляет смену и все связанные записи
-func (db *DB) DeleteShift(shiftID int) error {
+func (db *DB) DeleteShift(shiftID int, businessID int) error {
 	// Каскадное удаление обеспечивается внешним ключом с ON DELETE CASCADE
-	_, err := db.Exec("DELETE FROM shifts WHERE id = $1", shiftID)
+	_, err := db.Exec("DELETE FROM shifts WHERE id = $1 AND business_id = $2", shiftID, businessID)
 	if err != nil {
 		log.Printf("Error deleting shift %d: %v", shiftID, err)
 		return err
@@ -293,18 +298,18 @@ func (db *DB) DeleteShift(shiftID int) error {
 }
 
 // GetEmployeeShifts возвращает смены сотрудника
-func (db *DB) GetEmployeeShifts(employeeID int) ([]models.ShiftWithEmployees, error) {
+func (db *DB) GetEmployeeShifts(employeeID int, businessID int) ([]models.ShiftWithEmployees, error) {
 	query := `
 		SELECT 
 			s.id, s.date, s.start_time, s.end_time, 
 			s.manager_id, s.notes, s.created_at, s.updated_at
 		FROM shifts s
 		JOIN shift_employees se ON s.id = se.shift_id
-		WHERE se.employee_id = $1
+		WHERE se.employee_id = $1 AND se.business_id = $2
 		ORDER BY s.date ASC, s.start_time ASC
 	`
 
-	rows, err := db.Query(query, employeeID)
+	rows, err := db.Query(query, employeeID, businessID)
 	if err != nil {
 		log.Printf("Error querying employee shifts: %v", err)
 		return nil, err
@@ -325,8 +330,11 @@ func (db *DB) GetEmployeeShifts(employeeID int) ([]models.ShiftWithEmployees, er
 		}
 
 		// Получаем данные менеджера
-		manager, err := db.GetUserByID(shift.ManagerID)
-		if err == nil {
+		manager, err := db.GetUserByID(shift.ManagerID, shift.BusinessID)
+		if err != nil {
+			log.Printf("Warning: Could not get manager details for shift %d: %v", shift.ID, err)
+			shift.Manager = &models.User{Name: "", Username: ""}
+		} else {
 			shift.Manager = manager
 		}
 
@@ -342,7 +350,7 @@ func (db *DB) GetEmployeeShifts(employeeID int) ([]models.ShiftWithEmployees, er
 }
 
 // GetCurrentAndUpcomingShifts возвращает текущую смену и список предстоящих смен для сотрудника
-func (db *DB) GetCurrentAndUpcomingShifts(employeeID int) (*models.ShiftWithEmployees, []models.ShiftWithEmployees, error) {
+func (db *DB) GetCurrentAndUpcomingShifts(employeeID int, businessID int) (*models.ShiftWithEmployees, []models.ShiftWithEmployees, error) {
 	now := time.Now()
 	currentDate := now.Format("2006-01-02")
 	currentTime := now.Format("15:04:05")
@@ -354,9 +362,9 @@ func (db *DB) GetCurrentAndUpcomingShifts(employeeID int) (*models.ShiftWithEmpl
 			s.manager_id, s.notes, s.created_at, s.updated_at
 		FROM shifts s
 		JOIN shift_employees se ON s.id = se.shift_id
-		WHERE se.employee_id = $1
-		AND date_trunc('day', s.date) = date_trunc('day', $2::date)
-		AND $3::time BETWEEN s.start_time AND s.end_time
+		WHERE se.employee_id = $1 AND se.business_id = $2
+		AND date_trunc('day', s.date) = date_trunc('day', $3::date)
+		AND $4::time BETWEEN s.start_time AND s.end_time
 		LIMIT 1
 	`
 
@@ -367,11 +375,11 @@ func (db *DB) GetCurrentAndUpcomingShifts(employeeID int) (*models.ShiftWithEmpl
 			s.manager_id, s.notes, s.created_at, s.updated_at
 		FROM shifts s
 		JOIN shift_employees se ON s.id = se.shift_id
-		WHERE se.employee_id = $1
+		WHERE se.employee_id = $1 AND se.business_id = $2
 		AND (
-			date_trunc('day', s.date) > date_trunc('day', $2::date)
+			date_trunc('day', s.date) > date_trunc('day', $3::date)
 			OR 
-			(date_trunc('day', s.date) = date_trunc('day', $2::date) AND s.start_time > $3::time)
+			(date_trunc('day', s.date) = date_trunc('day', $3::date) AND s.start_time > $4::time)
 		)
 		ORDER BY s.date ASC, s.start_time ASC
 		LIMIT 5
@@ -379,7 +387,7 @@ func (db *DB) GetCurrentAndUpcomingShifts(employeeID int) (*models.ShiftWithEmpl
 
 	// Получаем текущую смену
 	var currentShift *models.ShiftWithEmployees
-	row := db.QueryRow(currentShiftQuery, employeeID, currentDate, currentTime)
+	row := db.QueryRow(currentShiftQuery, employeeID, businessID, currentDate, currentTime)
 
 	// Временные переменные для сканирования
 	var shift models.ShiftWithEmployees
@@ -395,15 +403,18 @@ func (db *DB) GetCurrentAndUpcomingShifts(employeeID int) (*models.ShiftWithEmpl
 		}
 	} else {
 		// Получаем данные менеджера
-		manager, err := db.GetUserByID(shift.ManagerID)
-		if err == nil {
+		manager, err := db.GetUserByID(shift.ManagerID, shift.BusinessID)
+		if err != nil {
+			log.Printf("Warning: Could not get manager details for shift %d: %v", shift.ID, err)
+			shift.Manager = &models.User{Name: "", Username: ""}
+		} else {
 			shift.Manager = manager
 		}
 		currentShift = &shift
 	}
 
 	// Получаем предстоящие смены
-	rows, err := db.Query(upcomingShiftsQuery, employeeID, currentDate, currentTime)
+	rows, err := db.Query(upcomingShiftsQuery, employeeID, businessID, currentDate, currentTime)
 	if err != nil {
 		log.Printf("Error querying upcoming shifts for employee %d: %v", employeeID, err)
 		return currentShift, nil, err
@@ -424,8 +435,11 @@ func (db *DB) GetCurrentAndUpcomingShifts(employeeID int) (*models.ShiftWithEmpl
 		}
 
 		// Получаем данные менеджера
-		manager, err := db.GetUserByID(upcoming.ManagerID)
-		if err == nil {
+		manager, err := db.GetUserByID(upcoming.ManagerID, upcoming.BusinessID)
+		if err != nil {
+			log.Printf("Warning: Could not get manager details for shift %d: %v", upcoming.ID, err)
+			upcoming.Manager = &models.User{Name: "", Username: ""}
+		} else {
 			upcoming.Manager = manager
 		}
 

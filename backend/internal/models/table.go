@@ -15,7 +15,8 @@ const (
 // TableOrderInfo holds simplified order information for display with tables.
 type TableOrderInfo struct {
 	ID      int       `json:"id"`
-	Time    time.Time `json:"time"` // This will be 'created_at' from the orders table
+	Time    time.Time `json:"time"`
+	Status  string    `json:"status"`
 	Comment *string   `json:"comment,omitempty"`
 }
 

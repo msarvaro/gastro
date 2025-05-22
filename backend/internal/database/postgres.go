@@ -10,7 +10,6 @@ import (
 	"restaurant-management/configs"
 	"restaurant-management/internal/middleware"
 	"restaurant-management/internal/models"
-	"strconv"
 	"time"
 
 	"github.com/lib/pq"
@@ -78,132 +77,53 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 	return user, nil
 }
 
-func (db *DB) GetUserByID(id int) (*models.User, error) {
+func (db *DB) GetUserByID(id int, businessID int) (*models.User, error) {
 	user := &models.User{}
-	var createdAt, updatedAt, lastActive sql.NullTime // Use NullTime for nullable timestamps
-	var name sql.NullString                           // Используем NullString для поля name
-
-	log.Printf("GetUserByID: Получение пользователя с ID=%d", id)
-
 	err := db.QueryRow(`
-        SELECT id, username, name, email, role, status, created_at, updated_at, last_active 
-        FROM users 
-        WHERE id = $1`,
-		id,
-	).Scan(
-		&user.ID, &user.Username, &name, &user.Email, &user.Role, &user.Status,
-		&createdAt, &updatedAt, &lastActive,
-	)
-
+		SELECT id, username, name, email, role, status, business_id, created_at, updated_at
+		FROM users
+		WHERE id = $1 AND business_id = $2`, id, businessID).Scan(
+		&user.ID, &user.Username, &user.Name, &user.Email, &user.Role, &user.Status, &user.BusinessID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user with ID %d not found", id)
-		}
-		log.Printf("Database error fetching user by ID %d: %v", id, err)
 		return nil, err
 	}
-
-	// Преобразуем NullString в строку
-	if name.Valid {
-		user.Name = name.String
-		log.Printf("GetUserByID: Имя пользователя %d получено: %q", id, user.Name)
-	} else {
-		user.Name = ""
-		log.Printf("GetUserByID: Имя пользователя %d отсутствует (NULL)", id)
-	}
-
-	user.CreatedAt = createdAt.Time
-	user.UpdatedAt = updatedAt.Time
-	user.LastActive = lastActive.Time
-
+	log.Printf("GetUserByID called with id=%d, businessID=%d", id, businessID)
 	return user, nil
+
 }
 
-func (db *DB) GetUsers(page, limit int, status, role, search string) ([]models.User, int, error) {
-	// Базовый запрос
-	query := `
-        SELECT id, username, name, email, role, status, last_active, created_at
-        FROM users
-        WHERE 1=1
-    `
-	countQuery := `SELECT COUNT(*) FROM users WHERE 1=1`
-	args := []interface{}{}
-
-	// Добавляем фильтры
-	if status != "" {
-		query += ` AND status = $` + strconv.Itoa(len(args)+1)
-		countQuery += ` AND status = $` + strconv.Itoa(len(args)+1)
-		args = append(args, status)
-	}
-
-	if role != "" {
-		query += ` AND role = $` + strconv.Itoa(len(args)+1)
-		countQuery += ` AND role = $` + strconv.Itoa(len(args)+1)
-		args = append(args, role)
-	}
-
-	if search != "" {
-		query += ` AND (username ILIKE $` + strconv.Itoa(len(args)+1) +
-			` OR name ILIKE $` + strconv.Itoa(len(args)+1) +
-			` OR email ILIKE $` + strconv.Itoa(len(args)+1) + `)`
-		countQuery += ` AND (username ILIKE $` + strconv.Itoa(len(args)+1) +
-			` OR name ILIKE $` + strconv.Itoa(len(args)+1) +
-			` OR email ILIKE $` + strconv.Itoa(len(args)+1) + `)`
-		args = append(args, "%"+search+"%")
-	}
-
-	// Получаем общее количество
-	var total int
-	log.Printf("GetUsers DB: Выполнение count query: %s с аргументами: %v", countQuery, args)
-	err := db.QueryRow(countQuery, args...).Scan(&total)
+func (db *DB) GetUsers(businessID int) ([]models.User, error) {
+	rows, err := db.Query(`
+		SELECT id, username, name, email, role, status, business_id, created_at, updated_at
+		FROM users
+		WHERE business_id = $1
+		ORDER BY created_at DESC`, businessID)
 	if err != nil {
-		log.Printf("GetUsers DB: Ошибка при подсчете пользователей: %v", err)
-		return nil, 0, err
-	}
-	log.Printf("GetUsers DB: Всего пользователей: %d", total)
-
-	// Добавляем пагинацию
-	query += ` ORDER BY id DESC LIMIT $` + strconv.Itoa(len(args)+1) +
-		` OFFSET $` + strconv.Itoa(len(args)+2)
-	args = append(args, limit, (page-1)*limit)
-
-	// Выполняем запрос
-	log.Printf("GetUsers DB: Выполнение query: %s с аргументами: %v", query, args)
-	rows, err := db.Query(query, args...)
-	if err != nil {
-		log.Printf("GetUsers DB: Ошибка при выполнении запроса: %v", err)
-		return nil, 0, err
+		return nil, err
 	}
 	defer rows.Close()
 
 	var users []models.User
 	for rows.Next() {
-		var u models.User
-		var lastActive sql.NullTime
-		var name sql.NullString // Используем NullString для поля name
-
-		log.Printf("GetUsers DB: Сканирование строки...")
-		err := rows.Scan(&u.ID, &u.Username, &name, &u.Email, &u.Role, &u.Status, &lastActive, &u.CreatedAt)
+		var user models.User
+		var name, status sql.NullString
+		err := rows.Scan(&user.ID, &user.Username, &name, &user.Email, &user.Role, &status, &user.BusinessID, &user.CreatedAt, &user.UpdatedAt)
 		if err != nil {
-			log.Printf("GetUsers DB: Ошибка при сканировании строки: %v", err)
-			return nil, 0, err
+			return nil, err
 		}
-
-		// Преобразуем NullString в строку
 		if name.Valid {
-			u.Name = name.String
+			user.Name = name.String
 		} else {
-			u.Name = "" // Используем пустую строку для NULL
+			user.Name = ""
 		}
-
-		if lastActive.Valid {
-			u.LastActive = lastActive.Time
+		if status.Valid {
+			user.Status = status.String
+		} else {
+			user.Status = ""
 		}
-		users = append(users, u)
+		users = append(users, user)
 	}
-
-	log.Printf("GetUsers DB: Получено %d пользователей", len(users))
-	return users, total, nil
+	return users, nil
 }
 
 func (db *DB) GetUserStats() (*models.UserStats, error) {
@@ -228,7 +148,7 @@ func (db *DB) DeleteUser(id int) error {
 }
 
 func (db *DB) UpdateUser(user *models.User) error {
-	existingUser, err := db.GetUserByID(user.ID)
+	existingUser, err := db.GetUserByID(user.ID, user.BusinessID)
 	if err != nil {
 		log.Printf("UpdateUser: Error retrieving existing user data: %v", err)
 		return err
@@ -336,8 +256,8 @@ func (db *DB) GetStats() (map[string]int, error) {
 	return stats, nil
 }
 
-func (db *DB) GetAllInventory() ([]models.Inventory, error) {
-	rows, err := db.Query("SELECT id, name, category, quantity, unit, min_quantity, branch, created_at, updated_at FROM inventory")
+func (db *DB) GetAllInventory(businessID int) ([]models.Inventory, error) {
+	rows, err := db.Query("SELECT id, name, category, quantity, unit, min_quantity, business_id, created_at, updated_at FROM inventory WHERE business_id = $1", businessID)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +266,7 @@ func (db *DB) GetAllInventory() ([]models.Inventory, error) {
 	var items []models.Inventory
 	for rows.Next() {
 		var i models.Inventory
-		err := rows.Scan(&i.ID, &i.Name, &i.Category, &i.Quantity, &i.Unit, &i.MinQuantity, &i.Branch, &i.CreatedAt, &i.UpdatedAt)
+		err := rows.Scan(&i.ID, &i.Name, &i.Category, &i.Quantity, &i.Unit, &i.MinQuantity, &i.BusinessID, &i.CreatedAt, &i.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -355,10 +275,10 @@ func (db *DB) GetAllInventory() ([]models.Inventory, error) {
 	return items, nil
 }
 
-func (db *DB) GetInventoryByID(id int) (*models.Inventory, error) {
+func (db *DB) GetInventoryByID(id int, businessID int) (*models.Inventory, error) {
 	var i models.Inventory
-	err := db.QueryRow(`SELECT id, name, category, quantity, unit, min_quantity, branch, created_at, updated_at FROM inventory WHERE id = $1`, id).
-		Scan(&i.ID, &i.Name, &i.Category, &i.Quantity, &i.Unit, &i.MinQuantity, &i.Branch, &i.CreatedAt, &i.UpdatedAt)
+	err := db.QueryRow(`SELECT id, name, category, quantity, unit, min_quantity, business_id, created_at, updated_at FROM inventory WHERE id = $1 AND business_id = $2`, id, businessID).
+		Scan(&i.ID, &i.Name, &i.Category, &i.Quantity, &i.Unit, &i.MinQuantity, &i.BusinessID, &i.CreatedAt, &i.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("inventory not found")
@@ -370,9 +290,9 @@ func (db *DB) GetInventoryByID(id int) (*models.Inventory, error) {
 
 func (db *DB) CreateInventory(item *models.Inventory) error {
 	err := db.QueryRow(`
-		INSERT INTO inventory (name, category, quantity, unit, min_quantity, branch, created_at, updated_at)
+		INSERT INTO inventory (name, category, quantity, unit, min_quantity, business_id, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id, created_at, updated_at`,
-		item.Name, item.Category, item.Quantity, item.Unit, item.MinQuantity, item.Branch,
+		item.Name, item.Category, item.Quantity, item.Unit, item.MinQuantity, item.BusinessID,
 	).Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
 	return err
 }
@@ -382,42 +302,35 @@ func (db *DB) CreateInventory(item *models.Inventory) error {
 func (db *DB) UpdateInventory(ctx context.Context, item *models.Inventory) error {
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		// Log error or handle case where user ID is not in context
 		log.Println("UpdateInventory: User ID not found in context for logging.")
-		// Decide if you should proceed without logging the user, or return an error.
-		// For now, let's proceed but log the absence of user ID.
 	}
 
-	// Fetch the current quantity before updating for logging purposes
 	var currentQuantity float64
-	err := db.QueryRow("SELECT quantity FROM inventory WHERE id = $1", item.ID).Scan(&currentQuantity)
+	err := db.QueryRow("SELECT quantity FROM inventory WHERE id = $1 AND business_id = $2", item.ID, item.BusinessID).Scan(&currentQuantity)
 	if err != nil {
 		log.Printf("UpdateInventory: Failed to fetch current quantity for item %d: %v", item.ID, err)
-		// Decide if you should stop here or proceed with the update. Proceeding might be acceptable.
 	}
 
-	_, err = db.Exec("UPDATE inventory SET quantity = $1 WHERE id = $2", item.Quantity, item.ID)
+	_, err = db.Exec("UPDATE inventory SET name = $1, category = $2, quantity = $3, unit = $4, min_quantity = $5, updated_at = NOW() WHERE id = $6 AND business_id = $7", item.Name, item.Category, item.Quantity, item.Unit, item.MinQuantity, item.ID, item.BusinessID)
 	if err != nil {
 		log.Printf("Ошибка обновления запаса для ID %d: %v", item.ID, err)
 		return fmt.Errorf("ошибка обновления запаса: %w", err)
 	}
 
-	// Log the change after successful update
 	log.Printf("Inventory update: Item ID %d, User ID %d (if available), Old Quantity %.2f, New Quantity %.2f", item.ID, userID, currentQuantity, item.Quantity)
-
 	return nil
 }
 
 // DeleteInventory deletes an inventory item.
-func (db *DB) DeleteInventory(id int) error {
-	_, err := db.Exec("DELETE FROM inventory WHERE id = $1", id)
+func (db *DB) DeleteInventory(id int, businessID int) error {
+	_, err := db.Exec("DELETE FROM inventory WHERE id = $1 AND business_id = $2", id, businessID)
 	return err
 }
 
 // Supplier methods
-func (db *DB) GetAllSuppliers() ([]models.Supplier, error) {
-	query := `SELECT id, name, categories, phone, email, address, status, created_at, updated_at FROM suppliers`
-	rows, err := db.Query(query)
+func (db *DB) GetAllSuppliers(businessID int) ([]models.Supplier, error) {
+	query := `SELECT id, name, categories, phone, email, address, status, created_at, updated_at FROM suppliers WHERE business_id = $1`
+	rows, err := db.Query(query, businessID)
 	if err != nil {
 		return nil, err
 	}
@@ -436,11 +349,11 @@ func (db *DB) GetAllSuppliers() ([]models.Supplier, error) {
 	return suppliers, nil
 }
 
-func (db *DB) GetSupplierByID(id int) (*models.Supplier, error) {
-	query := `SELECT id, name, categories, phone, email, address, status, created_at, updated_at FROM suppliers WHERE id = $1`
+func (db *DB) GetSupplierByID(id int, businessID int) (*models.Supplier, error) {
+	query := `SELECT id, name, categories, phone, email, address, status, created_at, updated_at FROM suppliers WHERE id = $1 AND business_id = $2`
 	var s models.Supplier
 	var categories []string
-	err := db.QueryRow(query, id).Scan(&s.ID, &s.Name, pq.Array(&categories), &s.Phone, &s.Email, &s.Address, &s.Status, &s.CreatedAt, &s.UpdatedAt)
+	err := db.QueryRow(query, id, businessID).Scan(&s.ID, &s.Name, pq.Array(&categories), &s.Phone, &s.Email, &s.Address, &s.Status, &s.CreatedAt, &s.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -448,10 +361,10 @@ func (db *DB) GetSupplierByID(id int) (*models.Supplier, error) {
 	return &s, nil
 }
 
-func (db *DB) CreateSupplier(supplier *models.Supplier) error {
+func (db *DB) CreateSupplier(supplier *models.Supplier, businessID int) error {
 	query := `
-		INSERT INTO suppliers (name, categories, phone, email, address, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+		INSERT INTO suppliers (name, categories, phone, email, address, status, business_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 		RETURNING id`
 	return db.QueryRow(
 		query,
@@ -461,14 +374,15 @@ func (db *DB) CreateSupplier(supplier *models.Supplier) error {
 		supplier.Email,
 		supplier.Address,
 		supplier.Status,
+		businessID,
 	).Scan(&supplier.ID)
 }
 
-func (db *DB) UpdateSupplier(supplier *models.Supplier) error {
+func (db *DB) UpdateSupplier(supplier *models.Supplier, businessID int) error {
 	query := `
 		UPDATE suppliers
 		SET name = $1, categories = $2, phone = $3, email = $4, address = $5, status = $6, updated_at = NOW()
-		WHERE id = $7`
+		WHERE id = $7 AND business_id = $8`
 	_, err := db.Exec(
 		query,
 		supplier.Name,
@@ -478,20 +392,21 @@ func (db *DB) UpdateSupplier(supplier *models.Supplier) error {
 		supplier.Address,
 		supplier.Status,
 		supplier.ID,
+		businessID,
 	)
 	return err
 }
 
-func (db *DB) DeleteSupplier(id int) error {
-	query := `DELETE FROM suppliers WHERE id = $1`
-	_, err := db.Exec(query, id)
+func (db *DB) DeleteSupplier(id int, businessID int) error {
+	query := `DELETE FROM suppliers WHERE id = $1 AND business_id = $2`
+	_, err := db.Exec(query, id, businessID)
 	return err
 }
 
 // Request methods
-func (db *DB) GetAllRequests() ([]models.Request, error) {
-	query := `SELECT id, branch, supplier_id, items, priority, comment, status, created_at, completed_at FROM requests`
-	rows, err := db.Query(query)
+func (db *DB) GetAllRequests(businessID int) ([]models.Request, error) {
+	query := `SELECT id, supplier_id, items, priority, comment, status, created_at, completed_at FROM requests WHERE business_id = $1`
+	rows, err := db.Query(query, businessID)
 	if err != nil {
 		return nil, err
 	}
@@ -501,7 +416,7 @@ func (db *DB) GetAllRequests() ([]models.Request, error) {
 	for rows.Next() {
 		var r models.Request
 		var items []string
-		if err := rows.Scan(&r.ID, &r.Branch, &r.SupplierID, pq.Array(&items), &r.Priority, &r.Comment, &r.Status, &r.CreatedAt, &r.CompletedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.SupplierID, pq.Array(&items), &r.Priority, &r.Comment, &r.Status, &r.CreatedAt, &r.CompletedAt); err != nil {
 			return nil, err
 		}
 		r.Items = items
@@ -510,11 +425,11 @@ func (db *DB) GetAllRequests() ([]models.Request, error) {
 	return requests, nil
 }
 
-func (db *DB) GetRequestByID(id int) (*models.Request, error) {
-	query := `SELECT id, branch, supplier_id, items, priority, comment, status, created_at, completed_at FROM requests WHERE id = $1`
+func (db *DB) GetRequestByID(id int, businessID int) (*models.Request, error) {
+	query := `SELECT id, supplier_id, items, priority, comment, status, created_at, completed_at FROM requests WHERE id = $1 AND business_id = $2`
 	var r models.Request
 	var items []string
-	err := db.QueryRow(query, id).Scan(&r.ID, &r.Branch, &r.SupplierID, pq.Array(&items), &r.Priority, &r.Comment, &r.Status, &r.CreatedAt, &r.CompletedAt)
+	err := db.QueryRow(query, id, businessID).Scan(&r.ID, &r.SupplierID, pq.Array(&items), &r.Priority, &r.Comment, &r.Status, &r.CreatedAt, &r.CompletedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -522,44 +437,40 @@ func (db *DB) GetRequestByID(id int) (*models.Request, error) {
 	return &r, nil
 }
 
-func (db *DB) CreateRequest(request *models.Request) error {
+func (db *DB) CreateRequest(request *models.Request, businessID int) error {
 	query := `
-		INSERT INTO requests (branch, supplier_id, items, priority, comment, status, created_at)
+		INSERT INTO requests (supplier_id, items, priority, comment, status, business_id, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, NOW())
 		RETURNING id`
 	return db.QueryRow(
 		query,
-		request.Branch,
 		request.SupplierID,
 		pq.Array(request.Items),
 		request.Priority,
 		request.Comment,
 		request.Status,
+		businessID,
 	).Scan(&request.ID)
 }
 
-func (db *DB) UpdateRequest(request *models.Request) error {
+func (db *DB) UpdateRequest(request *models.Request, businessID int) error {
 	query := `
 		UPDATE requests
-		SET branch = $1, supplier_id = $2, items = $3, priority = $4, comment = $5, status = $6, completed_at = $7
-		WHERE id = $8`
+		SET status = $1
+		WHERE id = $2 AND business_id = $3`
 	_, err := db.Exec(
 		query,
-		request.Branch,
-		request.SupplierID,
-		pq.Array(request.Items),
-		request.Priority,
-		request.Comment,
 		request.Status,
-		request.CompletedAt,
 		request.ID,
+		businessID,
 	)
 	return err
 }
 
-func (db *DB) DeleteRequest(id int) error {
-	query := `DELETE FROM requests WHERE id = $1`
-	_, err := db.Exec(query, id)
+func (db *DB) DeleteRequest(id int, businessID int) error {
+
+	query := `DELETE FROM requests WHERE id = $1 AND business_id = $2`
+	_, err := db.Exec(query, id, businessID)
 	return err
 }
 
@@ -582,7 +493,7 @@ func (db *DB) GetAllTables(businessID int) ([]models.Table, error) {
 
 		// Fetch active orders for this table
 		orderRows, err := db.Query(`
-            SELECT id, created_at, comment 
+            SELECT id, status, created_at, comment 
             FROM orders 
             WHERE table_id = $1 AND status NOT IN ('completed', 'cancelled') AND (business_id = $2 OR business_id IS NULL)
             ORDER BY created_at ASC`,
@@ -599,7 +510,7 @@ func (db *DB) GetAllTables(businessID int) ([]models.Table, error) {
 		for orderRows.Next() {
 			var toi models.TableOrderInfo
 			var comment sql.NullString
-			if err := orderRows.Scan(&toi.ID, &toi.Time, &comment); err != nil {
+			if err := orderRows.Scan(&toi.ID, &toi.Status, &toi.Time, &comment); err != nil {
 				log.Printf("Error GetAllTables - scanning order row for table %d: %v", t.ID, err)
 				continue
 			}
@@ -640,7 +551,7 @@ func (db *DB) GetTableByID(id int) (*models.Table, error) {
 	return &t, nil
 }
 
-func (db *DB) GetTableStats() (*models.TableStats, error) {
+func (db *DB) GetTableStats(businessID int) (*models.TableStats, error) {
 	stats := &models.TableStats{}
 	query := `
         SELECT
@@ -650,8 +561,9 @@ func (db *DB) GetTableStats() (*models.TableStats, error) {
             SUM(CASE WHEN status = 'reserved' THEN 1 ELSE 0 END) as reserved_tables,
             (SUM(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) * 100.0 / CASE WHEN COUNT(*) = 0 THEN 1 ELSE COUNT(*) END) as occupancy_percentage
         FROM tables
+        WHERE business_id = $1
     `
-	err := db.QueryRow(query).Scan(
+	err := db.QueryRow(query, businessID).Scan(
 		&stats.Total,
 		&stats.Free,
 		&stats.Occupied,
@@ -756,7 +668,7 @@ func (db *DB) GetActiveOrdersWithItems(businessID int) ([]models.Order, error) {
         LEFT JOIN order_items oi ON o.id = oi.order_id
         LEFT JOIN dishes d ON oi.dish_id = d.id
         WHERE o.status IN ('new', 'accepted', 'preparing', 'ready', 'served')
-        AND (o.business_id = $1 OR o.business_id IS NULL)
+        AND o.business_id = $1
         GROUP BY o.id
         ORDER BY o.created_at DESC
     `
@@ -810,7 +722,7 @@ func (db *DB) GetOrderByID(id int, businessID ...int) (*models.Order, error) {
 	args := []interface{}{id}
 
 	if len(businessID) > 0 && businessID[0] > 0 {
-		whereClause += " AND (o.business_id = $2 OR o.business_id IS NULL)"
+		whereClause += " AND o.business_id = $2"
 		args = append(args, businessID[0])
 	}
 
@@ -979,7 +891,7 @@ func (db *DB) GetOrderHistoryWithItems(businessID int) ([]models.Order, error) {
 		LEFT JOIN order_items oi ON o.id = oi.order_id
 		LEFT JOIN dishes d ON oi.dish_id = d.id 
 		WHERE o.status IN ('completed', 'cancelled')
-		AND (o.business_id = $1 OR o.business_id IS NULL)
+		AND o.business_id = $1
 		GROUP BY o.id 
 		ORDER BY COALESCE(o.completed_at, o.cancelled_at, o.updated_at) DESC`
 
@@ -1068,7 +980,7 @@ func (db *DB) GetOrdersByStatus(status string, businessID int) ([]models.Order, 
         LEFT JOIN dishes d ON oi.dish_id = d.id
         LEFT JOIN categories c ON d.category_id = c.id
         WHERE o.status = $1
-        AND (o.business_id = $2 OR o.business_id IS NULL)
+        AND o.business_id = $2
         GROUP BY o.id
         ORDER BY o.created_at DESC
     `

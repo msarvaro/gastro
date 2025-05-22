@@ -23,14 +23,18 @@ func NewShiftHandler(db *database.DB) *ShiftHandler {
 
 // GetAllShifts возвращает список всех смен
 func (h *ShiftHandler) GetAllShifts(w http.ResponseWriter, r *http.Request) {
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Business ID not found")
+		return
+	}
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized: User ID not found in token")
 		return
 	}
 
-	// Получаем информацию о пользователе для проверки роли
-	user, err := h.db.GetUserByID(int(userID))
+	user, err := h.db.GetUserByID(int(userID), businessID)
 	if err != nil {
 		log.Printf("Error GetAllShifts - fetching user %d: %v", userID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to verify user")
@@ -62,7 +66,7 @@ func (h *ShiftHandler) GetAllShifts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Получаем все смены
-	shifts, total, err := h.db.GetAllShifts(page, limit)
+	shifts, total, err := h.db.GetAllShifts(page, limit, businessID)
 	if err != nil {
 		log.Printf("Error GetAllShifts - fetching shifts: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to fetch shifts")
@@ -87,14 +91,17 @@ func (h *ShiftHandler) GetAllShifts(w http.ResponseWriter, r *http.Request) {
 
 // GetShiftByID возвращает информацию о конкретной смене
 func (h *ShiftHandler) GetShiftByID(w http.ResponseWriter, r *http.Request) {
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Business ID not found")
+		return
+	}
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized: User ID not found in token")
 		return
 	}
-
-	// Получаем информацию о пользователе для проверки роли
-	user, err := h.db.GetUserByID(int(userID))
+	user, err := h.db.GetUserByID(int(userID), businessID)
 	if err != nil {
 		log.Printf("Error GetShiftByID - fetching user %d: %v", userID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to verify user")
@@ -122,7 +129,7 @@ func (h *ShiftHandler) GetShiftByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Получаем информацию о смене
-	shift, err := h.db.GetShiftByID(shiftID)
+	shift, err := h.db.GetShiftByID(shiftID, businessID)
 	if err != nil {
 		log.Printf("Error GetShiftByID - fetching shift %d: %v", shiftID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to fetch shift details")
@@ -140,27 +147,6 @@ func (h *ShiftHandler) GetShiftByID(w http.ResponseWriter, r *http.Request) {
 
 // CreateShift создает новую смену
 func (h *ShiftHandler) CreateShift(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
-	if !ok {
-		respondWithError(w, http.StatusUnauthorized, "Unauthorized: User ID not found in token")
-		return
-	}
-
-	// Получаем информацию о пользователе для проверки роли
-	user, err := h.db.GetUserByID(int(userID))
-	if err != nil {
-		log.Printf("Error CreateShift - fetching user %d: %v", userID, err)
-		respondWithError(w, http.StatusInternalServerError, "Failed to verify user")
-		return
-	}
-
-	// Проверяем роль пользователя
-	if user.Role != "manager" && user.Role != "admin" {
-		respondWithError(w, http.StatusForbidden, "Access denied: Requires manager or admin role")
-		return
-	}
-
-	// Получаем business_id из контекста или куки
 	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
 	if !ok {
 		// Если нет в контексте, пробуем получить из куки
@@ -178,8 +164,25 @@ func (h *ShiftHandler) CreateShift(w http.ResponseWriter, r *http.Request) {
 		}
 		businessID = int(businessIDFromCookie)
 	}
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized: User ID not found in token")
+		return
+	}
+	user, err := h.db.GetUserByID(int(userID), businessID)
+	if err != nil {
+		log.Printf("Error CreateShift - fetching user %d: %v", userID, err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to verify user")
+		return
+	}
 
-	// Декодируем данные запроса
+	// Проверяем роль пользователя
+	if user.Role != "manager" && user.Role != "admin" {
+		respondWithError(w, http.StatusForbidden, "Access denied: Requires manager or admin role")
+		return
+	}
+
+	// Получаем данные запроса
 	var req models.CreateShiftRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Error CreateShift - decoding request: %v", err)
@@ -242,7 +245,7 @@ func (h *ShiftHandler) CreateShift(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Создаем смену в БД
-	createdShift, err := h.db.CreateShift(shift, req.EmployeeIDs)
+	createdShift, err := h.db.CreateShift(shift, req.EmployeeIDs, businessID)
 	if err != nil {
 		log.Printf("Error CreateShift - saving shift: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to create shift")
@@ -255,14 +258,17 @@ func (h *ShiftHandler) CreateShift(w http.ResponseWriter, r *http.Request) {
 
 // UpdateShift обновляет информацию о смене
 func (h *ShiftHandler) UpdateShift(w http.ResponseWriter, r *http.Request) {
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Business ID not found")
+		return
+	}
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized: User ID not found in token")
 		return
 	}
-
-	// Получаем информацию о пользователе для проверки роли
-	user, err := h.db.GetUserByID(int(userID))
+	user, err := h.db.GetUserByID(int(userID), businessID)
 	if err != nil {
 		log.Printf("Error UpdateShift - fetching user %d: %v", userID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to verify user")
@@ -291,7 +297,7 @@ func (h *ShiftHandler) UpdateShift(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Проверяем существование смены
-	existingShift, err := h.db.GetShiftByID(shiftID)
+	existingShift, err := h.db.GetShiftByID(shiftID, businessID)
 	if err != nil {
 		log.Printf("Error UpdateShift - fetching shift %d: %v", shiftID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to fetch shift details")
@@ -303,7 +309,7 @@ func (h *ShiftHandler) UpdateShift(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Декодируем данные запроса
+	// Получаем данные запроса
 	var req models.UpdateShiftRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Error UpdateShift - decoding request: %v", err)
@@ -412,7 +418,7 @@ func (h *ShiftHandler) UpdateShift(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Обновляем смену в БД
-	err = h.db.UpdateShift(updatedShift, employeeIDs)
+	err = h.db.UpdateShift(updatedShift, employeeIDs, businessID)
 	if err != nil {
 		log.Printf("Error UpdateShift - updating shift %d: %v", shiftID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to update shift")
@@ -420,7 +426,7 @@ func (h *ShiftHandler) UpdateShift(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Получаем обновленную информацию о смене
-	updatedShiftWithEmployees, err := h.db.GetShiftByID(shiftID)
+	updatedShiftWithEmployees, err := h.db.GetShiftByID(shiftID, businessID)
 	if err != nil {
 		log.Printf("Error UpdateShift - fetching updated shift %d: %v", shiftID, err)
 		respondWithJSON(w, http.StatusOK, map[string]string{"status": "success"})
@@ -433,14 +439,17 @@ func (h *ShiftHandler) UpdateShift(w http.ResponseWriter, r *http.Request) {
 
 // DeleteShift удаляет смену
 func (h *ShiftHandler) DeleteShift(w http.ResponseWriter, r *http.Request) {
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Business ID not found")
+		return
+	}
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized: User ID not found in token")
 		return
 	}
-
-	// Получаем информацию о пользователе для проверки роли
-	user, err := h.db.GetUserByID(int(userID))
+	user, err := h.db.GetUserByID(int(userID), businessID)
 	if err != nil {
 		log.Printf("Error DeleteShift - fetching user %d: %v", userID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to verify user")
@@ -469,7 +478,7 @@ func (h *ShiftHandler) DeleteShift(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Проверяем существование смены
-	existingShift, err := h.db.GetShiftByID(shiftID)
+	existingShift, err := h.db.GetShiftByID(shiftID, businessID)
 	if err != nil {
 		log.Printf("Error DeleteShift - fetching shift %d: %v", shiftID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to fetch shift details")
@@ -482,7 +491,7 @@ func (h *ShiftHandler) DeleteShift(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Удаляем смену
-	err = h.db.DeleteShift(shiftID)
+	err = h.db.DeleteShift(shiftID, businessID)
 	if err != nil {
 		log.Printf("Error DeleteShift - deleting shift %d: %v", shiftID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to delete shift")
@@ -494,14 +503,17 @@ func (h *ShiftHandler) DeleteShift(w http.ResponseWriter, r *http.Request) {
 
 // GetEmployeeShifts возвращает смены для конкретного сотрудника
 func (h *ShiftHandler) GetEmployeeShifts(w http.ResponseWriter, r *http.Request) {
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Business ID not found")
+		return
+	}
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized: User ID not found in token")
 		return
 	}
-
-	// Получаем информацию о пользователе
-	user, err := h.db.GetUserByID(int(userID))
+	user, err := h.db.GetUserByID(int(userID), businessID)
 	if err != nil {
 		log.Printf("Error GetEmployeeShifts - fetching user %d: %v", userID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to verify user")
@@ -522,7 +534,7 @@ func (h *ShiftHandler) GetEmployeeShifts(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Получаем смены сотрудника
-	shifts, err := h.db.GetEmployeeShifts(targetEmployeeID)
+	shifts, err := h.db.GetEmployeeShifts(targetEmployeeID, businessID)
 	if err != nil {
 		log.Printf("Error GetEmployeeShifts - fetching shifts for employee %d: %v", targetEmployeeID, err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to fetch employee shifts")

@@ -145,29 +145,6 @@ body {
   background-color: #0056c7;
 }
 
-/* Register Prompt */
-.register-prompt {
-  text-align: center;
-  margin: 16px 0;
-  font-size: 14px;
-}
-
-.prompt-text {
-  color: #6B7280;
-  margin-right: 5px;
-}
-
-.register-link {
-  color: #006FFD;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.register-link:hover {
-  text-decoration: underline;
-}
-
-
 .error-message {
   background-color: #ffebee;
   color: #d32f2f;

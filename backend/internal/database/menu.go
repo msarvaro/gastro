@@ -20,7 +20,7 @@ func NewMenuRepository(db *sql.DB) *MenuRepository {
 	return &MenuRepository{db: db}
 }
 
-func (r *MenuRepository) GetMenuItems(ctx context.Context, categoryID *int) ([]models.MenuItem, error) {
+func (r *MenuRepository) GetMenuItems(ctx context.Context, categoryID *int, businessID int) ([]models.MenuItem, error) {
 	// Check if description column exists
 	var hasDescriptionColumn bool
 	err := r.db.QueryRowContext(ctx, `
@@ -95,7 +95,8 @@ func (r *MenuRepository) GetMenuItems(ctx context.Context, categoryID *int) ([]m
 	return items, nil
 }
 
-func (r *MenuRepository) GetMenuItemByID(ctx context.Context, id int) (*models.MenuItem, error) {
+func (r *MenuRepository) GetMenuItemByID(ctx context.Context, id int, businessID int) (*models.MenuItem, error) {
+
 	// Check if description column exists
 	var hasDescriptionColumn bool
 	err := r.db.QueryRowContext(ctx, `
@@ -120,7 +121,7 @@ func (r *MenuRepository) GetMenuItemByID(ctx context.Context, id int) (*models.M
 
 	query += `COALESCE(business_id, 0), created_at, updated_at
 		FROM dishes
-		WHERE id = $1`
+		WHERE id = $1 AND business_id = $2`
 
 	// Prepare scan destinations
 	var item models.MenuItem
@@ -147,7 +148,7 @@ func (r *MenuRepository) GetMenuItemByID(ctx context.Context, id int) (*models.M
 		&item.CreatedAt,
 		&item.UpdatedAt)
 
-	err = r.db.QueryRowContext(ctx, query, id).Scan(scanDest...)
+	err = r.db.QueryRowContext(ctx, query, id, businessID).Scan(scanDest...)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil // Item not found
@@ -356,7 +357,7 @@ func (r *MenuRepository) UpdateMenuItem(ctx context.Context, id int, item models
 	// If nothing to update, return the item as is
 	if len(setClauses) == 1 { // Only the timestamp
 		// Get the item and return it
-		return r.GetMenuItemByID(ctx, id)
+		return r.GetMenuItemByID(ctx, id, item.BusinessID)
 	}
 
 	// Complete the query with the SET clauses
@@ -424,9 +425,9 @@ func nilOrVal(val int) interface{} {
 	return val
 }
 
-func (r *MenuRepository) DeleteMenuItem(ctx context.Context, id int) error {
-	query := `DELETE FROM dishes WHERE id = $1`
-	result, err := r.db.ExecContext(ctx, query, id)
+func (r *MenuRepository) DeleteMenuItem(ctx context.Context, id int, businessID int) error {
+	query := `DELETE FROM dishes WHERE id = $1 AND business_id = $2`
+	result, err := r.db.ExecContext(ctx, query, id, businessID)
 	if err != nil {
 		return err
 	}
@@ -440,13 +441,14 @@ func (r *MenuRepository) DeleteMenuItem(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *MenuRepository) GetCategories(ctx context.Context) ([]models.Category, error) {
+func (r *MenuRepository) GetCategories(ctx context.Context, businessID int) ([]models.Category, error) {
 	query := `
 		SELECT id, name, business_id, created_at, updated_at
 		FROM categories
+		WHERE business_id = $1
 		ORDER BY name`
 
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query, businessID)
 	if err != nil {
 		return nil, err
 	}
@@ -469,14 +471,14 @@ func (r *MenuRepository) GetCategories(ctx context.Context) ([]models.Category, 
 	return categories, nil
 }
 
-func (r *MenuRepository) GetCategoryByID(ctx context.Context, id int) (*models.Category, error) {
+func (r *MenuRepository) GetCategoryByID(ctx context.Context, id int, businessID int) (*models.Category, error) {
 	query := `
 		SELECT id, name, business_id, created_at, updated_at
 		FROM categories
-		WHERE id = $1`
+		WHERE id = $1 AND business_id = $2`
 
 	var category models.Category
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id, businessID).Scan(
 		&category.ID,
 		&category.Name,
 		&category.BusinessID,
@@ -548,9 +550,9 @@ func (r *MenuRepository) UpdateCategory(ctx context.Context, id int, category mo
 	return &updated, nil
 }
 
-func (r *MenuRepository) DeleteCategory(ctx context.Context, id int) error {
-	query := `DELETE FROM categories WHERE id = $1`
-	result, err := r.db.ExecContext(ctx, query, id)
+func (r *MenuRepository) DeleteCategory(ctx context.Context, id int, businessID int) error {
+	query := `DELETE FROM categories WHERE id = $1 AND business_id = $2`
+	result, err := r.db.ExecContext(ctx, query, id, businessID)
 	if err != nil {
 		return err
 	}

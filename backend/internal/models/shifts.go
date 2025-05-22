@@ -36,6 +36,7 @@ type ShiftWithEmployees struct {
 type ShiftEmployee struct {
 	ID         int       `json:"id"`
 	ShiftID    int       `json:"shift_id"`
+	BusinessID int       `json:"business_id"`
 	EmployeeID int       `json:"employee_id"`
 	CreatedAt  time.Time `json:"created_at"`
 }

@@ -36,7 +36,29 @@ func (h *MenuHandler) RegisterRoutes(r *mux.Router) {
 }
 
 func (h *MenuHandler) GetMenuItems(w http.ResponseWriter, r *http.Request) {
-	items, err := h.repo.GetMenuItems(r.Context(), nil)
+	businessIDStr := r.URL.Query().Get("business_id")
+	if businessIDStr == "" {
+		http.Error(w, "Missing business_id query parameter", http.StatusBadRequest)
+		return
+	}
+	businessID, err := strconv.Atoi(businessIDStr)
+	if err != nil || businessID <= 0 {
+		http.Error(w, "Invalid business_id query parameter", http.StatusBadRequest)
+		return
+	}
+
+	categoryIDStr := r.URL.Query().Get("category_id")
+	var categoryID *int = nil
+	if categoryIDStr != "" {
+		id, err := strconv.Atoi(categoryIDStr)
+		if err != nil || id <= 0 {
+			http.Error(w, "Invalid category_id query parameter", http.StatusBadRequest)
+			return
+		}
+		categoryID = &id
+	}
+
+	items, err := h.repo.GetMenuItems(r.Context(), categoryID, businessID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -51,7 +73,12 @@ func (h *MenuHandler) GetMenuItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid menu item ID", http.StatusBadRequest)
 		return
 	}
-	item, err := h.repo.GetMenuItemByID(r.Context(), id)
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok || businessID == 0 {
+		http.Error(w, "business_id not found in context", http.StatusBadRequest)
+		return
+	}
+	item, err := h.repo.GetMenuItemByID(r.Context(), id, businessID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -124,7 +151,7 @@ func (h *MenuHandler) DeleteMenuItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "business_id not found in context", http.StatusBadRequest)
 		return
 	}
-	if err := h.repo.DeleteMenuItem(r.Context(), id); err != nil {
+	if err := h.repo.DeleteMenuItem(r.Context(), id, businessID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -132,7 +159,18 @@ func (h *MenuHandler) DeleteMenuItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MenuHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
-	categories, err := h.repo.GetCategories(r.Context())
+	businessIDStr := r.URL.Query().Get("business_id")
+	if businessIDStr == "" {
+		http.Error(w, "Missing business_id query parameter", http.StatusBadRequest)
+		return
+	}
+	businessID, err := strconv.Atoi(businessIDStr)
+	if err != nil || businessID <= 0 {
+		http.Error(w, "Invalid business_id query parameter", http.StatusBadRequest)
+		return
+	}
+
+	categories, err := h.repo.GetCategories(r.Context(), businessID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -147,7 +185,12 @@ func (h *MenuHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid category ID", http.StatusBadRequest)
 		return
 	}
-	category, err := h.repo.GetCategoryByID(r.Context(), id)
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok || businessID == 0 {
+		http.Error(w, "business_id not found in context", http.StatusBadRequest)
+		return
+	}
+	category, err := h.repo.GetCategoryByID(r.Context(), id, businessID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -214,7 +257,7 @@ func (h *MenuHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "business_id not found in context", http.StatusBadRequest)
 		return
 	}
-	if err := h.repo.DeleteCategory(r.Context(), id); err != nil {
+	if err := h.repo.DeleteCategory(r.Context(), id, businessID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -222,12 +265,18 @@ func (h *MenuHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MenuHandler) GetMenuSummary(w http.ResponseWriter, r *http.Request) {
-	categories, err := h.repo.GetCategories(r.Context())
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok || businessID == 0 {
+		http.Error(w, "business_id not found in context", http.StatusBadRequest)
+		return
+	}
+
+	categories, err := h.repo.GetCategories(r.Context(), businessID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	items, err := h.repo.GetMenuItems(r.Context(), nil)
+	items, err := h.repo.GetMenuItems(r.Context(), nil, businessID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -21,8 +21,13 @@ func NewAdminHandler(db *database.DB) *AdminHandler {
 }
 
 func (h *AdminHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
-	log.Println("GetUsers: Начало выполнения")
-	users, _, err := h.db.GetUsers(1, 10, "", "", "")
+	businessID, exists := middleware.GetBusinessIDFromContext(r.Context())
+	if !exists {
+		http.Error(w, "business_id not found in context", http.StatusBadRequest)
+		return
+	}
+
+	users, err := h.db.GetUsers(businessID)
 	if err != nil {
 		log.Printf("GetUsers: Ошибка при получении пользователей: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -49,7 +54,6 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID, err := strconv.Atoi(vars["id"])
 	if err != nil {
-
 		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
@@ -159,4 +163,29 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *AdminHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	businessID, exists := middleware.GetBusinessIDFromContext(r.Context())
+	if !exists {
+		http.Error(w, "business_id not found in context", http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.db.GetUserByID(userID, businessID)
+	if err != nil {
+		log.Printf("GetUserByID: Ошибка при получении пользователя: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
 }
