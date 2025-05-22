@@ -19,9 +19,9 @@ ENV DB_HOST=dpg-d0nocoqdbo4c73agt8c0-a.oregon-postgres.render.com \
     DB_USER=gastro_trp4_user \
     DB_PASSWORD=JY6zmcWkUWwwa7idXUoOxTjLKD2V6ZER \
     DB_NAME=gastro_trp4 \
-    DB_SSL_MODE=true \
+    DB_SSL_MODE=require \
     SERVER_PORT=10000 \
-    JWT_KEY=your-secret-key \
+    JWT_KEY=jwt-secret \
     PROJECT_ROOT=. \
     FRONTEND_PATH=frontend
 
