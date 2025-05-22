@@ -2444,3 +2444,11 @@ button::-moz-focus-inner {
 
 /* ... existing code ... */
 
+/* Add this at the end or in the relevant section */
+.orders-section, .tables-section, .history-section, .profile-section, .content-wrapper {
+    padding-bottom: 80px; /* Adjust if your tab bar is taller/shorter */
+    box-sizing: border-box;
+}
+
+/* If you have a main content wrapper, you can use that instead */
+

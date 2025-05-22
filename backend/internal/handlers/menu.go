@@ -36,14 +36,9 @@ func (h *MenuHandler) RegisterRoutes(r *mux.Router) {
 }
 
 func (h *MenuHandler) GetMenuItems(w http.ResponseWriter, r *http.Request) {
-	businessIDStr := r.URL.Query().Get("business_id")
-	if businessIDStr == "" {
-		http.Error(w, "Missing business_id query parameter", http.StatusBadRequest)
-		return
-	}
-	businessID, err := strconv.Atoi(businessIDStr)
-	if err != nil || businessID <= 0 {
-		http.Error(w, "Invalid business_id query parameter", http.StatusBadRequest)
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok || businessID == 0 {
+		http.Error(w, "business_id not found in context", http.StatusBadRequest)
 		return
 	}
 
@@ -159,14 +154,9 @@ func (h *MenuHandler) DeleteMenuItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MenuHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
-	businessIDStr := r.URL.Query().Get("business_id")
-	if businessIDStr == "" {
-		http.Error(w, "Missing business_id query parameter", http.StatusBadRequest)
-		return
-	}
-	businessID, err := strconv.Atoi(businessIDStr)
-	if err != nil || businessID <= 0 {
-		http.Error(w, "Invalid business_id query parameter", http.StatusBadRequest)
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok || businessID == 0 {
+		http.Error(w, "business_id not found in context", http.StatusBadRequest)
 		return
 	}
 
