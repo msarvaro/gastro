@@ -80,10 +80,36 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 func (db *DB) GetUserByID(id int, businessID int) (*models.User, error) {
 	user := &models.User{}
 	var name sql.NullString
+
+	// First get the requesting user's role
+	var requestingUserRole string
 	err := db.QueryRow(`
-		SELECT id, username, name, email, role, status, business_id, created_at, updated_at
-		FROM users
-		WHERE id = $1 AND business_id = $2`, id, businessID).Scan(
+		SELECT role FROM users WHERE id = $1`, id).Scan(&requestingUserRole)
+	if err != nil {
+		return nil, err
+	}
+
+	// Modify query based on user role
+	var query string
+	var args []interface{}
+
+	if requestingUserRole == "admin" {
+		// Admin can view any user
+		query = `
+			SELECT id, username, name, email, role, status, business_id, created_at, updated_at
+			FROM users
+			WHERE id = $1`
+		args = []interface{}{id}
+	} else {
+		// Regular users can only view users from their business
+		query = `
+			SELECT id, username, name, email, role, status, business_id, created_at, updated_at
+			FROM users
+			WHERE id = $1 AND business_id = $2`
+		args = []interface{}{id, businessID}
+	}
+
+	err = db.QueryRow(query, args...).Scan(
 		&user.ID, &user.Username, &name, &user.Email, &user.Role, &user.Status, &user.BusinessID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -96,7 +122,7 @@ func (db *DB) GetUserByID(id int, businessID int) (*models.User, error) {
 		user.Name = ""
 	}
 
-	log.Printf("GetUserByID called with id=%d, businessID=%d", id, businessID)
+	log.Printf("GetUserByID called with id=%d, businessID=%d, role=%s", id, businessID, requestingUserRole)
 	return user, nil
 }
 
