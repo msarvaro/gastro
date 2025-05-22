@@ -98,14 +98,21 @@ async function handleAddProduct(event) {
         });
 
         if (!response.ok) {
-            throw new Error('Ошибка при добавлении продукта');
+            const errorText = await response.text();
+            try {
+                const errorJson = JSON.parse(errorText);
+                throw new Error(`Ошибка: ${errorJson.error || response.statusText}`);
+            } catch {
+                throw new Error(`Ошибка: ${response.statusText} (Ответ сервера: ${errorText})`);
+            }
         }
 
         form.reset();
         closeModal('addProductModal');
         loadInventoryData();
+        showSuccess('Продукт успешно добавлен');
     } catch (error) {
-        alert('Ошибка при добавлении продукта: ' + error.message);
+        showError('Ошибка при добавлении продукта: ' + error.message);
     }
 }
 
@@ -755,7 +762,7 @@ async function loadInventoryData() {
         const cards = document.querySelectorAll('#inventory-stock-tab .card .value');
         if (cards.length >= 3) {
             cards[0].textContent = `${filteredItems.length}`;
-            cards[1].textContent = `${filteredItems.filter(item => getStatusClass(item)==='low').length}`;
+            cards[1].textContent = `${filteredItems.filter(item => getStatusClass(item)==='low' || getStatusClass(item)==='critical').length}`;
             cards[2].textContent = `${filteredItems.filter(item => item.status === 'pending').length}`;
         }
 
@@ -771,6 +778,11 @@ async function loadInventoryData() {
                         <td>${item.quantity} ${item.unit}</td>
                         <td>${item.min_quantity} ${item.unit}</td>
                         <td><span class="status-${getStatusClass(item)}">${getStatusText(item)}</span></td>
+                        <td>
+                            <button class="edit-btn" onclick="editInventoryItem(${item.id})">
+                                <img src="../static/images/edit.svg" alt="Редактировать" class="icon">
+                            </button>
+                        </td>
                     </tr>
                 `).join('');
             }
@@ -784,7 +796,7 @@ async function loadInventoryData() {
         });
         const table = document.querySelector('#inventory-stock-tab table tbody');
         if (table) {
-            table.innerHTML = '<tr><td colspan="5">Ошибка загрузки данных</td></tr>';
+            table.innerHTML = '<tr><td colspan="6">Ошибка загрузки данных</td></tr>';
         }
     }
 }
@@ -825,7 +837,7 @@ async function loadRequestsData() {
 
         // Update requests cards
         document.querySelector('#inventory-requests-tab .card:nth-child(1) .value').textContent = 
-            `${filteredRequests.filter(req => req.status === 'active').length}`;
+            `${filteredRequests.filter(req => req.status === 'in_processing').length}`;
         document.querySelector('#inventory-requests-tab .card:nth-child(2) .value').textContent = 
             `${filteredRequests.filter(req => req.status === 'pending').length}`;
         document.querySelector('#inventory-requests-tab .card:nth-child(3) .value').textContent = 
@@ -837,20 +849,32 @@ async function loadRequestsData() {
         if (table) {
             const tbody = table.querySelector('tbody');
             if (tbody) {
-                tbody.innerHTML = filteredRequests.map(request => `
-                    <tr>
-                        <td>${request.items.join(', ')}</td>
-                        <td>${formatDate(request.created_at)}</td>
-                        <td><span class="status-${request.status}">${getRequestStatusText(request.status)}</span></td>
-                        <td>
-                            ${request.status === 'pending' ? 
-                                `<button onclick="approveRequest('${request.id}')">✔</button> 
-                                 <button onclick="rejectRequest('${request.id}')">✖</button>` :
-                                `<button onclick="showRequestDetails('${request.id}')">Подробнее</button>`
-                            }
-                        </td>
-                    </tr>
-                `).join('');
+                tbody.innerHTML = filteredRequests.map(request => {
+                    let actionsHtml = '';
+                    if (request.status === 'pending') {
+                        actionsHtml = `
+                            <div class="request-actions-btns">
+                                <button class="request-action-btn approve" onclick="approveRequest('${request.id}')">
+                                    ✓
+                                </button>
+                                <button class="request-action-btn reject" onclick="rejectRequest('${request.id}')">
+                                    ✕
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                         actionsHtml = `<button class="details-btn" onclick="showRequestDetails('${request.id}')">Подробнее</button>`;
+                    }
+
+                    return `
+                        <tr>
+                            <td>${request.items.join(', ')}</td>
+                            <td>${formatDate(request.created_at)}</td>
+                            <td><span class="status-${request.status}">${getRequestStatusText(request.status)}</span></td>
+                            <td>${actionsHtml}</td>
+                        </tr>
+                    `;
+                }).join('');
             }
         }
     } catch (error) {
@@ -861,11 +885,158 @@ async function loadRequestsData() {
 function getRequestStatusText(status) {
     const statusMap = {
         'pending': 'Ожидает одобрения',
-        'active': 'В обработке',
+        'in_processing': 'В обработке',
         'completed': 'Выполнено',
         'rejected': 'Отклонено'
     };
     return statusMap[status] || status;
+}
+
+// Placeholder functions for request actions
+async function updateRequestStatus(requestId, status) {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/manager/requests/${requestId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ 
+                status: status,
+                updated_at: new Date().toISOString()
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Failed to update request status: ${error.error || response.statusText}`);
+        }
+
+        // After successful update, refresh the table
+        loadRequestsData();
+        showSuccess(`Статус заявки изменен на "${getRequestStatusText(status)}"`);
+
+    } catch (error) {
+        console.error(`Error updating request status for ID ${requestId}:`, error);
+        showError(`Ошибка при изменении статуса заявки: ${error.message}`);
+    }
+}
+
+async function approveRequest(requestId) {
+    if (confirm('Вы уверены, что хотите одобрить эту заявку?')) {
+        await updateRequestStatus(requestId, 'in_processing');
+    }
+}
+
+async function rejectRequest(requestId) {
+    const reason = prompt('Укажите причину отклонения заявки:');
+    if (reason !== null) {
+        await updateRequestStatus(requestId, 'rejected');
+    }
+}
+
+// Add completeRequest function
+async function completeRequest(requestId) {
+    if (confirm('Вы уверены, что хотите отметить эту заявку как выполненную?')) {
+        await updateRequestStatus(requestId, 'completed');
+    }
+}
+
+async function showRequestDetails(requestId) {
+    try {
+        const token = localStorage.getItem('token');
+        
+        // Fetch request details
+        const response = await fetch(`/api/manager/requests/${requestId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load request details');
+        }
+
+        const request = await response.json();
+        
+        // Fetch suppliers to get supplier name
+        const suppliersResponse = await fetch('/api/manager/suppliers', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        let supplierName = 'Неизвестно';
+        if (suppliersResponse.ok) {
+            const suppliersData = await suppliersResponse.json();
+            const supplier = (suppliersData.suppliers || []).find(s => s.id === request.supplier_id);
+            if (supplier) {
+                supplierName = supplier.name;
+            }
+        }
+
+        // Create and show modal with request details
+        let buttonsHtml = '';
+        if (request.status === 'pending') {
+            buttonsHtml = `
+                <button class="btn-primary" onclick="approveRequest(${request.id}); closeModal('requestDetailsModal')">Одобрить</button>
+                <button class="btn-secondary" style="color:#d32f2f; border:1px solid #d32f2f;" onclick="rejectRequest(${request.id}); closeModal('requestDetailsModal')">Отклонить</button>
+            `;
+        } else if (request.status === 'in_processing') {
+             buttonsHtml = `
+                <button class="btn-complete" onclick="completeRequest(${request.id}); closeModal('requestDetailsModal')">Выполнено</button>
+                <button class="btn-reject" onclick="rejectRequest(${request.id}); closeModal('requestDetailsModal')">Отклонить</button>
+            `;
+        }
+
+        const modalHtml = `
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Детали заявки #${request.id}</h2>
+                <div class="request-details">
+                    <p><strong>Статус:</strong> ${getRequestStatusText(request.status)}</p>
+                    <p><strong>Поставщик:</strong> ${supplierName}</p>
+                    <p><strong>Создана:</strong> ${formatDate(request.created_at)}</p>
+                    ${request.updated_at ? `<p><strong>Обновлена:</strong> ${formatDate(request.updated_at)}</p>` : ''}
+                    <p><strong>Товары:</strong></p>
+                    <ul>
+                        ${request.items.map(item => `<li>${item}</li>`).join('')}
+                    </ul>
+                    ${request.comment ? `<p><strong>Комментарий:</strong> ${request.comment}</p>` : ''}
+                </div>
+                <div class="modal-buttons">
+                    ${buttonsHtml}
+                    <button class="btn-secondary" onclick="closeModal('requestDetailsModal')">Закрыть</button>
+                </div>
+            </div>
+        `;
+
+        // Remove previous modal instance if it exists
+        const existingModal = document.getElementById('requestDetailsModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'requestDetailsModal';
+        modal.className = 'modal';
+        modal.innerHTML = modalHtml;
+        document.body.appendChild(modal);
+        showModal('requestDetailsModal');
+        
+        // Add event listener to the new close button
+        modal.querySelector('.close-modal').addEventListener('click', function() {
+            closeModal('requestDetailsModal');
+        });
+
+        // Add event listener to close when clicking outside
+        modal.addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeModal('requestDetailsModal');
+            }
+        });
+
+    } catch (error) {
+        console.error('Error loading request details:', error);
+        showError('Ошибка при загрузке деталей заявки');
+    }
 }
 
 // Suppliers Management
@@ -888,10 +1059,23 @@ async function loadSuppliersData() {
         const category = document.getElementById('supplierCategoryFilter').value;
         let filteredSuppliers = suppliers;
         if (search) filteredSuppliers = suppliers.filter(s => s.name.toLowerCase().includes(search));
-        if (category) filteredSuppliers = filteredSuppliers.filter(s => s.categories.includes(category));
         
+        if (category) {
+            // Split the filter category string into individual terms, trimming whitespace
+            const filterCategories = category.split(',').map(cat => cat.trim()).filter(cat => cat);
+            
+            // Filter suppliers: check if any of the supplier's categories match any filter term
+            filteredSuppliers = filteredSuppliers.filter(s => 
+                s.categories.some(supplierCat => 
+                    filterCategories.some(filterCat => 
+                        supplierCat.toLowerCase().includes(filterCat.toLowerCase())
+                    )
+                )
+            );
+        }
+
         // Update suppliers table
-        const table = document.getElementById('suppliersTable');
+        const table = document.querySelector('#inventory-suppliers-tab table');
         if (table) {
             const tbody = table.querySelector('tbody');
             if (tbody) {
@@ -899,15 +1083,115 @@ async function loadSuppliersData() {
                     <tr>
                         <td>${supplier.name}</td>
                         <td>${supplier.categories.join(', ')}</td>
-                        <td>${supplier.phone}<br>${supplier.email}<br>${supplier.address}</td>
+                        <td>
+                            ${supplier.phone ? `Тел: ${supplier.phone}<br>` : ''}
+                            ${supplier.email ? `Email: ${supplier.email}<br>` : ''}
+                            ${supplier.address ? `Адрес: ${supplier.address}` : ''}
+                        </td>
                         <td><span class="status-${supplier.status}">${getSupplierStatusText(supplier.status)}</span></td>
-                        <td><button onclick="editSupplier('${supplier.id}')">Редактировать</button></td>
+                        <td>
+                            <button class="edit-btn" onclick="editSupplier(${supplier.id})">
+                                <img src="../static/images/edit.svg" alt="Редактировать" class="icon">
+                            </button>
+                            <button class="delete-btn" onclick="deleteSupplier(${supplier.id})">
+                                <img src="../static/images/delete.svg" alt="Удалить" class="icon"><img src="../static/images/delete.svg" alt="Удалить" class="icon">
+                            </button>
+                        </td>
                     </tr>
                 `).join('');
             }
         }
     } catch (error) {
         console.error('Error loading suppliers data:', error);
+        showError('Ошибка при загрузке данных поставщиков');
+    }
+}
+
+async function editSupplier(id) {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/manager/suppliers/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load supplier data');
+        }
+
+        const supplier = await response.json();
+        
+        // Fill the edit form
+        const form = document.getElementById('editSupplierForm');
+        form.supplierId.value = supplier.id;
+        form.supplierName.value = supplier.name;
+        form.supplierCategory.value = supplier.categories.join(', ');
+        form.supplierPhone.value = supplier.phone || '';
+        formAddress.value = supplier.address || '';
+        form.supplierStatus.value = supplier.status;
+
+        // Show the modal
+        showModal('editSupplierModal');
+    } catch (error) {
+        console.error('Error loading supplier data:', error);
+        showError('Ошибка при загрузке данных поставщика');
+    }
+}
+
+async function handleEditSupplier(event) {
+    event.preventDefault();
+    const form = event.target;
+
+    try {
+        const updatedSupplier = {
+            name: form.supplierName.value,
+            categories: form.supplierCategory.value.split(',').map(cat => cat.trim()),
+            phone: form.supplierPhone.value,
+            email: form.supplierEmail.value,
+            address: form.supplierAddress.value,
+            status: form.supplierStatus.value
+        };
+
+        const response = await fetch(`/api/manager/suppliers/${form.supplierId.value}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(updatedSupplier)
+        });
+
+        if (!response.ok) {
+            throw new Error('Ошибка при обновлении поставщика');
+        }
+
+        form.reset();
+        closeModal('editSupplierModal');
+        loadSuppliersData();
+        showSuccess('Поставщик успешно обновлен');
+    } catch (error) {
+        showError('Ошибка при обновлении поставщика: ' + error.message);
+    }
+}
+
+async function deleteSupplier(id) {
+    if (confirm('Вы уверены, что хотите удалить этого поставщика?')) {
+        try {
+            const response = await fetch(`/api/manager/suppliers/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Ошибка при удалении поставщика');
+            }
+
+            loadSuppliersData();
+            showSuccess('Поставщик успешно удален');
+        } catch (error) {
+            showError('Ошибка при удалении поставщика: ' + error.message);
+        }
     }
 }
 
@@ -1190,7 +1474,7 @@ function displayMenuItemsByCategory(items, categoryId, page = 1) {
                         <span class="status-badge ${statusClass}">${statusText}</span>
                         <button class="action-button more-btn" title="Подробнее" onclick="event.stopPropagation(); showMenuItemDetails(${item.id})">
                             <img src="../static/images/vertical-dots.svg" class="more-btn-img" alt="Подробнее">
-                        </button>
+                            </button>
                     </div>
                 </div>
             </div>
@@ -2022,7 +2306,6 @@ async function loadUsers() {
             users.forEach(user => {
                 // Преобразуем даты в правильный формат
                 const formattedCreatedAt = formatUserDate(user.created_at);
-                
                 const tr = document.createElement('tr');
                 tr.setAttribute('data-user-id', user.id);
                 tr.innerHTML = `
@@ -2043,6 +2326,7 @@ async function loadUsers() {
                 tbody.appendChild(tr);
             });
         }
+      
 
         // Обновляем счетчики после загрузки пользователей
         updateUserCount(users.length);
@@ -2340,7 +2624,7 @@ async function loadShifts() {
         tbody.innerHTML = '';
 
         if (shifts.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="no-results">Нет данных о сменах</td></tr>';
+            tbody.innerHTML = '<h3 class="no-results">Нет данных о сменах</h3>';
             return;
         }
 
@@ -2368,7 +2652,7 @@ async function loadShifts() {
                     </button>
                 </td>
             `;
-
+            
             if (notes) {
                 row.setAttribute('title', notes);
             }
@@ -2895,5 +3179,97 @@ async function showMenuItemDetails(itemId) {
     } catch (error) {
         console.error('Error showing menu item details:', error);
         showError('Ошибка при загрузке деталей блюда');
+    }
+}
+
+async function editInventoryItem(id) {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/manager/inventory/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load inventory item');
+        }
+
+        const item = await response.json();
+        
+        // Fill the edit form
+        const form = document.getElementById('editProductForm');
+        form.productId.value = item.id;
+        form.productName.value = item.name;
+        form.productCategory.value = item.category;
+        form.productQuantity.value = item.quantity;
+        form.productUnit.value = item.unit;
+        
+        // Set the correct option for productMinUnit
+        const minUnitSelect = form.productMinUnit;
+        let minUnitFound = false;
+        for (let i = 0; i < minUnitSelect.options.length; i++) {
+            if (minUnitSelect.options[i].value === item.min_unit) {
+                minUnitSelect.selectedIndex = i;
+                minUnitFound = true;
+                break;
+            }
+        }
+        // If the unit from the backend is not in the options, you might want to handle this
+        if (!minUnitFound && item.min_unit) {
+             // Optional: Add the unit from the backend as a new option
+             const newOption = new Option(item.min_unit, item.min_unit);
+             minUnitSelect.add(newOption);
+             newOption.selected = true;
+        }
+
+        form.productMinQuantity.value = item.min_quantity;
+
+        // Show the modal
+        showModal('editProductModal');
+    } catch (error) {
+        console.error('Error loading inventory item:', error);
+        showError('Ошибка при загрузке данных товара');
+    }
+}
+
+async function handleEditProduct(event) {
+    event.preventDefault();
+    const form = event.target;
+
+    try {
+        const quantity = parseFloat(form.productQuantity.value.replace(',', '.'));
+        const minQuantity = parseFloat(form.productMinQuantity.value.replace(',', '.'));
+
+        if (isNaN(quantity) || isNaN(minQuantity)) {
+            throw new Error('Некорректные числовые значения');
+        }
+
+        const updatedProduct = {
+            name: form.productName.value,
+            category: form.productCategory.value,
+            quantity: quantity,
+            unit: form.productUnit.value,
+            min_quantity: minQuantity,
+            min_unit: form.productMinUnit.value
+        };
+
+        const response = await fetch(`/api/manager/inventory/${form.productId.value}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(updatedProduct)
+        });
+
+        if (!response.ok) {
+            throw new Error('Ошибка при обновлении продукта');
+        }
+
+        form.reset();
+        closeModal('editProductModal');
+        loadInventoryData();
+        showSuccess('Продукт успешно обновлен');
+    } catch (error) {
+        showError('Ошибка при обновлении продукта: ' + error.message);
     }
 }

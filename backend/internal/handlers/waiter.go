@@ -63,7 +63,7 @@ func (h *WaiterHandler) GetTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := h.db.GetTableStats()
+	stats, err := h.db.GetTableStats(businessID)
 	if err != nil {
 		log.Printf("Error GetTables - fetching table stats: %v", err)
 		// Continue with empty stats if fetching stats fails, but log it

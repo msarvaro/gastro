@@ -1,8 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <mask id="mask0_2200_20" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="2" y="1" width="12" height="13">
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M11.333 2.00004C11.5081 1.82494 11.7163 1.68605 11.9447 1.59129C12.1731 1.49653 12.4177 1.44775 12.6663 1.44775C12.915 1.44775 13.1596 1.49653 13.388 1.59129C13.6164 1.68605 13.8246 1.82494 13.9997 2.00004C14.1748 2.17513 14.3137 2.38334 14.4084 2.61173C14.5032 2.84012 14.552 3.08473 14.552 3.33337C14.552 3.58201 14.5032 3.82662 14.4084 4.05501C14.3137 4.28339 14.1748 4.4916 13.9997 4.66671L5.33301 13.3334L2.66634 14L3.33301 11.3334L11.333 3.33337V2.00004Z" fill="#006FFD"/>
-    </mask>
-    <g mask="url(#mask0_2200_20)">
-        <rect x="0" y="0" width="16" height="16" fill="#006FFD"/>
-    </g>
+<?xml version="1.0" encoding="utf-8"?><!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M8.56078 20.2501L20.5608 8.25011L15.7501 3.43945L3.75012 15.4395V20.2501H8.56078ZM15.7501 5.56077L18.4395 8.25011L16.5001 10.1895L13.8108 7.50013L15.7501 5.56077ZM12.7501 8.56079L15.4395 11.2501L7.93946 18.7501H5.25012L5.25012 16.0608L12.7501 8.56079Z" fill="#1976d2"/>
 </svg>

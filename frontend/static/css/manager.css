@@ -281,18 +281,18 @@ table {
     overflow: hidden;
 }
 th, td {
-    padding: 30px 30px;
+    padding: 12px 20px;
     text-align: left;
 }
 th {
     background: #f5f7fa;
     font-weight: bold;
-    font-size: 15px;
+    font-size: 14px;
     color: #222;
     border-bottom: 1px solid #e0e0e0;
 }
 td {
-    font-size: 18px;
+    font-size: 14px;
     color: #222;
     border-bottom: 1px solid #f0f0f0;
 }
@@ -302,14 +302,15 @@ tr:last-child td {
 tr:hover td {
     background: #f5f7fa;
 }
-.status-low, .status-critical, .status-ok, .status-paused, .status-archived, .status-active, .status-inactive {
+.status-low, .status-critical, .status-ok, .status-paused, .status-archived, .status-active, .status-inactive, .status-pending, .status-in_processing, .status-completed, .status-rejected {
     display: inline-block;
-    width: 100px;
+    min-width: 100px;
     text-align: center;
-    font-size: 18px;
+    font-size: 12px;
     font-weight: 500;
     border-radius: 12px;
-    padding: 6px 14px;
+    padding: 4px 8px;
+    white-space: nowrap;
 }
 .status-low { color: #d32f2f; background: #ffeaea; }
 .status-critical { color: #d32f2f; background: #ffeaea; }
@@ -318,6 +319,10 @@ tr:hover td {
 .status-archived { color: #757575; background: #eeeeee; }
 .status-active { color: #34C759; background: #E6F7ED; }
 .status-inactive { color: #D92D20; background: #FEF0EE; }
+.status-pending { color: #D92D20; background: #FEF0EE; }
+.status-in_processing { color: #F79009; background: #FFF4ED; }
+.status-completed { color: #027A48; background: #E6F9F0; }
+.status-rejected { color: #C62828; background: #FFEBEE; }
 /* Modal styles */
 .modal {
     display: none;
@@ -390,8 +395,9 @@ tr:hover td {
     height: 56px;
     align-items: center;
     padding: 15px 24px;
-    margin-bottom: 24px; 
-
+    margin-bottom: 24px;
+    min-width: 0;
+    max-width: 100%;
 }
 .tab-btn {
     font-size: 18px;
@@ -406,7 +412,10 @@ tr:hover td {
     border: none;
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
+    min-width: 0;
+    max-width: 100%;
 }
+
 .tab-btn.active {
     background: #1976d2;
     color: #fff;
@@ -654,11 +663,7 @@ tr:hover td {
     gap: 10px;
     justify-content: flex-end;
 }
-.more-btn svg {
-    display: block;
-    width: 38px;
-    height: 34px;
-}
+
 .menu-item-price {
     margin-bottom: 0;
     font-size: 20px;
@@ -668,16 +673,14 @@ tr:hover td {
     display: inline-block;
     padding: 6px 14px;
     border-radius: 16px;
-    font-size: 18px;
-    font-weight: 500;
+    font-size: 15px;
+    font-weight: 400;
 }
-
 
 
 /* --- Responsive for menu section --- */
 @media (max-width: 900px) {
     .main-content, .header, .search-bar, .tabs, .cards, .menu-content, .table-section, .filters {
-        max-width: 100%;
         padding-left: 8px;
         padding-right: 8px;
     }
@@ -696,7 +699,6 @@ tr:hover td {
         max-height: none;
     }
     .search-bar, .tabs, .filters {
-        flex-direction: column;
         gap: 8px;
         height: auto;
         padding: 8px 8px;
@@ -745,6 +747,14 @@ tr:hover td {
     overflow-x: auto;
 }
 
+.no-results {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    font-style: italic;
+    color: #6A6A6A;
+}
 /* --- Remove all waiter/mobile/unused styles --- */
 /* (No waiter.css or .waiter, .dish-card, .tab-bar, etc. here) */
 
@@ -818,20 +828,15 @@ tr:hover td {
 }
 
 .more-btn {
-    background: none;
-    border: none;
-    padding: 10px;
-    border-radius: 6px;
+    border:none;
+    border-radius: 4px;
     cursor: pointer;
-    transition: background 0.15s;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0;
 }
 
-.more-btn:hover {
-    background: #eaf2ff;
-}
 
 .modal-buttons {
     display: flex;
@@ -840,16 +845,6 @@ tr:hover td {
     justify-content: flex-end;
 }
 
-.more-btn svg {
-    width: 54px;
-    height: 48px;
-}
-
-.more-btn-img {
-    width: 31px;
-    height: 26px;
-    display: block;
-}
 
 @media (max-width: 1000px) {
     .menu-section {
@@ -860,16 +855,31 @@ tr:hover td {
 
 .search-bar {
     display: flex;
+    justify-content: space-between;
     align-items: center;
     background: #fff;
     border-radius: 8px;
-    box-shadow: none;
     padding: 14px 30px 14px 50px;
     margin-bottom: 24px;
     height: 50px;
     position: relative;
     font-size: 20px;
     gap: 20px;
+    min-width: 0;
+    max-width: 100%;
+}
+.filters {
+    min-width: 0;
+    max-width: 100%;
+    display:flex;    /* Позволяет элементам переноситься на новую строку */
+    gap: 10px;       /* Добавляет отступы между элементами */
+}
+
+.search-items {
+    min-width: 0;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
 }
 .search-bar .search-icon {
     width: 24px;
@@ -879,16 +889,19 @@ tr:hover td {
 }
 .search-bar input {
     border: none;
+    min-width: 0;
+    max-width: 100%;
     outline: none;
     font-size: 20px;
     background: transparent;
-    flex: 1 1 0;
     height: 100%;
     padding: 0;
     color: #222;
 }
 
 .search-bar select {
+    min-width: 0;
+    max-width: 100%;
     height: 44px;
     border-radius: 12px;
     border: 1px solid #e0e0e0;
@@ -897,6 +910,8 @@ tr:hover td {
     background: #fff;
 }
 .search-bar button {
+    min-width: 0;
+    max-width: 100%;
     height: 44px;
     border-radius: 12px;
     background: #1976d2;
@@ -911,17 +926,281 @@ tr:hover td {
 .search-bar button:hover {
     background: #0056b3;
 }
-@media (max-width: 1000px) {
-    .header, .search-bar, .tabs {
-        max-width: 100%;
-        padding-left: 8px;
-        padding-right: 8px;
-    }
-    .search-bar, .tabs {
-        font-size: 16px;
-    }
-    .tab-btn {
-        font-size: 16px;
-        padding: 10px 18px;
-    }
+
+@media (max-width: 600px) {
+  .tab-btn {
+    padding: 10px 10px;
+    font-size: 15px;
+    min-width: 0;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 0;
+    box-sizing: border-box;
+  }
+  .tabs {
+    gap: 8px;
+    padding: 8px 4px;
+  }
 }
+
+/* Стили для кнопок действий в таблице заявок */
+.request-actions-btns {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.request-action-btn {
+    background: none;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.request-action-btn:hover {
+    background-color: #f0f0f0;
+}
+
+.request-action-btn.approve {
+    background-color: #1976d2;
+    border-color: #1976d2;
+    color: #ffffff;
+}
+
+.request-action-btn.approve:hover {
+    background-color: #1565c0;
+    border-color: #1565c0;
+}
+
+.request-action-btn.reject {
+    color: #6A6A6A;
+    border-color: #e0e0e0;
+    background-color: #ffffff;
+}
+
+.request-action-btn.reject:hover {
+    background-color: #f0f0f0;
+}
+
+.request-action-btn svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+/* Стили для кнопки "Подробнее" */
+.details-btn {
+    background: #F8F9FC;
+    color: #7F8C8D;
+    border: 1px solid #D0D0D0;
+    border-radius: 8px;
+    padding: 6px 16px;
+    cursor: pointer;
+    font-size: 12px;
+    font-style: normal;
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    transition: background-color 0.2s;
+}
+
+.details-btn:hover {
+    background-color: #dddddd;
+}
+
+/* Стили для кнопок действий в модальном окне деталей заявки */
+.modal-buttons .btn-complete {
+    background-color: #027A48; /* Цвет из status-completed */
+    color: #ffffff;
+    border: 1px solid #027A48;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.modal-buttons .btn-complete:hover {
+    background-color: #01693e;
+    border-color: #01693e;
+}
+
+.modal-buttons .btn-reject {
+    background-color: #C62828; /* Цвет из status-rejected */
+    color: #ffffff;
+    border: 1px solid #C62828;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.modal-buttons .btn-reject:hover {
+    background-color: #b71c1c;
+    border-color: #b71c1c;
+}
+
+/* Ensure the generic modal button styles don't override specific ones */
+.modal-buttons button {
+     /* Override or set default styles if necessary, e.g., margin */
+     margin-left: 0;
+     margin-right: 0;
+}
+
+/* Стили для модальных окон редактирования */
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 24px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #222;
+}
+
+.modal-content .form-group {
+    margin-bottom: 16px;
+}
+
+.modal-content .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #5D7285;
+    font-weight: 500;
+}
+
+.modal-content input[type="text"],
+.modal-content input[type="number"],
+.modal-content input[type="email"],
+.modal-content input[type="tel"],
+.modal-content select,
+.modal-content textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #222;
+    background: #fff;
+    transition: border-color 0.2s;
+}
+
+.modal-content input[type="text"]:focus,
+.modal-content input[type="number"]:focus,
+.modal-content input[type="email"]:focus,
+.modal-content input[type="tel"]:focus,
+.modal-content select:focus,
+.modal-content textarea:focus {
+    border-color: #1976d2;
+    outline: none;
+}
+
+.modal-content textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.modal-content .form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.modal-content .form-group.half {
+    flex: 1;
+}
+
+.modal-content .modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    justify-content: flex-end;
+}
+
+.modal-content .btn-primary {
+    background: #1976d2;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.modal-content .btn-primary:hover {
+    background: #1565c0;
+}
+
+.modal-content .btn-secondary {
+    background: #f5f7fa;
+    color: #5D7285;
+    border: 1px solid #e0e0e0;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.modal-content .btn-secondary:hover {
+    background: #eaf2ff;
+    color: #1976d2;
+    border-color: #1976d2;
+}
+
+/* Стили для кнопок действий в таблицах */
+.edit-btn, .delete-btn {
+    background: none;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 14px;
+    color: #5D7285;
+    margin: 0 4px;
+}
+
+.edit-btn {
+    color: #1976d2;
+    border-color: #1976d2;
+}
+
+.edit-btn:hover {
+    background: #eaf2ff;
+    border-color: #1565c0;
+    color: #1565c0;
+}
+
+.delete-btn {
+    color: #d32f2f;
+    border-color: #d32f2f;
+}
+
+.delete-btn:hover {
+    background: #ffebee;
+    border-color: #c62828;
+    color: #c62828;
+}
+
+/* Стили для иконок в кнопках */
+.edit-btn svg, .delete-btn svg {
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+}
+

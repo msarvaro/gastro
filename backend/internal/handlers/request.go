@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"restaurant-management/internal/database"
+	"restaurant-management/internal/middleware"
 	"restaurant-management/internal/models"
 	"strconv"
 
@@ -19,57 +21,83 @@ func NewRequestHandler(db *database.DB) *RequestHandler {
 }
 
 func (h *RequestHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	requests, err := h.db.GetAllRequests()
-	if err != nil {
-		http.Error(w, "Failed to get requests", http.StatusInternalServerError)
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Business ID not found")
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{"requests": requests})
+	requests, err := h.db.GetAllRequests(businessID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to get requests")
+		return
+	}
+	respondWithJSON(w, http.StatusOK, map[string]interface{}{"requests": requests})
 }
 
 func (h *RequestHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(mux.Vars(r)["id"])
-	request, err := h.db.GetRequestByID(id)
-	if err != nil {
-		http.Error(w, "Not found", http.StatusNotFound)
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Business ID not found")
 		return
 	}
-	json.NewEncoder(w).Encode(request)
+	id, _ := strconv.Atoi(mux.Vars(r)["id"])
+	request, err := h.db.GetRequestByID(id, businessID)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Request not found")
+		return
+	}
+	respondWithJSON(w, http.StatusOK, request)
 }
 
 func (h *RequestHandler) Create(w http.ResponseWriter, r *http.Request) {
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Business ID not found")
+		return
+	}
 	var request models.Request
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, "Invalid input")
 		return
 	}
-	if err := h.db.CreateRequest(&request); err != nil {
-		http.Error(w, "Failed to create", http.StatusInternalServerError)
+	if err := h.db.CreateRequest(&request, businessID); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to create request")
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(request)
+	respondWithJSON(w, http.StatusCreated, request)
 }
 
 func (h *RequestHandler) Update(w http.ResponseWriter, r *http.Request) {
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Business ID not found")
+		return
+	}
 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 	var request models.Request
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, "Invalid input")
 		return
 	}
 	request.ID = id
-	if err := h.db.UpdateRequest(&request); err != nil {
-		http.Error(w, "Failed to update", http.StatusInternalServerError)
+	if err := h.db.UpdateRequest(&request, businessID); err != nil {
+		log.Printf("Error Update - updating request: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to update request")
 		return
 	}
-	json.NewEncoder(w).Encode(request)
+	respondWithJSON(w, http.StatusOK, request)
 }
 
 func (h *RequestHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Business ID not found")
+		return
+	}
 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
-	if err := h.db.DeleteRequest(id); err != nil {
-		http.Error(w, "Failed to delete", http.StatusInternalServerError)
+	if err := h.db.DeleteRequest(id, businessID); err != nil {
+		log.Printf("Error Delete - deleting request: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to delete request")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

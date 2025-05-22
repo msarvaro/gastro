@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const showCreateOrderBtn = document.getElementById('showCreateOrderBtn');
     if (showCreateOrderBtn) {
         showCreateOrderBtn.addEventListener('click', function() {
+            document.getElementById('tab-bar').style.display = 'none';
             document.getElementById('create-order-section').style.display = 'block';
             document.querySelector('.orders-section').style.display = 'none';
             resetOrderForm(); // Reset form and set initial UI state (menu/order disabled)
@@ -86,13 +87,15 @@ document.addEventListener('DOMContentLoaded', function() {
         backToOrdersBtn.addEventListener('click', function() {
             document.getElementById('create-order-section').style.display = 'none';
             document.querySelector('.orders-section').style.display = 'block';
+            document.getElementById('tab-bar').style.display = 'flex';
         });
     }
     document.getElementById('selectTableBtn').addEventListener('click', showTableModal);
     document.querySelector('.close-modal-btn').addEventListener('click', closeTableModal);
     document.querySelector('.create-order-btn').addEventListener('click', showConfirmOrderModal);
-    document.getElementById('confirmOrderBtn').addEventListener('click', createOrder);
+    document.getElementById('confirmOrderBtn').addEventListener('click', createOrder)
     document.getElementById('cancelOrderBtn').addEventListener('click', hideConfirmOrderModal);
+    document.querySelector('.close-order-modal-btn').addEventListener('click', hideConfirmOrderModal);
     document.getElementById('clearOrderBtn').addEventListener('click', clearOrder);
  
     const currentPath = window.location.pathname;
@@ -141,17 +144,16 @@ async function loadTables() {
         const data = await window.api.call('/api/waiter/tables');
         if (!data) return; // Request failed or redirect happened
         
-        const tablesStatusInfo = document.getElementById('tablesStatusInfo');
-        if (tablesStatusInfo && data.stats) {
+        const tablesStatusInfoTitle = document.getElementById('tablesStatusInfoTitle');
+        const tableStatusInfoSubtitle = document.getElementById('tableStatusInfoSubtitle');
+        if (tablesStatusInfoTitle && tableStatusInfoSubtitle && data.stats) {
             // Updated to match new CSS structure for header
             let occupancyPercentage = 0;
             if (data.stats.total > 0) {
                 occupancyPercentage = Math.round(((data.stats.total - data.stats.free) / data.stats.total) * 100);
             }
-            tablesStatusInfo.innerHTML = `
-                <span class="occupancy-percentage">${occupancyPercentage}% занято</span><br>
-                <span class="occupancy-status__subtitle">Количество свободных столов: ${data.stats.free} из ${data.stats.total}</span>
-            `;
+            tablesStatusInfoTitle.innerHTML = `${occupancyPercentage}% занято`;
+            tableStatusInfoSubtitle.innerHTML = `Количество свободных столов: ${data.stats.free} из ${data.stats.total}`;
         }
         
         // Сохраняем данные столов в глобальной переменной для использования в фильтрации
@@ -196,21 +198,24 @@ function renderTablesWithFilter() {
     grid.innerHTML = filteredTables.map(table => `
                 <div class="table-card table-card--${table.status.toLowerCase()}" data-table-id="${table.id}" data-table-status="${table.status.toLowerCase()}"> 
                     <div class="table-card__header">
-                        <span class="status-dot status-dot--${table.status.toLowerCase()}"></span>
-                        <span class="table-card__title">№${table.number}</span>
+                        <div class = table-card__number>
+                            <span class="status-dot status-dot--${table.status.toLowerCase()}"></span>
+                            <span class="table-card__title">№${table.number}</span>
+                        </div>
                         <span class="table-card__seats">${table.seats} мест</span>
                     </div>
                     <div class="table-card__content"> 
-                        ${table.orders && table.orders.length ? table.orders.map(order => `
-                            <div class="table-order">
-                                <div class="table-order__id_container"> 
-                                    <span class="table-order__id">#${order.id}</span>
-                                    ${order.comment ? `<span class="table-order__comment-indicator" title="Есть комментарий">💬</span>` : ''}
-                                </div>
-                                <div class="table-order__time">${order.time}</div>
-                                ${order.comment ? `<div class="table-order__comment-text">${order.comment}</div>` : ''}
+                        ${table.orders && table.orders.length ? `
+                            <div class="table-card__orders">
+                                ${table.orders.map(order => `
+                                    <div class="table-order">
+                                        <span class="table-order__id table-order__id--${order.status ? order.status.toLowerCase() : 'unknown'}">#${order.id}</span>
+                                        <span class="table-order__time">${formatTableTime(new Date(order.time))}</span>
+                                        
+                                    </div>
+                                `).join('')}
                             </div>
-                        `).join('') : ''}
+                        ` : ''}
                     </div>
                 </div>
             `).join('');
@@ -243,7 +248,8 @@ async function loadOrders() {
         const data = await window.api.call('/api/waiter/orders');
         if (!data) return; // Request failed or redirect happened
         
-        document.getElementById('ordersStatusInfo').textContent = `${data.stats.total_active_orders || 0} активных заказов`;
+        document.getElementById('ordersStatusInfoTitle').textContent = `${data.stats.total_active_orders} активных заказов`;
+        document.getElementById('ordersStatusInfoSubtitle').textContent = `Новых: ${data.stats.new} | В работе: ${data.stats.accepted + data.stats.preparing} | Готовых: ${data.stats.ready + data.stats.served}`
         const list = document.getElementById('ordersList');
         if (!data.orders || data.orders.length === 0) {
             list.innerHTML = '<div class="no-orders">Нет активных заказов</div>';
@@ -1405,7 +1411,7 @@ async function renderTables() {
         const grid = document.querySelector('.table-modal__grid');
         console.log(data);
         grid.innerHTML = data.tables.map(table => `
-            <div class="table-option ${table.status === 'occupied' ? 'occupied' : ''}" 
+            <div class="table-option ${table.status === 'occupied' ? 'occupied' : table.status === 'reserved' ? 'reserved' : 'free'}" 
                  data-table-id="${table.id}">
                 <div class="table-number">Стол ${table.number}</div>
                 <div class="table-seats">${table.seats} мест</div>
@@ -1462,7 +1468,46 @@ function closeTableModal() {
     document.getElementById('tableModal').classList.remove('active');
 }
 function showConfirmOrderModal() {
-    document.getElementById('confirmOrderModal').classList.add('active');
+    // Render order summary in the confirm modal
+    const modal = document.getElementById('confirmOrderModal');
+    const summaryTable = modal.querySelector('.order-summary__table');
+    const summaryComment = modal.querySelector('.order-summary__comment');
+    const summaryTotal = modal.querySelector('.order-summary__total');
+
+    // Table info
+    let tableText = '';
+    if (currentOrderData.tableId) {
+        tableText = `<b>Стол №${currentOrderData.tableId}</b>`;
+    } else {
+        tableText = '<b>Стол не выбран</b>';
+    }
+
+    // Items list
+    let itemsHtml = '';
+    if (currentOrderData.items && currentOrderData.items.length > 0) {
+        itemsHtml = '<ul style="padding-left: 18px; margin: 8px 0;">' +
+            currentOrderData.items.map(item =>
+                `<li>${item.name} &times; ${item.quantity} — <span style='white-space:nowrap;'>${formatMoney(item.price * item.quantity)} KZT</span></li>`
+            ).join('') + '</ul>';
+    } else {
+        itemsHtml = '<i>Нет блюд в заказе</i>';
+    }
+
+    summaryTable.innerHTML = `${tableText}${itemsHtml}`;
+
+    // Comment
+    if (currentOrderData.comment && currentOrderData.comment.trim() !== '') {
+        summaryComment.style.display = '';
+        summaryComment.textContent = `Комментарий: ${currentOrderData.comment}`;
+    } else {
+        summaryComment.style.display = 'none';
+        summaryComment.textContent = '';
+    }
+
+    // Total
+    summaryTotal.innerHTML = `<b>Итого:</b> ${formatMoney(currentOrderData.total)} KZT`;
+
+    modal.classList.add('active');
 }
 function hideConfirmOrderModal() {
     document.getElementById('confirmOrderModal').classList.remove('active');
@@ -1536,6 +1581,7 @@ async function createOrder() {
 
         // Switch back to orders view and refresh
         document.getElementById('create-order-section').style.display = 'none';
+        document.getElementById('tab-bar').style.display = 'flex';
         document.querySelector('.orders-section').style.display = 'block';
         showSection('orders'); // This will also call loadOrders()
         resetOrderForm(); 
@@ -1607,22 +1653,25 @@ function filterDishesByCategory(categoryId) {
 
         const dishCard = document.createElement('div');
         dishCard.className = 'dish-card';
-        // Note: dish properties are based on common patterns (id, name, price, description, image_url, category_id, is_available)
-        // Adjust if your menu item structure is different (e.g. from menuApi.getMenuItems())
         dishCard.innerHTML = `
-            <div class="dish-card__image-container">
-                ${dish.image_url ? `<img src="${dish.image_url}" alt="${dish.name}" class="dish-card__image">` : `<img src="${DEFAULT_FOOD_IMAGE}" alt="${dish.name}" class="dish-card__image">`}
-            </div>
-            <div class="dish-card__details">
-                <h4 class="dish-card__name">${dish.name}</h4>
-                <p class="dish-card__price">${formatMoney(dish.price)} KZT</p>
-                ${dish.description ? `<p class="dish-card__description">${dish.description}</p>` : ''}
+            <img src="${dish.image_url || DEFAULT_FOOD_IMAGE}" alt="${dish.name}" class="dish-card__image" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+            <div class="dish-card__details" style="flex:1;min-width:0;">
+                <div class="dish-card__name" style="font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${dish.name}</div>
+                ${dish.description ? `<div class="dish-card__description" style="color:#888;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${dish.description}</div>` : ''}
+                <div class="dish-card__price" style="color:#006FFD;font-weight:600;font-size:15px;">${formatMoney(dish.price)} KZT</div>
             </div>
             <button class="dish-card__add-btn" data-dish-id="${dish.id}">+</button>
         `;
-        // Add event listener to the add button
-        dishCard.querySelector('.dish-card__add-btn').addEventListener('click', () => {
-            addDishToOrder(dish); // Pass the full dish object
+        // Клик по всей карточке добавляет блюдо
+        dishCard.addEventListener('click', (e) => {
+            // Не срабатывает, если клик по кнопке
+            if (e.target.classList.contains('dish-card__add-btn')) return;
+            addDishToOrder(dish);
+        });
+        // Клик по кнопке тоже добавляет
+        dishCard.querySelector('.dish-card__add-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            addDishToOrder(dish);
         });
         menuDishesContainer.appendChild(dishCard);
     });
@@ -1645,13 +1694,8 @@ function addDishToOrder(dish) {
 }
 
 function removeDishFromOrder(dishId) {
-    const itemIndex = currentOrderData.items.findIndex(item => item.id === dishId);
-    if (itemIndex > -1) {
-        currentOrderData.items[itemIndex].quantity--;
-        if (currentOrderData.items[itemIndex].quantity <= 0) {
-            currentOrderData.items.splice(itemIndex, 1);
-        }
-    }
+    // Удаляем все блюда с указанным id
+    currentOrderData.items = currentOrderData.items.filter(item => item.id !== dishId);
     renderCurrentOrder();
 }
 
@@ -1777,8 +1821,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial state for create order section if it's visible by default (e.g. direct navigation)
     // For SPA, this is better handled by the click on showCreateOrderBtn
     if (document.getElementById('create-order-section').style.display === 'block') {
+        document.getElementById('tab-bar').style.display = 'none';
        if (!currentOrderData.tableId) {
-            setCreateOrderInteractive(false);
+            setCreateOrderInteractive(true);
             const menuDishesContainer = document.getElementById('menu-dishes-container');
             if (menuDishesContainer) {
                  menuDishesContainer.innerHTML = '<p>Пожалуйста, сначала выберите стол, чтобы активировать меню.</p>';
@@ -2054,7 +2099,6 @@ function updateTablesStats(stats) {
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    loadTables();
     
     // Add tab switching logic
     const tabItems = document.querySelectorAll('.tab-item');

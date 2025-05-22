@@ -9,7 +9,7 @@ type Inventory struct {
 	Quantity    float64   `json:"quantity"`
 	Unit        string    `json:"unit"`
 	MinQuantity float64   `json:"min_quantity"`
-	Branch      string    `json:"branch"`
+	BusinessID  int       `json:"business_id"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

@@ -11,42 +11,42 @@
 </head>
 <body>
     <!-- Business header component -->
-    <div id="business-header-container"></div>
-
     <div class="waiter">
         <!-- Секция: Столы -->
         <section id="section-tables">
             <div class="occupancy-status">
-                <div class="occupancy-status__title" id="tablesStatusInfo"></div>
+                <div class="occupancy-status__title" id="tablesStatusInfoTitle"></div>
+                <div class="occupancy-status__subtitle" id="tableStatusInfoSubtitle"></div>
             </div>
-            <div class="content-wrapper">
-                <div class="tables-section">
+            <div class="tables-section">
+                <div class = tables-section__header>
                     <h1 class="tables-section__title">Столы</h1>
-                    <div class="tables-section__legend">
-                        <span class="legend-item legend-item--occupied">Занят</span> |
-                        <span class="legend-item legend-item--reserved">Забронирован</span> |
-                        <span class="legend-item legend-item--free">Свободен</span>
-                    </div>
                     <button class="filter-button">
-                        <img src="https://cdn.builder.io/api/v1/image/assets/TEMP/ed42cdbb473f00b449d35cb2404685a76c4498c27226c51b6405a7639d3f6e1f" alt="Filter icon" class="filter-button__icon" />
+                        <img src="../static/images/filter.svg" alt="Filter icon" class="filter-button__icon" />
                         <span class="filter-button__text">Фильтр</span>
-                        <span class="filter-button__badge">2</span>
-                    </button>
-                    <div class="tables-grid" id="tablesGrid">
-                        <!-- Столы будут добавлены динамически -->
-                    </div>
+                        <span class="filter-button__badge"></span>
+                    </button>   
+                </div>
+                <div class="tables-section__legend">
+                    <span class="legend-item legend-item--occupied">Занят</span> |
+                    <span class="legend-item legend-item--reserved">Забронирован</span> |
+                    <span class="legend-item legend-item--free">Свободен</span>
+                </div>
+                <div class="tables-grid" id="tablesGrid">
+                    <!-- Столы будут добавлены динамически -->
                 </div>
             </div>
         </section>
 
         <!-- Секция: Заказы -->
         <section id="section-orders" style="display:none">
-            <div class="orders-status">
-                <div class="orders-status__title">Заказы</div>
-                <div class="orders-status__subtitle" id="ordersStatusInfo"></div>
-            </div>
+            
             <div class="content-wrapper">
                 <div class="orders-section">
+                    <div class="orders-status">
+                        <div class="orders-status__title" id="ordersStatusInfoTitle"></div>
+                        <div class="orders-status__subtitle" id="ordersStatusInfoSubtitle"></div>
+                    </div>
                     <div class="orders-header">
                         <h1 class="orders-header__title">Заказы</h1>
                         <div class="orders-filters">
@@ -68,96 +68,99 @@
                     <button class="add-order-button" id="showCreateOrderBtn">Добавить заказ</button>
                 </div>
                 <!-- Секция создания заказа (скрыта по умолчанию) -->
-                <div id="create-order-section" style="display:none">
-                    <div class="orders-status">
-                        <div class="orders-status__header">
-                            <button class="back-btn" id="backToOrdersBtn">
-                                <img src="../static/images/arrow-left.svg" alt="Назад">
-                            </button>
-                            <div class="orders-status__title">Создание заказа</div>
-                        </div>
-                        <div class="orders-status__subtitle">
-                            <button id="selectTableBtn" class="select-table-btn">
-                                <span id="selectedTableText">Выберите стол</span>
-                                <img src="../static/images/chevron.svg" alt="Выбрать" class="select-table-icon">
-                            </button>
-                        </div>
+            </div>
+            <div id="create-order-section" style="display:none">
+                <div class="orders-status">
+                    <div class="create-orders-status__header">
+                        <button class="back-btn" id="backToOrdersBtn">
+                            <img src="../static/images/arrow-left.svg" alt="Назад">
+                        </button>
+                        <div class="orders-status__title">Создание заказа</div>
                     </div>
-                    <!-- Модальное окно для выбора стола -->
-                    <div id="tableModal" class="table-modal">
-                        <div class="table-modal__content">
-                            <div class="table-modal__header">
-                                <h2>Выберите стол</h2>
-                                <button class="close-modal-btn">&times;</button>
-                            </div>
-                            <div class="table-modal__grid">
-                                <!-- Столы будут добавляться динамически -->
-                            </div>
-                        </div>
+                    <div class="orders-status__subtitle">
+                        <button id="selectTableBtn" class="select-table-btn">
+                            <span id="selectedTableText">Выберите стол</span>
+                            <img src="../static/images/chevron.svg" alt="Выбрать" class="select-table-icon">
+                        </button>
                     </div>
-                    <!-- Модальное окно подтверждения заказа -->
-                    <div id="confirmOrderModal" class="modal">
-                        <div class="modal__content">
-                            <div class="modal__header">
-                                <h2>Подтверждение заказа</h2>
-                                <button class="close-modal-btn">&times;</button>
-                            </div>
-                            <div class="modal__body">
-                                <div class="order-summary">
-                                    <div class="order-summary__table"></div>
-                                    <div class="order-summary__comment"></div>
-                                    <div class="order-summary__total"></div>
-                                </div>
-                            </div>
-                            <div class="modal__footer">
-                                <button class="modal-btn modal-btn--secondary" id="cancelOrderBtn">Отменить</button>
-                                <button class="modal-btn modal-btn--primary" id="confirmOrderBtn">Подтвердить</button>
-                            </div>
+                </div>
+                <!-- Модальное окно для выбора стола -->
+                <div id="tableModal" class="table-modal">
+                    <div class="table-modal__content">
+                        <div class="table-modal__header">
+                            <h2>Выберите стол</h2>
+                            <button class="close-modal-btn">&times;</button>
                         </div>
-                    </div>
-                    <!-- Уведомление об успешном создании заказа -->
-                    <div id="successNotification" class="notification">
-                        <div class="notification__content">
-                            <img src="../static/images/success.svg" alt="Успешно" class="notification__icon">
-                            <span>Заказ успешно создан!</span>
-                        </div>
-                    </div>
-                    <div class="content-wrapper">
-                        <div class="create-order-section">
-                            <div id="menu-categories-container" class="categories-scroll">
-                                <button class="category-btn active">Все</button>
-                                <button class="category-btn">Горячие блюда</button>
-                                <button class="category-btn">Салаты</button>
-                                <button class="category-btn">Супы</button>
-                                <button class="category-btn">Напитки</button>
-                            </div>
-                            <div class="search-container">
-                                <input type="text" class="search-input" placeholder="Поиск блюд...">
-                                <img src="../static/images/search.svg" alt="Поиск" class="search-icon">
-                            </div>
-                            <div id="menu-dishes-container" class="dishes-list">
-                                <!-- Блюда будут добавляться динамически -->
-                            </div>
-                        </div>
-                        <div class="current-order">
-                            <div class="current-order__header">
-                                <h2>Текущий заказ</h2>
-                                <button class="clear-order-btn" id="clearOrderBtn">
-                                    <img src="../static/images/delete.svg" alt="Очистить">
-                                </button>
-                                <span id="current-order-total" class="current-order__total">0 KZT</span>
-                            </div>
-                            <div id="current-order-items" class="current-order__items">
-                                <!-- Сюда будут добавляться выбранные блюда -->
-                            </div>
-                            <div class="current-order__comment">
-                                <textarea id="order-comment-input" placeholder="Комментарий к заказу..."></textarea>
-                            </div>
-                            <button class="create-order-btn">Создать заказ</button>
+                        <div class="table-modal__grid">
+                            <!-- Столы будут добавляться динамически -->
                         </div>
                     </div>
                 </div>
+                <!-- Модальное окно подтверждения заказа -->
+                <div id="confirmOrderModal" class="modal">
+                    <div class="modal__content">
+                        <div class="modal__header">
+                            <h2>Подтверждение заказа</h2>
+                            <button class="close-order-modal-btn">&times;</button>
+                        </div>
+                        <div class="modal__body">
+                            <div class="order-summary">
+                                <div class="order-summary__table"></div>
+                                <div class="order-summary__comment"></div>
+                                <div class="order-summary__total"></div>
+                            </div>
+                        </div>
+                        <div class="modal__footer">
+                            <button class="modal-btn modal-btn--secondary" id="cancelOrderBtn">Отменить</button>
+                            <button class="modal-btn modal-btn--primary" id="confirmOrderBtn">Подтвердить</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Уведомление об успешном создании заказа -->
+                <div id="successNotification" class="notification">
+                    <div class="notification__content">
+                        <img src="../static/images/success.svg" alt="Успешно" class="notification__icon">
+                        <span>Заказ успешно создан!</span>
+                    </div>
+                </div>
+                <div class="content-wrapper">
+                    <div class="create-order-section">
+                        <div id="menu-categories-container" class="categories-scroll">
+                            <button class="category-btn active">Все</button>
+                            <button class="category-btn">Горячие блюда</button>
+                            <button class="category-btn">Салаты</button>
+                            <button class="category-btn">Супы</button>
+                            <button class="category-btn">Напитки</button>
+                        </div>
+                        <div class="search-container">
+                            <input type="text" class="search-input" placeholder="Поиск блюд...">
+                            <img src="../static/images/search.svg" alt="Поиск" class="search-icon">
+                        </div>
+                        <div id="menu-dishes-container" class="dishes-list">
+                            <!-- Блюда будут добавляться динамически -->
+                        </div>
+                    </div>
+                    <div class="current-order">
+                        <div class="current-order__header">
+                            <h2>Текущий заказ</h2>
+                            <button class="clear-order-btn" id="clearOrderBtn">
+                                <img src="../static/images/delete.svg" alt="Очистить">
+                            </button>
+                            <span id="current-order-total" class="current-order__total">0 KZT</span>
+                        </div>
+                        <div id="current-order-items" class="current-order__items">
+                            <!-- Сюда будут добавляться выбранные блюда -->
+                        </div>
+                        <div class="current-order__comment">
+                            <textarea id="order-comment-input" placeholder="Комментарий к заказу..."></textarea>
+                        </div>
+                        <button class="create-order-btn">Создать заказ</button>
+                    </div>
+                </div>
             </div>
+        
+                    
+        
         </section>
 
         <!-- Секция: История заказов -->
@@ -213,7 +216,7 @@
         </section>
 
         <!-- Нижнее таб-меню -->
-        <nav class="tab-bar">
+        <nav class="tab-bar" id="tab-bar">
             <a href="#" class="tab-item tab-item--active" data-section="tables">
                 <img src="../static/images/tables.svg" alt="Tables" class="tab-item__icon" />
                 <span class="tab-item__text">Столы</span>

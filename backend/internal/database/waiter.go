@@ -10,7 +10,7 @@ import (
 // GetWaiterProfile возвращает полную информацию профиля официанта
 func (db *DB) GetWaiterProfile(waiterID int, businessID int) (*models.WaiterProfileResponse, error) {
 	// 1. Получаем базовую информацию о пользователе
-	user, err := db.GetUserByID(waiterID)
+	user, err := db.GetUserByID(waiterID, businessID)
 	if err != nil {
 		log.Printf("Error getting user for waiter profile: %v", err)
 		return nil, err
@@ -133,7 +133,7 @@ func (db *DB) GetWaiterCurrentAndUpcomingShifts(waiterID int, businessID int) (*
 		}
 	} else {
 		// Получаем данные менеджера
-		manager, err := db.GetUserByID(shift.ManagerID)
+		manager, err := db.GetUserByID(shift.ManagerID, businessID)
 		if err == nil {
 			shift.Manager = manager
 		} else {
@@ -141,7 +141,7 @@ func (db *DB) GetWaiterCurrentAndUpcomingShifts(waiterID int, businessID int) (*
 		}
 
 		// Получаем сотрудников для этой смены
-		shift.Employees, err = db.GetShiftEmployees(shift.ID)
+		shift.Employees, err = db.GetShiftEmployees(shift.ID, businessID)
 		if err != nil {
 			log.Printf("Warning: Could not get employees for shift %d: %v", shift.ID, err)
 		}
@@ -189,7 +189,7 @@ func (db *DB) GetWaiterCurrentAndUpcomingShifts(waiterID int, businessID int) (*
 		}
 
 		// Получаем данные менеджера
-		manager, err := db.GetUserByID(upcoming.ManagerID)
+		manager, err := db.GetUserByID(upcoming.ManagerID, businessID)
 		if err == nil {
 			upcoming.Manager = manager
 		} else {
@@ -197,7 +197,7 @@ func (db *DB) GetWaiterCurrentAndUpcomingShifts(waiterID int, businessID int) (*
 		}
 
 		// Получаем сотрудников для этой смены
-		upcoming.Employees, err = db.GetShiftEmployees(upcoming.ID)
+		upcoming.Employees, err = db.GetShiftEmployees(upcoming.ID, businessID)
 		if err != nil {
 			log.Printf("Warning: Could not get employees for shift %d: %v", upcoming.ID, err)
 		}
@@ -220,11 +220,13 @@ func (db *DB) GetTablesAssignedToWaiter(waiterID int, businessID int) ([]models.
 		SELECT 
 			t.id, t.number, t.seats, t.status, t.reserved_at, t.occupied_at, t.business_id
 		FROM tables t
-		WHERE t.business_id = $1
+		JOIN waiter_tables wt ON t.id = wt.table_id
+		WHERE wt.waiter_id = $1
+		AND t.business_id = $2
 		ORDER BY t.number ASC
 	`
 
-	rows, err := db.Query(query, businessID)
+	rows, err := db.Query(query, waiterID, businessID)
 	if err != nil {
 		log.Printf("Error querying tables assigned to waiter %d: %v", waiterID, err)
 		return nil, err
