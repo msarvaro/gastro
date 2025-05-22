@@ -38,7 +38,10 @@ window.menuApi = {
     addMenuItem: (itemData) => apiCall('/items', 'POST', itemData),
     updateMenuItem: (itemId, itemData) => apiCall(`/items/${itemId}`, 'PUT', itemData),
     deleteMenuItem: (itemId) => apiCall(`/items/${itemId}`, 'DELETE'),
-    getCategories: () => apiCall('/categories'),
+    getCategories: () => {
+        const businessId = localStorage.getItem('business_id');
+        return apiCall(`/categories?business_id=${businessId}`);
+    },
     addCategory: (categoryData) => apiCall('/categories', 'POST', categoryData),
     updateCategory: (categoryId, categoryData) => apiCall(`/categories/${categoryId}`, 'PUT', categoryData),
     deleteCategory: (categoryId) => apiCall(`/categories/${categoryId}`, 'DELETE')
