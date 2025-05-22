@@ -1094,7 +1094,7 @@ async function loadSuppliersData() {
                                 <img src="../static/images/edit.svg" alt="Редактировать" class="icon">
                             </button>
                             <button class="delete-btn" onclick="deleteSupplier(${supplier.id})">
-                                <img src="../static/images/delete.svg" alt="Удалить" class="icon"><img src="../static/images/delete.svg" alt="Удалить" class="icon">
+                                <img src="../static/images/delete.svg" alt="Удалить" class="icon">
                             </button>
                         </td>
                     </tr>
@@ -2612,6 +2612,7 @@ async function loadShifts() {
             },
             credentials: 'include' // Включаем куки для кросс-доменных запросов, если они есть
         });
+        console.log(response);
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -2627,6 +2628,7 @@ async function loadShifts() {
             tbody.innerHTML = '<h3 class="no-results">Нет данных о сменах</h3>';
             return;
         }
+        console.error(shifts);
 
         shifts.forEach(shift => {
             const date = formatShiftDate(shift.date);
