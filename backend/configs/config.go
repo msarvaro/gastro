@@ -2,6 +2,7 @@ package configs
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -48,8 +49,12 @@ func LoadConfig() (*Config, error) {
 
 	err := godotenv.Load(envFile)
 	if err != nil {
-		return nil, fmt.Errorf("error loading .env file: %v", err)
+		// In production environments like Render.com, .env file might not exist
+		// Just log the error but continue with environment variables
+		fmt.Printf("Warning: error loading .env file: %v\n", err)
 	}
+
+	fmt.Printf("Loading configuration...\n")
 
 	// Database configuration
 	var envErr error
@@ -88,10 +93,19 @@ func LoadConfig() (*Config, error) {
 		return nil, envErr
 	}
 
+	log.Printf("Connection string: %s\n", config.GetDBConnString())
+
 	// Server configuration
-	config.Server.Port, envErr = getRequiredEnv("SERVER_PORT")
-	if envErr != nil {
-		return nil, envErr
+	// Try to get PORT from environment (Render.com sets this)
+	renderPort := os.Getenv("PORT")
+	if renderPort != "" {
+		config.Server.Port = renderPort
+	} else {
+		// Fall back to SERVER_PORT if PORT is not set
+		config.Server.Port, envErr = getRequiredEnv("SERVER_PORT")
+		if envErr != nil {
+			return nil, envErr
+		}
 	}
 
 	config.Server.JWTKey, envErr = getRequiredEnv("JWT_KEY")
@@ -146,12 +160,11 @@ func getRequiredEnv(key string) (string, error) {
 
 func (c *Config) GetDBConnString() string {
 	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=require",
 		c.Database.Host,
 		c.Database.Port,
 		c.Database.User,
 		c.Database.Password,
 		c.Database.DBName,
-		c.Database.SSLMode,
 	)
 }
