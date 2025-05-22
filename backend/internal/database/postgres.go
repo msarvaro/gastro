@@ -79,17 +79,25 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 
 func (db *DB) GetUserByID(id int, businessID int) (*models.User, error) {
 	user := &models.User{}
+	var name sql.NullString
 	err := db.QueryRow(`
 		SELECT id, username, name, email, role, status, business_id, created_at, updated_at
 		FROM users
 		WHERE id = $1 AND business_id = $2`, id, businessID).Scan(
-		&user.ID, &user.Username, &user.Name, &user.Email, &user.Role, &user.Status, &user.BusinessID, &user.CreatedAt, &user.UpdatedAt)
+		&user.ID, &user.Username, &name, &user.Email, &user.Role, &user.Status, &user.BusinessID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert NULL name to empty string if needed
+	if name.Valid {
+		user.Name = name.String
+	} else {
+		user.Name = ""
+	}
+
 	log.Printf("GetUserByID called with id=%d, businessID=%d", id, businessID)
 	return user, nil
-
 }
 
 func (db *DB) GetUsers(businessID int) ([]models.User, error) {
