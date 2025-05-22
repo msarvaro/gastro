@@ -2,6 +2,7 @@ package configs
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -53,6 +54,8 @@ func LoadConfig() (*Config, error) {
 		fmt.Printf("Warning: error loading .env file: %v\n", err)
 	}
 
+	fmt.Printf("Loading configuration...\n")
+
 	// Database configuration
 	var envErr error
 	config.Database.Host, envErr = getRequiredEnv("DB_HOST")
@@ -89,6 +92,8 @@ func LoadConfig() (*Config, error) {
 	if envErr != nil {
 		return nil, envErr
 	}
+
+	log.Printf("Connection string: %s\n", config.GetDBConnString())
 
 	// Server configuration
 	// Try to get PORT from environment (Render.com sets this)
