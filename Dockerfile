@@ -17,9 +17,9 @@ COPY frontend/ /app/frontend/
 ENV DB_HOST=dpg-d0nocoqdbo4c73agt8c0-a.oregon-postgres.render.com \
     DB_PORT=5432 \
     DB_USER=gastro_trp4_user \
-    DB_PASSWORD=JY6zmcWkUWwwa7idXUoOxTjLKD2V6ZER \
+    DB_PASSWORD=     \
     DB_NAME=gastro_trp4 \
-    DB_SSL_MODE=disable \
+    DB_SSL_MODE=true \
     SERVER_PORT=10000 \
     JWT_KEY=your-secret-key \
     PROJECT_ROOT=. \
