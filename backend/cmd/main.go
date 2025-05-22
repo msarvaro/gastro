@@ -238,6 +238,6 @@ func main() {
 		http.ServeFile(w, r, filepath.Join(config.Paths.Templates, "kitchen.html"))
 	}).Methods("GET")
 
-	log.Printf("Server starting on http://127.0.0.1:%s", config.Server.Port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%s", config.Server.Port), r))
+	log.Printf("Server starting on port %s", config.Server.Port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", config.Server.Port), r))
 }
