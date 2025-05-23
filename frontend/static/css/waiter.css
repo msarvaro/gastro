@@ -514,16 +514,16 @@ body {
 
 @media (min-width: 1024px) {
     .tab-bar {
-    padding: 24px 60px;
+        padding: 20px 60px;
   }
 
-  .tab-item {
-    font-size: 14px;
+    .tab-item {
+        font-size: 14px;
   }
 
-  .tab-item__icon {
-    width: 28px;
-    height: 28px;
+    .tab-item__icon {
+        width: 28px;
+        height: 28px;
   }
 }
 
@@ -572,6 +572,7 @@ body {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
+    padding-bottom: 100px; /* Add padding to account for tab bar */
 }
 
 .order-card {
@@ -2445,8 +2446,7 @@ button::-moz-focus-inner {
 /* ... existing code ... */
 
 /* Add this at the end or in the relevant section */
-.orders-section, .tables-section, .history-section, .profile-section, .content-wrapper {
-    padding-bottom: 80px; /* Adjust if your tab bar is taller/shorter */
+.orders-section, .tables-section, .history-section, .profile-section, .content-wrapper { /* Adjust if your tab bar is taller/shorter */
     box-sizing: border-box;
 }
 
