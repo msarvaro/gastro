@@ -160,7 +160,7 @@ func getRequiredEnv(key string) (string, error) {
 
 func (c *Config) GetDBConnString() string {
 	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=require",
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		c.Database.Host,
 		c.Database.Port,
 		c.Database.User,
