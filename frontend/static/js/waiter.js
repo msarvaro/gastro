@@ -198,11 +198,15 @@ function renderTablesWithFilter() {
         return;
     }
     
-    grid.innerHTML = filteredTables.map(table => `
-                <div class="table-card table-card--${table.status.toLowerCase()}" data-table-id="${table.id}" data-table-status="${table.status.toLowerCase()}"> 
+    grid.innerHTML = filteredTables.map(table => {
+        const status = table.status || 'free'; // Default to 'free' if status is null/undefined
+        const statusLower = status.toLowerCase();
+        
+        return `
+                <div class="table-card table-card--${statusLower}" data-table-id="${table.id}" data-table-status="${statusLower}"> 
                     <div class="table-card__header">
                         <div class = table-card__number>
-                            <span class="status-dot status-dot--${table.status.toLowerCase()}"></span>
+                            <span class="status-dot status-dot--${statusLower}"></span>
                             <span class="table-card__title">№${table.number}</span>
                         </div>
                         <span class="table-card__seats">${table.seats} мест</span>
@@ -221,7 +225,8 @@ function renderTablesWithFilter() {
                         ` : ''}
                     </div>
                 </div>
-            `).join('');
+            `;
+    }).join('');
             
     // Добавляем обработчик клика для карточек столов
             grid.querySelectorAll('.table-card').forEach(tableCard => {
@@ -1337,15 +1342,18 @@ function formatOrderTime(dateString) {
     }
     
     try {
+        // Convert to string if it's not already a string
+        const dateStr = typeof dateString === 'string' ? dateString : String(dateString);
+        
         // Если строка уже содержит Z в конце, используем ее как есть
         // в противном случае добавляем Z для указания UTC
-        const normalizedDateString = dateString.endsWith('Z') 
-            ? dateString 
-            : dateString + 'Z';
+        const normalizedDateString = dateStr.endsWith('Z') 
+            ? dateStr 
+            : dateStr + 'Z';
 
         // Если формат ISO с T, можно просто извлечь дату и время через регулярное выражение
-        if (dateString.includes('T')) {
-            const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/) || [];
+        if (dateStr.includes('T')) {
+            const match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/) || [];
             if (match.length >= 6) {
                 const [_, year, month, day, hour, minute] = match;
                 return `${day}.${month}.${year.substring(2)} ${hour}:${minute}`;
@@ -1357,7 +1365,7 @@ function formatOrderTime(dateString) {
         
         if (isNaN(date.getTime())) {
             console.warn('Некорректная дата:', dateString);
-            return dateString; // Возвращаем исходную строку вместо "Некорректная дата"
+            return dateStr; // Возвращаем исходную строку вместо "Некорректная дата"
         }
         
         return date.toLocaleString('ru-RU', {
@@ -1370,7 +1378,7 @@ function formatOrderTime(dateString) {
         });
     } catch (e) {
         console.error('Ошибка форматирования времени заказа:', e, dateString);
-        return dateString; // Возвращаем исходную строку вместо "Ошибка даты"
+        return typeof dateString === 'string' ? dateString : String(dateString); // Возвращаем исходную строку вместо "Ошибка даты"
     }
 }
 function formatMoney(amount) {
