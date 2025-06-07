@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"restaurant-management/internal/domain/consts" // Added import
 	"restaurant-management/internal/domain/entity"
 	"restaurant-management/internal/domain/interfaces/repository"
 	"time"
@@ -99,7 +100,7 @@ func (s *ShiftService) CreateShift(ctx context.Context, shift *entity.Shift) err
 		return err
 	}
 
-	if manager.Role != "manager" && manager.Role != "admin" {
+	if manager.Role != consts.RoleManager && manager.Role != consts.RoleAdmin { // Changed
 		return nil // Allow for now, could add validation
 	}
 

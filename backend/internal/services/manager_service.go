@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"restaurant-management/internal/domain/consts" // Added import
 	"restaurant-management/internal/domain/entity"
 	"restaurant-management/internal/domain/interfaces/repository"
 	"time"
@@ -48,7 +49,7 @@ func (s *ManagerService) DeactivateStaffMember(ctx context.Context, userID int) 
 		return err
 	}
 
-	user.Status = "inactive"
+	user.Status = consts.UserStatusInactive // Changed "inactive"
 	return s.userRepo.Update(ctx, user)
 }
 
@@ -142,7 +143,7 @@ func (s *ManagerService) GetStaffPerformanceReport(ctx context.Context, business
 	performance := make([]map[string]interface{}, 0)
 
 	for _, user := range staff {
-		if user.Role == "waiter" {
+		if user.Role == consts.RoleWaiter { // Changed "waiter"
 			// Get waiter statistics
 			orderStats, _ := s.orderRepo.GetWaiterOrderStatistics(ctx, user.ID)
 			tablesServed, _ := s.orderRepo.GetWaiterTablesServedCount(ctx, user.ID)

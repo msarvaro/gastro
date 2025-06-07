@@ -123,7 +123,7 @@ func (s *TableService) AssignTableToWaiter(ctx context.Context, tableID, waiterI
 		return errors.New("user is not a waiter")
 	}
 
-	if waiter.Status != "active" {
+	if waiter.Status != consts.UserStatusActive { // Changed "active"
 		return errors.New("waiter is not active")
 	}
 
@@ -172,7 +172,7 @@ func (s *TableService) CreateTableReservation(ctx context.Context, reservation *
 	// This part would need a proper time overlap check which depends on how reservation times are stored
 	// In this simplified version, we're just checking for same date reservations for the same table
 	for _, r := range reservations {
-		if r.TableID == reservation.TableID && r.Status == "confirmed" {
+		if r.TableID == reservation.TableID && r.Status == consts.ReservationStatusConfirmed { // Changed "confirmed"
 			return errors.New("table already has a reservation for this date")
 		}
 	}
@@ -207,7 +207,7 @@ func (s *TableService) CancelTableReservation(ctx context.Context, reservationID
 
 	hasOtherReservations := false
 	for _, r := range reservations {
-		if r.ID != reservationID && r.TableID == reservation.TableID && r.Status == "confirmed" {
+		if r.ID != reservationID && r.TableID == reservation.TableID && r.Status == consts.ReservationStatusConfirmed { // Changed "confirmed"
 			hasOtherReservations = true
 			break
 		}

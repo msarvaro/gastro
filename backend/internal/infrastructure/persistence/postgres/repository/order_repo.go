@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"restaurant-management/internal/domain/consts" // Added import
 	"restaurant-management/internal/domain/entity"
 	"restaurant-management/internal/domain/interfaces/repository"
 )
@@ -28,7 +29,7 @@ func (r *orderRepository) GetByID(ctx context.Context, id int) (*entity.Order, e
 	query := `
 		SELECT id, table_id, waiter_id, shift_id, status, total_amount, comment,
 		       created_at, updated_at, completed_at, cancelled_at, business_id
-		FROM orders 
+		FROM orders
 		WHERE id = $1
 	`
 
@@ -87,7 +88,7 @@ func (r *orderRepository) GetByBusinessID(ctx context.Context, businessID, limit
 	query := `
 		SELECT id, table_id, waiter_id, shift_id, status, total_amount, comment,
 		       created_at, updated_at, completed_at, cancelled_at, business_id
-		FROM orders 
+		FROM orders
 		WHERE business_id = $1
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3
@@ -225,11 +226,11 @@ func (r *orderRepository) Create(ctx context.Context, order *entity.Order) error
 	// Update table status to occupied if it's not already
 	tableQuery := `
 		UPDATE tables
-		SET status = 'occupied', occupied_at = $1
-		WHERE id = $2 AND status != 'occupied'
+		SET status = $1, occupied_at = $2
+		WHERE id = $3 AND status != $1
 	`
 
-	_, err = tx.ExecContext(ctx, tableQuery, now, order.TableID)
+	_, err = tx.ExecContext(ctx, tableQuery, consts.TableStatusOccupied, now, order.TableID)
 	if err != nil {
 		return err
 	}
@@ -247,7 +248,7 @@ func (r *orderRepository) Create(ctx context.Context, order *entity.Order) error
 func (r *orderRepository) Update(ctx context.Context, order *entity.Order) error {
 	query := `
 		UPDATE orders
-		SET table_id = $1, waiter_id = $2, shift_id = $3, status = $4, 
+		SET table_id = $1, waiter_id = $2, shift_id = $3, status = $4,
 		    total_amount = $5, comment = $6, updated_at = $7,
 		    completed_at = $8, cancelled_at = $9
 		WHERE id = $10 AND business_id = $11
@@ -336,11 +337,11 @@ func (r *orderRepository) UpdateStatus(ctx context.Context, id int, status strin
 	paramCount := 3 // Starting parameter count
 
 	// Add timestamps based on status
-	if status == "completed" {
+	if status == consts.OrderStatusPaid { // Changed "completed"
 		query += ", completed_at = $" + strconv.Itoa(paramCount)
 		params = append(params, time.Now())
 		paramCount++
-	} else if status == "cancelled" {
+	} else if status == consts.OrderStatusCanceled { // Changed "cancelled"
 		query += ", cancelled_at = $" + strconv.Itoa(paramCount)
 		params = append(params, time.Now())
 		paramCount++
@@ -371,7 +372,7 @@ func (r *orderRepository) GetByStatus(ctx context.Context, businessID int, statu
 	query := `
 		SELECT id, table_id, waiter_id, shift_id, status, total_amount, comment,
 		       created_at, updated_at, completed_at, cancelled_at, business_id
-		FROM orders 
+		FROM orders
 		WHERE business_id = $1 AND status = $2
 		ORDER BY created_at DESC
 	`
@@ -446,7 +447,7 @@ func (r *orderRepository) GetByWaiterID(ctx context.Context, waiterID int) ([]*e
 	query := `
 		SELECT id, table_id, waiter_id, shift_id, status, total_amount, comment,
 		       created_at, updated_at, completed_at, cancelled_at, business_id
-		FROM orders 
+		FROM orders
 		WHERE waiter_id = $1
 		ORDER BY created_at DESC
 	`
@@ -509,14 +510,14 @@ func (r *orderRepository) GetByWaiterID(ctx context.Context, waiterID int) ([]*e
 // GetWaiterOrderStatistics retrieves order statistics for a waiter
 func (r *orderRepository) GetWaiterOrderStatistics(ctx context.Context, waiterID int) (map[string]int, error) {
 	query := `
-		SELECT 
-			COUNT(*) FILTER (WHERE status = 'new') AS new,
-			COUNT(*) FILTER (WHERE status = 'accepted') AS accepted,
-			COUNT(*) FILTER (WHERE status = 'preparing') AS preparing,
-			COUNT(*) FILTER (WHERE status = 'ready') AS ready,
-			COUNT(*) FILTER (WHERE status = 'served') AS served,
-			COUNT(*) FILTER (WHERE status = 'completed') AS completed,
-			COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
+		SELECT
+			COUNT(*) FILTER (WHERE status = $3) AS new,
+			COUNT(*) FILTER (WHERE status = $4) AS accepted,
+			COUNT(*) FILTER (WHERE status = $5) AS preparing,
+			COUNT(*) FILTER (WHERE status = $6) AS ready,
+			COUNT(*) FILTER (WHERE status = $7) AS served,
+			COUNT(*) FILTER (WHERE status = $8) AS completed,
+			COUNT(*) FILTER (WHERE status = $9) AS cancelled,
 			COUNT(*) AS total
 		FROM orders
 		WHERE waiter_id = $1 AND (completed_at IS NULL OR completed_at > $2)
@@ -527,7 +528,15 @@ func (r *orderRepository) GetWaiterOrderStatistics(ctx context.Context, waiterID
 
 	var new, accepted, preparing, ready, served, completed, cancelled, total int
 
-	err := r.db.QueryRowContext(ctx, query, waiterID, oneDayAgo).Scan(
+	err := r.db.QueryRowContext(ctx, query, waiterID, oneDayAgo,
+		consts.OrderStatusPending,   // $3 new
+		consts.OrderStatusConfirmed, // $4 accepted
+		consts.OrderStatusPreparing, // $5 preparing
+		consts.OrderStatusReady,     // $6 ready
+		consts.OrderStatusDelivered, // $7 served
+		consts.OrderStatusPaid,      // $8 completed
+		consts.OrderStatusCanceled,  // $9 cancelled
+	).Scan(
 		&new,
 		&accepted,
 		&preparing,
@@ -561,11 +570,11 @@ func (r *orderRepository) GetWaiterTablesServedCount(ctx context.Context, waiter
 	query := `
 		SELECT COUNT(DISTINCT table_id)
 		FROM orders
-		WHERE waiter_id = $1 AND status IN ('completed', 'served')
+		WHERE waiter_id = $1 AND status IN ($2, $3)
 	`
 
 	var count int
-	err := r.db.QueryRowContext(ctx, query, waiterID).Scan(&count)
+	err := r.db.QueryRowContext(ctx, query, waiterID, consts.OrderStatusPaid, consts.OrderStatusDelivered).Scan(&count) // Changed
 	if err != nil {
 		return 0, err
 	}
@@ -578,11 +587,11 @@ func (r *orderRepository) GetWaiterCompletedOrdersCount(ctx context.Context, wai
 	query := `
 		SELECT COUNT(*)
 		FROM orders
-		WHERE waiter_id = $1 AND status = 'completed'
+		WHERE waiter_id = $1 AND status = $2
 	`
 
 	var count int
-	err := r.db.QueryRowContext(ctx, query, waiterID).Scan(&count)
+	err := r.db.QueryRowContext(ctx, query, waiterID, consts.OrderStatusPaid).Scan(&count) // Changed
 	if err != nil {
 		return 0, err
 	}
@@ -595,7 +604,7 @@ func (r *orderRepository) GetByDateRange(ctx context.Context, businessID int, st
 	query := `
 		SELECT id, table_id, waiter_id, shift_id, status, total_amount, comment,
 		       created_at, updated_at, completed_at, cancelled_at, business_id
-		FROM orders 
+		FROM orders
 		WHERE business_id = $1 AND created_at BETWEEN $2 AND $3
 		ORDER BY created_at DESC
 	`
@@ -660,7 +669,7 @@ func (r *orderRepository) GetByTableID(ctx context.Context, tableID int) ([]*ent
 	query := `
 		SELECT id, table_id, waiter_id, shift_id, status, total_amount, comment,
 		       created_at, updated_at, completed_at, cancelled_at, business_id
-		FROM orders 
+		FROM orders
 		WHERE table_id = $1
 		ORDER BY created_at DESC
 	`
@@ -725,8 +734,8 @@ func (r *orderRepository) GetActiveByTableID(ctx context.Context, tableID int) (
 	query := `
 		SELECT id, table_id, waiter_id, shift_id, status, total_amount, comment,
 		       created_at, updated_at, completed_at, cancelled_at, business_id
-		FROM orders 
-		WHERE table_id = $1 AND status NOT IN ('completed', 'cancelled')
+		FROM orders
+		WHERE table_id = $1 AND status NOT IN ($2, $3)
 		ORDER BY created_at DESC
 		LIMIT 1
 	`
@@ -735,7 +744,7 @@ func (r *orderRepository) GetActiveByTableID(ctx context.Context, tableID int) (
 	var shiftID sql.NullInt64
 	var completedAt, cancelledAt sql.NullTime
 
-	err := r.db.QueryRowContext(ctx, query, tableID).Scan(
+	err := r.db.QueryRowContext(ctx, query, tableID, consts.OrderStatusPaid, consts.OrderStatusCanceled).Scan( // Changed
 		&order.ID,
 		&order.TableID,
 		&order.WaiterID,

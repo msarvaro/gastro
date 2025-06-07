@@ -28,6 +28,12 @@ const (
 	TableStatusMaintenance = "maintenance" // Table under maintenance
 )
 
+// User statuses
+const (
+	UserStatusActive   = "active"   // User is active
+	UserStatusInactive = "inactive" // User is inactive
+)
+
 // Purchase order statuses
 const (
 	PurchaseOrderStatusDraft     = "draft"     // Order being created
@@ -77,4 +83,13 @@ const (
 	PaymentTermsNet15   = "Net 15"  // Payment within 15 days
 	PaymentTermsNet30   = "Net 30"  // Payment within 30 days
 	PaymentTermsPrepaid = "Prepaid" // Payment in advance
+)
+
+// Reservation statuses
+const (
+	ReservationStatusPending   = "pending"   // Reservation is pending confirmation
+	ReservationStatusConfirmed = "confirmed" // Reservation is confirmed
+	ReservationStatusCancelled = "cancelled" // Reservation has been cancelled
+	ReservationStatusCompleted = "completed" // Reservation period has passed and guest attended (or similar meaning)
+	ReservationStatusNoShow    = "no_show"   // Guest did not show up for the reservation
 )

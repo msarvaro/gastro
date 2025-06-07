@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"restaurant-management/internal/domain/consts" // Added import
 	"restaurant-management/internal/domain/entity"
 	"restaurant-management/internal/domain/interfaces/repository"
 )
@@ -26,7 +27,7 @@ func NewBusinessRepository(db *sql.DB) repository.BusinessRepository {
 func (r *businessRepository) GetByID(ctx context.Context, id int) (*entity.Business, error) {
 	query := `
 		SELECT id, name, description, address, phone, email, website, logo, status, created_at, updated_at
-		FROM businesses 
+		FROM businesses
 		WHERE id = $1
 	`
 
@@ -113,7 +114,7 @@ func (r *businessRepository) Create(ctx context.Context, business *entity.Busine
 
 	// Set defaults if not provided
 	if business.Status == "" {
-		business.Status = "active"
+		business.Status = consts.UserStatusActive // Changed "active"
 	}
 
 	now := time.Now()
@@ -146,7 +147,7 @@ func (r *businessRepository) Create(ctx context.Context, business *entity.Busine
 func (r *businessRepository) Update(ctx context.Context, business *entity.Business) error {
 	query := `
 		UPDATE businesses
-		SET name = $1, description = $2, address = $3, phone = $4, email = $5, 
+		SET name = $1, description = $2, address = $3, phone = $4, email = $5,
 		    website = $6, logo = $7, status = $8, updated_at = $9
 		WHERE id = $10
 	`
@@ -208,7 +209,7 @@ func (r *businessRepository) Delete(ctx context.Context, id int) error {
 // GetByUserID retrieves businesses by user ID
 func (r *businessRepository) GetByUserID(ctx context.Context, userID int) ([]*entity.Business, error) {
 	query := `
-		SELECT b.id, b.name, b.description, b.address, b.phone, b.email, 
+		SELECT b.id, b.name, b.description, b.address, b.phone, b.email,
 		       b.website, b.logo, b.status, b.created_at, b.updated_at
 		FROM businesses b
 		JOIN users u ON b.id = u.business_id
@@ -216,7 +217,7 @@ func (r *businessRepository) GetByUserID(ctx context.Context, userID int) ([]*en
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
-	if err != nil {
+	if err !=.Error()) {
 		return nil, err
 	}
 	defer rows.Close()

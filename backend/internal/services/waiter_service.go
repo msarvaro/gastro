@@ -119,7 +119,7 @@ func (s *WaiterService) TakeOrder(ctx context.Context, waiterID int, order *enti
 	order.BusinessID = *waiter.BusinessID
 
 	// Set initial order properties
-	order.Status = "new"
+	order.Status = consts.OrderStatusPending // Changed "new"
 	order.CreatedAt = time.Now()
 	order.UpdatedAt = time.Now()
 
@@ -127,7 +127,7 @@ func (s *WaiterService) TakeOrder(ctx context.Context, waiterID int, order *enti
 	order.TotalAmount = order.CalculateTotal()
 
 	// Update table status
-	err = s.tableRepo.UpdateTableStatus(ctx, table.ID, "occupied")
+	err = s.tableRepo.UpdateTableStatus(ctx, table.ID, consts.TableStatusOccupied) // Changed "occupied"
 	if err != nil {
 		return err
 	}

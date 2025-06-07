@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"restaurant-management/internal/domain/consts" // Added import
 	"restaurant-management/internal/domain/entity"
 	"restaurant-management/internal/domain/interfaces/repository"
 )
@@ -35,14 +36,14 @@ func (s *BusinessService) GetAllBusinesses(ctx context.Context) ([]*entity.Busin
 
 // GetActiveBusinesses retrieves all active businesses
 func (s *BusinessService) GetActiveBusinesses(ctx context.Context) ([]*entity.Business, error) {
-	return s.businessRepo.GetByStatus(ctx, "active")
+	return s.businessRepo.GetByStatus(ctx, consts.UserStatusActive) // Changed "active"
 }
 
 // CreateBusiness creates a new business
 func (s *BusinessService) CreateBusiness(ctx context.Context, business *entity.Business) error {
 	// Set default status if not provided
 	if business.Status == "" {
-		business.Status = "active"
+		business.Status = consts.UserStatusActive // Changed "active"
 	}
 	return s.businessRepo.Create(ctx, business)
 }

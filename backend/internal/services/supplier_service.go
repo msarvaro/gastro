@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"restaurant-management/internal/domain/consts" // Added import
 	"restaurant-management/internal/domain/entity"
 	"restaurant-management/internal/domain/interfaces/repository"
 )
@@ -75,7 +76,7 @@ func (s *SupplierService) GetPendingPurchaseOrders(ctx context.Context, business
 func (s *SupplierService) CreatePurchaseOrder(ctx context.Context, order *entity.PurchaseOrder) error {
 	// Set default status if not provided
 	if order.Status == "" {
-		order.Status = "draft"
+		order.Status = consts.PurchaseOrderStatusDraft // Changed "draft"
 	}
 	// Calculate total amount
 	order.TotalAmount = order.CalculateTotal()

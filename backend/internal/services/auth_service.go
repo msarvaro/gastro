@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"restaurant-management/internal/domain/consts" // Added import
 	"restaurant-management/internal/domain/entity"
 	"restaurant-management/internal/domain/interfaces/repository"
 	"time"
@@ -39,7 +40,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*en
 	}
 
 	// Check if user is active
-	if user.Status != "active" {
+	if user.Status != consts.UserStatusActive { // Changed "active" to consts.UserStatusActive
 		return nil, "", errors.New("account is inactive")
 	}
 

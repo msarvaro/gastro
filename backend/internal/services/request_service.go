@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"restaurant-management/internal/domain/consts" // Added import
 	"restaurant-management/internal/domain/entity"
 	"restaurant-management/internal/domain/interfaces/repository"
 	"time"
@@ -43,10 +44,10 @@ func (s *RequestService) CreateRequest(ctx context.Context, request *entity.Serv
 	// Set default values
 	request.CreatedAt = time.Now()
 	if request.Status == "" {
-		request.Status = "pending"
+		request.Status = consts.RequestStatusPending // Changed "pending"
 	}
 	if request.Priority == "" {
-		request.Priority = "medium"
+		request.Priority = consts.RequestPriorityMedium // Changed "medium"
 	}
 	return s.requestRepo.Create(ctx, request)
 }
@@ -76,7 +77,7 @@ func (s *RequestService) AcknowledgeRequest(ctx context.Context, requestID int) 
 		return err
 	}
 
-	request.Status = "acknowledged"
+	request.Status = consts.RequestStatusAcknowledged // Changed "acknowledged"
 	request.AcknowledgedAt = &now
 
 	return s.requestRepo.Update(ctx, request)
@@ -92,7 +93,7 @@ func (s *RequestService) CompleteRequest(ctx context.Context, requestID int) err
 		return err
 	}
 
-	request.Status = "completed"
+	request.Status = consts.RequestStatusCompleted // Changed "completed"
 	request.CompletedAt = &now
 
 	return s.requestRepo.Update(ctx, request)

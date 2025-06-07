@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"restaurant-management/internal/domain/consts" // Added import
 	"restaurant-management/internal/domain/entity"
 	"restaurant-management/internal/domain/interfaces/repository"
 	"restaurant-management/internal/domain/interfaces/services"
@@ -109,6 +110,11 @@ func (s *userService) DeleteUser(ctx context.Context, id int) error {
 
 // ChangeUserStatus changes a user's status (active/inactive)
 func (s *userService) ChangeUserStatus(ctx context.Context, id int, status string) error {
+	// Validate status against defined constants
+	if status != consts.UserStatusActive && status != consts.UserStatusInactive {
+		return errors.New("invalid user status provided")
+	}
+
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return err
@@ -117,7 +123,7 @@ func (s *userService) ChangeUserStatus(ctx context.Context, id int, status strin
 		return errors.New("user not found")
 	}
 
-	user.Status = status
+	user.Status = status // Assign validated status
 	user.UpdatedAt = time.Now()
 
 	return s.userRepo.Update(ctx, user)
@@ -127,12 +133,22 @@ func (s *userService) ChangeUserStatus(ctx context.Context, id int, status strin
 func (s *userService) ListUsers(ctx context.Context, businessID int, filter map[string]interface{}) ([]*entity.User, error) {
 	// Basic implementation that can be extended based on filters
 	if role, ok := filter["role"].(string); ok && role != "" {
+		// Here, 'role' is a variable. If this function were called with a literal in the filter,
+		// e.g. ListUsers(..., map[string]interface{}{"role": "waiter"}), that would be outside this file's scope.
+		// The call s.userRepo.GetByRole(ctx, businessID, role) is fine as `role` is a variable.
+		// If we were to construct the role string here from a non-constant source and needed to ensure it's a valid one before passing
+		// to the repo, we might add validation similar to ChangeUserStatus, or ensure callers of ListUsers use constants.
+		// For now, assuming callers of ListUsers (if any within this service layer with literals) would be refactored.
+		// No direct string literal comparison for roles *within this specific logic block*.
 		return s.userRepo.GetByRole(ctx, businessID, role)
 	}
 	return s.userRepo.GetByBusinessID(ctx, businessID)
 }
 
 // GetUsersByRole retrieves users by their role
+// The 'role string' parameter is fine. If this function is called *from within this file*
+// with a string literal, that call site would be changed.
+// Example: s.GetUsersByRole(ctx, businessID, consts.RoleWaiter) instead of s.GetUsersByRole(ctx, businessID, "waiter")
 func (s *userService) GetUsersByRole(ctx context.Context, businessID int, role string) ([]*entity.User, error) {
 	return s.userRepo.GetByRole(ctx, businessID, role)
 }
@@ -152,7 +168,7 @@ func (s *userService) GetUserProfile(ctx context.Context, id int) (*entity.UserP
 	}
 
 	// If this is a waiter, get assigned tables
-	if user.Role == "waiter" && user.BusinessID != nil {
+	if user.Role == consts.RoleWaiter && user.BusinessID != nil { // Changed "waiter" to consts.RoleWaiter
 		// This would require a repository method to get tables assigned to a waiter
 		assignedTables, err := s.tableRepo.GetTablesByWaiterID(ctx, user.ID)
 		if err != nil {

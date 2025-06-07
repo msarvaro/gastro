@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"restaurant-management/internal/domain/consts" // Added import
 	"restaurant-management/internal/domain/entity"
 	"restaurant-management/internal/domain/interfaces/repository"
 )
@@ -25,9 +26,9 @@ func NewUserRepository(db *sql.DB) repository.UserRepository {
 // GetByID retrieves a user by ID
 func (r *userRepository) GetByID(ctx context.Context, id int) (*entity.User, error) {
 	query := `
-		SELECT id, username, email, password, name, role, status, business_id, 
+		SELECT id, username, email, password, name, role, status, business_id,
 		       last_active, created_at, updated_at
-		FROM users 
+		FROM users
 		WHERE id = $1
 	`
 
@@ -71,9 +72,9 @@ func (r *userRepository) GetByID(ctx context.Context, id int) (*entity.User, err
 // GetByUsername retrieves a user by username
 func (r *userRepository) GetByUsername(ctx context.Context, username string) (*entity.User, error) {
 	query := `
-		SELECT id, username, email, password, name, role, status, business_id, 
+		SELECT id, username, email, password, name, role, status, business_id,
 		       last_active, created_at, updated_at
-		FROM users 
+		FROM users
 		WHERE username = $1
 	`
 
@@ -117,9 +118,9 @@ func (r *userRepository) GetByUsername(ctx context.Context, username string) (*e
 // GetByBusinessID retrieves all users for a business
 func (r *userRepository) GetByBusinessID(ctx context.Context, businessID int) ([]*entity.User, error) {
 	query := `
-		SELECT id, username, email, password, name, role, status, business_id, 
+		SELECT id, username, email, password, name, role, status, business_id,
 		       last_active, created_at, updated_at
-		FROM users 
+		FROM users
 		WHERE business_id = $1
 	`
 
@@ -176,9 +177,9 @@ func (r *userRepository) GetByBusinessID(ctx context.Context, businessID int) ([
 // GetByRole retrieves users by role for a business
 func (r *userRepository) GetByRole(ctx context.Context, businessID int, role string) ([]*entity.User, error) {
 	query := `
-		SELECT id, username, email, password, name, role, status, business_id, 
+		SELECT id, username, email, password, name, role, status, business_id,
 		       last_active, created_at, updated_at
-		FROM users 
+		FROM users
 		WHERE business_id = $1 AND role = $2
 	`
 
@@ -235,7 +236,7 @@ func (r *userRepository) GetByRole(ctx context.Context, businessID int, role str
 // Create adds a new user to the database
 func (r *userRepository) Create(ctx context.Context, user *entity.User) error {
 	query := `
-		INSERT INTO users (username, email, password, name, role, status, business_id, 
+		INSERT INTO users (username, email, password, name, role, status, business_id,
 		                  last_active, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id
@@ -401,13 +402,13 @@ func (r *userRepository) UpdatePassword(ctx context.Context, userID int, hashedP
 // GetActiveWaiters retrieves all active waiters for a business
 func (r *userRepository) GetActiveWaiters(ctx context.Context, businessID int) ([]*entity.User, error) {
 	query := `
-		SELECT id, username, email, password, name, role, status, business_id, 
+		SELECT id, username, email, password, name, role, status, business_id,
 		       last_active, created_at, updated_at
-		FROM users 
-		WHERE business_id = $1 AND role = 'waiter' AND status = 'active'
+		FROM users
+		WHERE business_id = $1 AND role = $2 AND status = $3
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, businessID)
+	rows, err := r.db.QueryContext(ctx, query, businessID, consts.RoleWaiter, consts.UserStatusActive) // Changed
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +418,7 @@ func (r *userRepository) GetActiveWaiters(ctx context.Context, businessID int) (
 
 	for rows.Next() {
 		var user entity.User
-		var businessID sql.NullInt64
+		var businessIDNum sql.NullInt64 // Renamed to avoid conflict with package name
 		var lastActive sql.NullTime
 
 		err := rows.Scan(
@@ -428,7 +429,7 @@ func (r *userRepository) GetActiveWaiters(ctx context.Context, businessID int) (
 			&user.Name,
 			&user.Role,
 			&user.Status,
-			&businessID,
+			&businessIDNum,
 			&lastActive,
 			&user.CreatedAt,
 			&user.UpdatedAt,
@@ -438,8 +439,8 @@ func (r *userRepository) GetActiveWaiters(ctx context.Context, businessID int) (
 			return nil, err
 		}
 
-		if businessID.Valid {
-			bid := int(businessID.Int64)
+		if businessIDNum.Valid {
+			bid := int(businessIDNum.Int64)
 			user.BusinessID = &bid
 		}
 
