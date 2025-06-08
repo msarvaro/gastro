@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -44,9 +43,6 @@ func BusinessMiddleware() func(http.Handler) http.Handler {
 
 			// Add business_id to context
 			ctx := context.WithValue(r.Context(), BusinessIDKey, businessID)
-
-			// Log business ID for debugging purposes
-			log.Printf("Request for business ID: %d", businessID)
 
 			// Call the next handler with the updated context
 			next.ServeHTTP(w, r.WithContext(ctx))

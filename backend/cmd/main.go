@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"path/filepath"
 	"restaurant-management/configs"
-	"restaurant-management/internal/database"
-	"restaurant-management/internal/handlers"
+	"restaurant-management/internal/infrastructure/storage/postgres"
 	"restaurant-management/internal/middleware"
+	"restaurant-management/internal/service"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
@@ -23,13 +23,58 @@ func main() {
 	}
 
 	// Инициализируем базу данных
-	db, err := database.NewDB(config)
+	db, err := postgres.NewDB(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
+	// Initialize infrastructure layer (repositories)
+	postgresDB := &postgres.DB{DB: db.DB}
+	businessRepo := postgres.NewBusinessRepository(postgresDB)
+	userRepo := postgres.NewUserRepository(postgresDB)
+	menuRepo := postgres.NewMenuRepository(postgresDB)
+	orderRepo := postgres.NewOrderRepository(postgresDB)
+	tableRepo := postgres.NewTableRepository(postgresDB)
+	inventoryRepo := postgres.NewInventoryRepository(postgresDB)
+	shiftRepo := postgres.NewShiftRepository(postgresDB)
+	supplierRepo := postgres.NewSupplierRepository(postgresDB)
+	requestRepo := postgres.NewRequestRepository(postgresDB)
+	waiterRepo := postgres.NewWaiterRepository(postgresDB)
+
+	// Initialize services
+	services := service.NewServices(
+		businessRepo,
+		userRepo,
+		menuRepo,
+		orderRepo,
+		tableRepo,
+		inventoryRepo,
+		shiftRepo,
+		supplierRepo,
+		requestRepo,
+		waiterRepo,
+		config.Server.JWTKey,
+	)
+
+	// Initialize controllers
+	controllers := handler.NewControllers(
+		services.Business,
+		services.User,
+		services.Menu,
+		services.Order,
+		services.Table,
+		services.Inventory,
+		services.Shift,
+		services.Supplier,
+		services.Request,
+		services.Waiter,
+	)
+
 	r := mux.NewRouter()
+
+	// Apply logging middleware to all routes
+	r.Use(middleware.LoggingMiddleware())
 
 	// Создаем FileServer с middleware для установки правильных MIME типов
 	fileServer := http.FileServer(http.Dir(config.Paths.Static))
@@ -47,27 +92,15 @@ func main() {
 	htmlRouter := r.PathPrefix("").Subrouter()
 	htmlRouter.Use(middleware.HTMLAuthMiddleware(config.Server.JWTKey))
 
-	// Инициализируем обработчики
-	authHandler := handlers.NewAuthHandler(db, config.Server.JWTKey)
-	adminHandler := handlers.NewAdminHandler(db)
-	inventoryHandler := handlers.NewInventoryHandler(db)
-	supplierHandler := handlers.NewSupplierHandler(db)
-	requestHandler := handlers.NewRequestHandler(db)
-	menuRepo := database.NewMenuRepository(db.DB)
-	menuHandler := handlers.NewMenuHandler(menuRepo)
-	managerHandler := handlers.NewManagerHandler(db)
-	waiterHandler := handlers.NewWaiterHandler(db)
-	kitchenHandler := handlers.NewKitchenHandler(db)
-	shiftHandler := handlers.NewShiftHandler(db)
-	businessHandler := handlers.NewBusinessHandler(db)
+	// All handlers have been migrated to controllers
 
 	// Публичные API
-	r.HandleFunc("/api/login", authHandler.Login).Methods("POST")
+	r.HandleFunc("/api/login", controllers.Auth.Login).Methods("POST")
 
 	// Business selection API (public for login purposes)
-	r.HandleFunc("/api/businesses", businessHandler.GetAllBusinesses).Methods("GET")
-	r.HandleFunc("/api/businesses/{id}", businessHandler.GetBusinessByID).Methods("GET")
-	r.HandleFunc("/api/businesses/{id}/select", businessHandler.SetBusinessCookie).Methods("POST")
+	r.HandleFunc("/api/businesses", controllers.Business.GetAllBusinesses).Methods("GET")
+	r.HandleFunc("/api/businesses/{id}", controllers.Business.GetBusinessByID).Methods("GET")
+	r.HandleFunc("/api/businesses/{id}/select", controllers.Business.SetBusinessCookie).Methods("POST")
 
 	// Add business middleware to all protected APIs
 	// Защищенные API маршруты
@@ -77,76 +110,75 @@ func main() {
 
 	// Business management routes (admin only)
 	businessAdmin := api.PathPrefix("/admin/businesses").Subrouter()
-	businessAdmin.HandleFunc("", businessHandler.CreateBusiness).Methods("POST")
-	businessAdmin.HandleFunc("/{id}", businessHandler.UpdateBusiness).Methods("PUT")
-	businessAdmin.HandleFunc("/{id}", businessHandler.DeleteBusiness).Methods("DELETE")
+	businessAdmin.HandleFunc("", controllers.Business.CreateBusiness).Methods("POST")
+	businessAdmin.HandleFunc("/{id}", controllers.Business.UpdateBusiness).Methods("PUT")
+	businessAdmin.HandleFunc("/{id}", controllers.Business.DeleteBusiness).Methods("DELETE")
 
-	// API маршруты для админа
+	// API маршруты для админа (using controllers)
 	admin := api.PathPrefix("/admin").Subrouter()
-	// Оставляем только статистику, остальное будет через эндпоинты менеджера
-	admin.HandleFunc("/stats", adminHandler.GetStats).Methods("GET")
+	admin.HandleFunc("/stats", controllers.Admin.GetStats).Methods("GET")
 
-	// API маршруты для менеджера
+	// API маршруты для менеджера (using controllers)
 	manager := api.PathPrefix("/manager").Subrouter()
-	manager.HandleFunc("/history", managerHandler.GetOrderHistory).Methods("GET")
-	// Добавляем маршруты для пользователей, используя обработчики админа
-	manager.HandleFunc("/users", adminHandler.GetUsers).Methods("GET")
-	manager.HandleFunc("/users", adminHandler.CreateUser).Methods("POST")
-	manager.HandleFunc("/users/{id}", adminHandler.UpdateUser).Methods("PUT")
-	manager.HandleFunc("/users/{id}", adminHandler.DeleteUser).Methods("DELETE")
+	manager.HandleFunc("/history", controllers.Manager.GetOrderHistory).Methods("GET")
+	// User management routes
+	manager.HandleFunc("/users", controllers.Admin.GetUsers).Methods("GET")
+	manager.HandleFunc("/users", controllers.Admin.CreateUser).Methods("POST")
+	manager.HandleFunc("/users/{id}", controllers.Admin.UpdateUser).Methods("PUT")
+	manager.HandleFunc("/users/{id}", controllers.Admin.DeleteUser).Methods("DELETE")
 
-	// Добавляем маршруты для смен, используя обработчики смен
-	manager.HandleFunc("/shifts", shiftHandler.GetAllShifts).Methods("GET")
-	manager.HandleFunc("/shifts", shiftHandler.CreateShift).Methods("POST")
-	manager.HandleFunc("/shifts/{id:[0-9]+}", shiftHandler.GetShiftByID).Methods("GET")
-	manager.HandleFunc("/shifts/{id:[0-9]+}", shiftHandler.UpdateShift).Methods("PUT")
-	manager.HandleFunc("/shifts/{id:[0-9]+}", shiftHandler.DeleteShift).Methods("DELETE")
+	// Shift management routes (using controllers)
+	manager.HandleFunc("/shifts", controllers.Shift.GetAllShifts).Methods("GET")
+	manager.HandleFunc("/shifts", controllers.Shift.CreateShift).Methods("POST")
+	manager.HandleFunc("/shifts/{id:[0-9]+}", controllers.Shift.GetShiftByID).Methods("GET")
+	manager.HandleFunc("/shifts/{id:[0-9]+}", controllers.Shift.UpdateShift).Methods("PUT")
+	manager.HandleFunc("/shifts/{id:[0-9]+}", controllers.Shift.DeleteShift).Methods("DELETE")
 
-	// API маршруты для инвентаря (перенесены к менеджеру)
-	manager.HandleFunc("/inventory", inventoryHandler.GetAll).Methods("GET")
-	manager.HandleFunc("/inventory", inventoryHandler.Create).Methods("POST")
-	manager.HandleFunc("/inventory/{id}", inventoryHandler.GetByID).Methods("GET")
-	manager.HandleFunc("/inventory/{id}", inventoryHandler.Update).Methods("PUT")
-	manager.HandleFunc("/inventory/{id}", inventoryHandler.Delete).Methods("DELETE")
+	// Inventory management routes (using controllers)
+	manager.HandleFunc("/inventory", controllers.Inventory.GetAll).Methods("GET")
+	manager.HandleFunc("/inventory", controllers.Inventory.Create).Methods("POST")
+	manager.HandleFunc("/inventory/{id}", controllers.Inventory.GetByID).Methods("GET")
+	manager.HandleFunc("/inventory/{id}", controllers.Inventory.Update).Methods("PUT")
+	manager.HandleFunc("/inventory/{id}", controllers.Inventory.Delete).Methods("DELETE")
 
-	// API маршруты для поставщиков (перенесены к менеджеру)
-	manager.HandleFunc("/suppliers", supplierHandler.GetAll).Methods("GET")
-	manager.HandleFunc("/suppliers", supplierHandler.Create).Methods("POST")
-	manager.HandleFunc("/suppliers/{id}", supplierHandler.GetByID).Methods("GET")
-	manager.HandleFunc("/suppliers/{id}", supplierHandler.Update).Methods("PUT")
-	manager.HandleFunc("/suppliers/{id}", supplierHandler.Delete).Methods("DELETE")
+	// API маршруты для поставщиков (using controllers)
+	manager.HandleFunc("/suppliers", controllers.Supplier.GetAll).Methods("GET")
+	manager.HandleFunc("/suppliers", controllers.Supplier.Create).Methods("POST")
+	manager.HandleFunc("/suppliers/{id}", controllers.Supplier.GetByID).Methods("GET")
+	manager.HandleFunc("/suppliers/{id}", controllers.Supplier.Update).Methods("PUT")
+	manager.HandleFunc("/suppliers/{id}", controllers.Supplier.Delete).Methods("DELETE")
 
-	// API маршруты для заявок (перенесены к менеджеру)
-	manager.HandleFunc("/requests", requestHandler.GetAll).Methods("GET")
-	manager.HandleFunc("/requests", requestHandler.Create).Methods("POST")
-	manager.HandleFunc("/requests/{id}", requestHandler.GetByID).Methods("GET")
-	manager.HandleFunc("/requests/{id}", requestHandler.Update).Methods("PUT")
-	manager.HandleFunc("/requests/{id}", requestHandler.Delete).Methods("DELETE")
+	// API маршруты для заявок (using controllers)
+	manager.HandleFunc("/requests", controllers.Request.GetAll).Methods("GET")
+	manager.HandleFunc("/requests", controllers.Request.Create).Methods("POST")
+	manager.HandleFunc("/requests/{id}", controllers.Request.GetByID).Methods("GET")
+	manager.HandleFunc("/requests/{id}", controllers.Request.Update).Methods("PUT")
+	manager.HandleFunc("/requests/{id}", controllers.Request.Delete).Methods("DELETE")
 
-	// API маршруты для официанта
+	// API маршруты для официанта (using controllers)
 	waiter := api.PathPrefix("/waiter").Subrouter()
-	waiter.HandleFunc("/tables", waiterHandler.GetTables).Methods("GET")
-	waiter.HandleFunc("/tables/{id}/status", waiterHandler.UpdateTableStatus).Methods("PUT")
-	waiter.HandleFunc("/orders", waiterHandler.GetOrders).Methods("GET")
-	waiter.HandleFunc("/history", waiterHandler.GetOrderHistory).Methods("GET")
-	waiter.HandleFunc("/orders", waiterHandler.CreateOrder).Methods("POST")
-	waiter.HandleFunc("/orders/{id}/status", waiterHandler.UpdateOrderStatus).Methods("PUT")
-	waiter.HandleFunc("/profile", waiterHandler.GetProfile).Methods("GET")
+	waiter.HandleFunc("/tables", controllers.Waiter.GetTables).Methods("GET")
+	waiter.HandleFunc("/tables/{id}/status", controllers.Waiter.UpdateTableStatus).Methods("PUT")
+	waiter.HandleFunc("/orders", controllers.Waiter.GetActiveOrders).Methods("GET")
+	waiter.HandleFunc("/history", controllers.Waiter.GetOrderHistory).Methods("GET")
+	waiter.HandleFunc("/orders", controllers.Waiter.CreateOrder).Methods("POST")
+	waiter.HandleFunc("/orders/{id}/status", controllers.Waiter.UpdateOrderStatus).Methods("PUT")
+	waiter.HandleFunc("/profile", controllers.Waiter.GetProfile).Methods("GET")
 
-	// API маршруты для кухни
+	// Kitchen routes (using controllers)
 	kitchen := api.PathPrefix("/kitchen").Subrouter()
-	kitchen.HandleFunc("/orders", kitchenHandler.GetKitchenOrders).Methods("GET")
-	kitchen.HandleFunc("/orders/{id}/status", kitchenHandler.UpdateOrderStatusByCook).Methods("PUT")
-	kitchen.HandleFunc("/history", kitchenHandler.GetKitchenHistory).Methods("GET")
-	kitchen.HandleFunc("/inventory", kitchenHandler.GetInventory).Methods("GET")
-	kitchen.HandleFunc("/inventory/{id}", kitchenHandler.UpdateInventory).Methods("PUT")
+	kitchen.HandleFunc("/orders", controllers.Kitchen.GetKitchenOrders).Methods("GET")
+	kitchen.HandleFunc("/orders/{id}/status", controllers.Kitchen.UpdateOrderStatusByCook).Methods("PUT")
+	kitchen.HandleFunc("/history", controllers.Kitchen.GetKitchenHistory).Methods("GET")
+	kitchen.HandleFunc("/inventory", controllers.Kitchen.GetInventory).Methods("GET")
+	kitchen.HandleFunc("/inventory/{id}", controllers.Kitchen.UpdateInventory).Methods("PUT")
 
-	// API маршруты для меню
-	menuHandler.RegisterRoutes(api)
+	// Menu routes (using controllers)
+	controllers.Menu.RegisterRoutes(api)
 
-	// Регистрация обработчиков API для смен
+	// Employee shifts API routes (using controllers)
 	apiRouter := api.PathPrefix("/shifts").Subrouter()
-	apiRouter.HandleFunc("", shiftHandler.GetEmployeeShifts).Methods("GET")
+	apiRouter.HandleFunc("", controllers.Shift.GetEmployeeShifts).Methods("GET")
 
 	// HTML страницы
 	// Add business selection page

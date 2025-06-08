@@ -235,20 +235,6 @@
             </a>
         </nav>
     </div>
-
-    <script>
-        // Load business header component
-        document.addEventListener('DOMContentLoaded', function() {
-            fetch('/templates/components/business-header.html')
-                .then(response => response.text())
-                .then(html => {
-                    document.getElementById('business-header-container').innerHTML = html;
-                })
-                .catch(error => {
-                    console.error('Failed to load business header component:', error);
-                });
-        });
-    </script>
     <script src="../static/js/waiter.js"></script>
 </body>
 </html> 

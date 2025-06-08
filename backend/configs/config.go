@@ -90,7 +90,7 @@ func LoadConfig() (*Config, error) {
 
 	config.Database.SSLMode, envErr = getRequiredEnv("DB_SSL_MODE")
 	if envErr != nil {
-		return nil, envErr
+		config.Database.SSLMode = "require"
 	}
 
 	log.Printf("Connection string: %s\n", config.GetDBConnString())
@@ -160,11 +160,12 @@ func getRequiredEnv(key string) (string, error) {
 
 func (c *Config) GetDBConnString() string {
 	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=require",
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		c.Database.Host,
 		c.Database.Port,
 		c.Database.User,
 		c.Database.Password,
 		c.Database.DBName,
+		c.Database.SSLMode,
 	)
 }
