@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 WORKDIR /app
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
@@ -13,17 +13,25 @@ WORKDIR /app
 COPY --from=builder /main /app/main
 COPY frontend/ /app/frontend/
 
-# Set default environment variables that can be overridden at runtime
-ENV DB_HOST=dpg-d0nocoqdbo4c73agt8c0-a.oregon-postgres.render.com \
-    DB_PORT=5432 \
-    DB_USER=gastro_trp4_user \
-    DB_PASSWORD=JY6zmcWkUWwwa7idXUoOxTjLKD2V6ZER \
-    DB_NAME=gastro_trp4 \
-    DB_SSL_MODE=require \
-    SERVER_PORT=10000 \
-    JWT_KEY=jwt-secret \
-    PROJECT_ROOT=. \
-    FRONTEND_PATH=frontend
+# Environment variables (will be populated from .env file or runtime)
+ENV DB_HOST=${DB_HOST} \
+    DB_PORT=${DB_PORT} \
+    DB_USER=${DB_USER} \
+    DB_PASSWORD=${DB_PASSWORD} \
+    DB_NAME=${DB_NAME} \
+    DB_SSL_MODE=${DB_SSL_MODE} \
+    SERVER_PORT=${SERVER_PORT} \
+    JWT_KEY=${JWT_KEY} \
+    PROJECT_ROOT=${PROJECT_ROOT} \
+    FRONTEND_PATH=${FRONTEND_PATH} \
+    GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID} \
+    GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET} \
+    GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL} \
+    SMTP_HOST=${SMTP_HOST} \
+    SMTP_PORT=${SMTP_PORT} \
+    SMTP_USERNAME=${SMTP_USERNAME} \
+    SMTP_PASSWORD=${SMTP_PASSWORD} \
+    SMTP_FROM=${SMTP_FROM}
 
 # Expose the port
 EXPOSE 10000
