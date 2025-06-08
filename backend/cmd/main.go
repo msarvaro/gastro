@@ -25,10 +25,10 @@ func startNotificationWorker(services *service.Services) {
 	log.Println("Starting notification background worker...")
 
 	// Check for low inventory every 30 minutes
-	inventoryTicker := time.NewTicker(1 * time.Minute)
+	inventoryTicker := time.NewTicker(2 * time.Hour)
 
 	// Process pending notifications every 5 minutes
-	processingTicker := time.NewTicker(1 * time.Minute)
+	processingTicker := time.NewTicker(6 * time.Hour)
 
 	go func() {
 		defer inventoryTicker.Stop()
