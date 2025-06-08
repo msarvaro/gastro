@@ -64,9 +64,10 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 	return u, nil
 }
 
-func (r *UserRepository) GetUserByID(ctx context.Context, id int, businessID int) (*user.User, error) {
+func (r *UserRepository) GetByID(ctx context.Context, id int, businessID int) (*user.User, error) {
 	u := &user.User{}
 	var name sql.NullString
+	var googleEmail sql.NullString
 
 	// First get the requesting user's role
 	var requestingUserRole string
@@ -83,39 +84,50 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id int, businessID int
 	if requestingUserRole == "admin" {
 		// Admin can view any user
 		query = `
-			SELECT id, username, name, email, role, status, business_id, created_at, updated_at
+			SELECT id, username, name, email, google_email, role, status, business_id, created_at, updated_at
 			FROM users
 			WHERE id = $1`
 		args = []interface{}{id}
 	} else {
 		// Regular users can only view users from their business
 		query = `
-			SELECT id, username, name, email, role, status, business_id, created_at, updated_at
+			SELECT id, username, name, email, google_email, role, status, business_id, created_at, updated_at
 			FROM users
 			WHERE id = $1 AND business_id = $2`
 		args = []interface{}{id, businessID}
 	}
 
 	err = r.db.QueryRowContext(ctx, query, args...).Scan(
-		&u.ID, &u.Username, &name, &u.Email, &u.Role, &u.Status, &u.BusinessID, &u.CreatedAt, &u.UpdatedAt)
+		&u.ID, &u.Username, &name, &u.Email, &googleEmail, &u.Role, &u.Status, &u.BusinessID, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert NULL name to empty string if needed
+	// Convert NULL values to empty strings if needed
 	if name.Valid {
 		u.Name = name.String
 	} else {
 		u.Name = ""
 	}
 
-	log.Printf("GetUserByID called with id=%d, businessID=%d, role=%s", id, businessID, requestingUserRole)
+	if googleEmail.Valid {
+		u.GoogleEmail = googleEmail.String
+	} else {
+		u.GoogleEmail = ""
+	}
+
+	log.Printf("GetByID called with id=%d, businessID=%d, role=%s", id, businessID, requestingUserRole)
 	return u, nil
+}
+
+// GetUserByID is an alias for GetByID to maintain interface compatibility
+func (r *UserRepository) GetUserByID(ctx context.Context, id int, businessID int) (*user.User, error) {
+	return r.GetByID(ctx, id, businessID)
 }
 
 func (r *UserRepository) GetUsers(ctx context.Context, businessID int) ([]user.User, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, username, name, email, role, status, business_id, created_at, updated_at
+		SELECT id, username, name, email, google_email, role, status, business_id, created_at, updated_at
 		FROM users
 		WHERE business_id = $1
 		ORDER BY created_at DESC`, businessID)
@@ -127,8 +139,8 @@ func (r *UserRepository) GetUsers(ctx context.Context, businessID int) ([]user.U
 	var users []user.User
 	for rows.Next() {
 		var u user.User
-		var name, status sql.NullString
-		err := rows.Scan(&u.ID, &u.Username, &name, &u.Email, &u.Role, &status, &u.BusinessID, &u.CreatedAt, &u.UpdatedAt)
+		var name, status, googleEmail sql.NullString
+		err := rows.Scan(&u.ID, &u.Username, &name, &u.Email, &googleEmail, &u.Role, &status, &u.BusinessID, &u.CreatedAt, &u.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -141,6 +153,11 @@ func (r *UserRepository) GetUsers(ctx context.Context, businessID int) ([]user.U
 			u.Status = status.String
 		} else {
 			u.Status = ""
+		}
+		if googleEmail.Valid {
+			u.GoogleEmail = googleEmail.String
+		} else {
+			u.GoogleEmail = ""
 		}
 		users = append(users, u)
 	}
@@ -169,7 +186,7 @@ func (r *UserRepository) DeleteUser(ctx context.Context, id int) error {
 }
 
 func (r *UserRepository) UpdateUser(ctx context.Context, u *user.User) error {
-	existingUser, err := r.GetUserByID(ctx, u.ID, u.BusinessID)
+	existingUser, err := r.GetByID(ctx, u.ID, u.BusinessID)
 	if err != nil {
 		log.Printf("UpdateUser: Error retrieving existing user data: %v", err)
 		return err
@@ -184,6 +201,9 @@ func (r *UserRepository) UpdateUser(ctx context.Context, u *user.User) error {
 	if u.Email != "" {
 		existingUser.Email = u.Email
 	}
+	if u.GoogleEmail != "" {
+		existingUser.GoogleEmail = u.GoogleEmail
+	}
 	if u.Role != "" {
 		existingUser.Role = u.Role
 	}
@@ -193,9 +213,9 @@ func (r *UserRepository) UpdateUser(ctx context.Context, u *user.User) error {
 
 	_, err = r.db.ExecContext(ctx, `
         UPDATE users 
-        SET username = $1, name = $2, email = $3, role = $4, status = $5, updated_at = $6
-        WHERE id = $7`,
-		existingUser.Username, existingUser.Name, existingUser.Email,
+        SET username = $1, name = $2, email = $3, google_email = $4, role = $5, status = $6, updated_at = $7
+        WHERE id = $8`,
+		existingUser.Username, existingUser.Name, existingUser.Email, existingUser.GoogleEmail,
 		existingUser.Role, existingUser.Status, time.Now(), u.ID,
 	)
 
@@ -223,9 +243,9 @@ func (r *UserRepository) CreateUser(ctx context.Context, u *user.User, businessI
 		u.Username, u.Name, u.Email, u.Role, u.Status, businessID)
 
 	_, err = r.db.ExecContext(ctx, `
-        INSERT INTO users (username, name, email, password, role, status, business_id, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)`,
-		u.Username, u.Name, u.Email, string(hashedPassword), u.Role, u.Status, businessID, time.Now(),
+        INSERT INTO users (username, name, email, google_email, password, role, status, business_id, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)`,
+		u.Username, u.Name, u.Email, u.GoogleEmail, string(hashedPassword), u.Role, u.Status, businessID, time.Now(),
 	)
 
 	if err != nil {
@@ -340,4 +360,53 @@ func (r *UserRepository) GetStats(ctx context.Context) (map[string]int, error) {
 	stats["new"] = new
 
 	return stats, nil
+}
+
+func (r *UserRepository) GetByCredentials(ctx context.Context, username, password string) (*user.User, error) {
+	u := &user.User{}
+
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, username, name, email, google_email, password, role, status, business_id, created_at, updated_at
+		FROM users 
+		WHERE username = $1 AND status = 'active'`,
+		username,
+	).Scan(
+		&u.ID, &u.Username, &u.Name, &u.Email, &u.GoogleEmail, &u.Password, &u.Role, &u.Status, &u.BusinessID, &u.CreatedAt, &u.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, user.ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	// Check password
+	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)); err != nil {
+		return nil, user.ErrInvalidCredentials
+	}
+
+	return u, nil
+}
+
+func (r *UserRepository) GetByGoogleEmail(ctx context.Context, googleEmail string) (*user.User, error) {
+	u := &user.User{}
+
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, username, name, email, google_email, password, role, status, business_id, created_at, updated_at
+		FROM users 
+		WHERE google_email = $1 AND status = 'active'`,
+		googleEmail,
+	).Scan(
+		&u.ID, &u.Username, &u.Name, &u.Email, &u.GoogleEmail, &u.Password, &u.Role, &u.Status, &u.BusinessID, &u.CreatedAt, &u.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, user.ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	return u, nil
 }

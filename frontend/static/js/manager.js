@@ -252,6 +252,9 @@ async function loadDashboardData() {
             updateComparisonIndicator(indicators[1], percent(todayVisitors, yesterdayVisitors));
             updateComparisonIndicator(indicators[2], percent(todayAvgCheck, yesterdayAvgCheck));
         }
+
+        // Загружаем уведомления
+        await loadNotifications();
     } catch (error) {
         console.error('loadDashboardData error:', error.message);
         throw error;
@@ -286,6 +289,94 @@ function formatMoney(amount) {
     
     // Format with thousand separators
     return amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$& ').replace('.00', '') + ' ₸';
+}
+
+// Notification management functions
+async function loadNotifications() {
+    try {
+        const token = localStorage.getItem('token');
+        const container = document.getElementById('notifications-container');
+        
+        if (!container) {
+            console.error('Notifications container not found');
+            return;
+        }
+
+        // Load recent notifications
+        const response = await fetch('/api/manager/notifications', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to load notifications: ${response.status}`);
+        }
+
+        const notifications = await response.json();
+        displayNotifications(notifications);
+
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+        const container = document.getElementById('notifications-container');
+        if (container) {
+            container.innerHTML = '<div class="error">Ошибка загрузки уведомлений</div>';
+        }
+    }
+}
+
+function displayNotifications(notifications) {
+    const container = document.getElementById('notifications-container');
+    
+    if (!notifications || notifications.length === 0) {
+        container.innerHTML = '<div class="no-notifications">Нет новых уведомлений</div>';
+        return;
+    }
+
+    container.innerHTML = notifications.map(notification => {
+        const createdAt = new Date(notification.created_at).toLocaleString('ru-RU');
+        const statusClass = getNotificationStatusClass(notification.status);
+        const typeIcon = getNotificationTypeIcon(notification.type);
+        
+        return `
+            <div class="notification-item ${statusClass}">
+                ${typeIcon} 
+                <strong>${notification.subject}</strong> — ${notification.body}
+                <div class="notification-meta">
+                    ${createdAt} | Статус: ${translateNotificationStatus(notification.status)}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getNotificationTypeIcon(type) {
+    const icons = {
+        'low_inventory': '⚠️',
+        'new_hiring': '📋',
+        'weekly_report': '📊',
+        'daily_report': '📈',
+        'order_update': '🍽️',
+        'shift_alert': '⏰',
+        'system_alert': '🔧'
+    };
+    return icons[type] || '📄';
+}
+
+function getNotificationStatusClass(status) {
+    const classes = {
+        'pending': 'notification-pending',
+        'sent': 'notification-sent',
+        'failed': 'notification-failed'
+    };
+    return classes[status] || '';
+}
+
+function translateNotificationStatus(status) {
+    const translations = {
+        'pending': 'Ожидает отправки',
+        'sent': 'Отправлено',
+        'failed': 'Ошибка отправки'
+    };
+    return translations[status] || status;
 }
 
 function setupEventListeners() {
@@ -2155,7 +2246,7 @@ async function loadUsers() {
         const tbody = document.querySelector('#users-table tbody');
         if (!tbody) return;
         
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">Загрузка данных...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">Загрузка данных...</td></tr>';
         
         // Получаем фильтры, если они есть
         const userSearch = document.getElementById('userSearch');
@@ -2215,7 +2306,7 @@ async function loadUsers() {
         if (users.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="no-results">Нет пользователей</td>
+                    <td colspan="6" class="no-results">Нет пользователей</td>
                 </tr>`;
         } else {
             users.forEach(user => {
@@ -2226,8 +2317,8 @@ async function loadUsers() {
                 tr.innerHTML = `
                     <td>${user.username || ''}</td>
                     <td>${user.name || ''}</td>
-                    <td data-role="${user.role || ''}">${translateRole(user.role || '')}</td>
-                    <td><span class="status-${user.status || ''}">${translateStatus(user.status || '')}</span></td>
+                    <td>${user.google_email || '—'}</td>
+                    <td><span class="status-${user.status || ''}">${translateRole(user.role || '')}</span></td>
                     <td>${formattedCreatedAt}</td>
                     <td class="actions">
                         <button onclick="editUser(${user.id})" class="edit-btn" title="Редактировать">
@@ -2275,7 +2366,7 @@ async function loadUsers() {
         console.error('Error loading users:', error);
         const tbody = document.querySelector('#users-table tbody');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="7" class="error">${errorMessage}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="error">${errorMessage}</td></tr>`;
         }
         
         // Вместо всплывающего окна с ошибкой просто показываем сообщение в таблице
@@ -2356,6 +2447,7 @@ function showAddUserModal() {
             username: formData.get('username'),
             name: formData.get('name'),
             email: formData.get('email'),
+            google_email: formData.get('google_email') || '',
             password: formData.get('password'),
             role: formData.get('role'),
             status: 'active'

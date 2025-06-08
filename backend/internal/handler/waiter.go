@@ -30,15 +30,6 @@ func NewWaiterController(orderService order.Service, tableService table.Service,
 	}
 }
 
-func (c *WaiterController) GetDashboard(w http.ResponseWriter, r *http.Request) {
-	// Simple dashboard response
-	dashboard := map[string]string{
-		"message": "Waiter dashboard",
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(dashboard)
-}
-
 func (c *WaiterController) GetTables(w http.ResponseWriter, r *http.Request) {
 	businessID, exists := middleware.GetBusinessIDFromContext(r.Context())
 	if !exists {
@@ -94,7 +85,18 @@ func (c *WaiterController) UpdateTableStatus(w http.ResponseWriter, r *http.Requ
 
 	if err := c.tableService.UpdateTableStatus(r.Context(), tableID, statusUpdate, businessID); err != nil {
 		log.Printf("Error updating table status: %v", err)
-		http.Error(w, "Failed to update table status", http.StatusInternalServerError)
+
+		// Handle specific error types with appropriate user-friendly messages
+		switch err {
+		case table.ErrTableHasActiveOrders:
+			http.Error(w, "Стол имеет активные заказы", http.StatusBadRequest)
+		case table.ErrTableNotFound:
+			http.Error(w, "Table not found", http.StatusNotFound)
+		case table.ErrInvalidTableData:
+			http.Error(w, "Invalid table data", http.StatusBadRequest)
+		default:
+			http.Error(w, "Failed to update table status", http.StatusInternalServerError)
+		}
 		return
 	}
 

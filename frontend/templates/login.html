@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../static/css/login.css">
     <script src="../static/js/common.js" defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <div class="form-container">
@@ -28,6 +29,18 @@
                 <a href="#" class="link-primary">Забыли пароль?</a>
             </div>
             <button type="submit" class="submit-button">Вход</button>
+            
+            <div class="divider">
+                <span>или</span>
+            </div>
+            
+            <!-- Google Sign-In Button -->
+            <div id="g_id_onload"
+                 data-client_id="373225565969-q2grrq7c111hdqs5gfk7kdkfrpipvur2.apps.googleusercontent.com"
+                 data-callback="handleGoogleLogin"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
         </form>
     </div>
     <script>
@@ -111,6 +124,41 @@
         
         errorElement.textContent = message;
         errorElement.style.display = 'block';
+    }
+    
+    // Handle Google OAuth login
+    function handleGoogleLogin(response) {
+        // Extract the access token from the Google response
+        // Note: For the Google Identity API, we need to handle the credential differently
+        
+        fetch('/api/login/google', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                google_token: response.credential // Google sends credential instead of access_token
+            }),
+            credentials: 'include'
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                throw new Error('Google вход не удался. Убедитесь, что ваш Google email добавлен менеджером.');
+            }
+        })
+        .then(data => {
+            // Store token and role
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('role', data.role);
+            
+            // Redirect to the appropriate page based on the server response
+            window.location.href = data.redirect;
+        })
+        .catch(error => {
+            showError(error.message);
+        });
     }
     </script>
 </body>

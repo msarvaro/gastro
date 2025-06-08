@@ -11,6 +11,11 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+// GoogleLoginRequest represents a Google OAuth login request
+type GoogleLoginRequest struct {
+	GoogleToken string `json:"google_token"`
+}
+
 // LoginResponse represents a login response
 type LoginResponse struct {
 	Token      string `json:"token"`
@@ -72,6 +77,12 @@ type PerformanceMetrics struct {
 type Service interface {
 	// Login authenticates a user and returns a token
 	Login(ctx context.Context, req LoginRequest) (*LoginResponse, error)
+
+	// GoogleLogin authenticates a user via Google OAuth and returns a token
+	GoogleLogin(ctx context.Context, req GoogleLoginRequest) (*LoginResponse, error)
+
+	// GetUserByGoogleEmail retrieves a user by Google email
+	GetUserByGoogleEmail(ctx context.Context, googleEmail string) (*User, error)
 
 	// GetUserByID retrieves a user by ID
 	GetUserByID(ctx context.Context, id int, businessID int) (*User, error)

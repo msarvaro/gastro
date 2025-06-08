@@ -18,4 +18,7 @@ type Service interface {
 
 	// DeleteInventory deletes an inventory item
 	DeleteInventory(ctx context.Context, id int, businessID int) error
+
+	// CheckLowStockLevels checks for items with low stock and returns them
+	CheckLowStockLevels(ctx context.Context, businessID int) ([]Inventory, error)
 }

@@ -29,6 +29,24 @@ type Config struct {
 		Static      string
 		Templates   string
 	}
+	Google GoogleConfig
+	SMTP   SMTPConfig
+}
+
+// GoogleConfig contains Google OAuth configuration
+type GoogleConfig struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURL  string
+}
+
+// SMTPConfig contains SMTP configuration for email notifications
+type SMTPConfig struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	From     string
 }
 
 // LoadConfig loads configuration from .env file
@@ -124,6 +142,50 @@ func LoadConfig() (*Config, error) {
 	}
 
 	frontendPath, envErr := getRequiredEnv("FRONTEND_PATH")
+	if envErr != nil {
+		return nil, envErr
+	}
+
+	config.Google.ClientID, envErr = getRequiredEnv("GOOGLE_CLIENT_ID")
+	if envErr != nil {
+		return nil, envErr
+	}
+	config.Google.ClientSecret, envErr = getRequiredEnv("GOOGLE_CLIENT_SECRET")
+	if envErr != nil {
+		return nil, envErr
+	}
+	config.Google.RedirectURL, envErr = getRequiredEnv("GOOGLE_REDIRECT_URL")
+	if envErr != nil {
+		return nil, envErr
+	}
+
+	// SMTP configuration
+	config.SMTP.Host, envErr = getRequiredEnv("SMTP_HOST")
+	if envErr != nil {
+		return nil, envErr
+	}
+
+	smtpPortStr, envErr := getRequiredEnv("SMTP_PORT")
+	if envErr != nil {
+		return nil, envErr
+	}
+	smtpPort, err := strconv.Atoi(smtpPortStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid SMTP_PORT, must be an integer: %v", err)
+	}
+	config.SMTP.Port = smtpPort
+
+	config.SMTP.Username, envErr = getRequiredEnv("SMTP_USERNAME")
+	if envErr != nil {
+		return nil, envErr
+	}
+
+	config.SMTP.Password, envErr = getRequiredEnv("SMTP_PASSWORD")
+	if envErr != nil {
+		return nil, envErr
+	}
+
+	config.SMTP.From, envErr = getRequiredEnv("SMTP_FROM")
 	if envErr != nil {
 		return nil, envErr
 	}

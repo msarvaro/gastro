@@ -1881,10 +1881,42 @@ function formatShiftDate(dateString) {
 async function updateTableStatus(tableId, newStatus) {
     try {
         const response = await window.api.call(`/api/waiter/tables/${tableId}/status`, 'PUT', { status: newStatus });
-        return true; // Success
+        return { success: true }; // Success
     } catch (error) {
         console.error('Error updating table status:', error);
-        return false; // Failed
+        
+        // Try to extract error message from the error
+        let errorMessage = 'Ошибка при обновлении статуса стола';
+        
+        // Check if this is a fetch error with response text
+        if (error.message && error.message.includes('API error:')) {
+            // For more specific error handling, we need to modify the API call to get response text
+            try {
+                const token = localStorage.getItem('token');
+                const businessId = window.api.getBusinessId();
+                
+                const options = {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-Business-ID': businessId
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ status: newStatus })
+                };
+                
+                const response = await fetch(`/api/waiter/tables/${tableId}/status`, options);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    errorMessage = errorText || errorMessage;
+                }
+            } catch (fetchError) {
+                console.error('Failed to get specific error message:', fetchError);
+            }
+        }
+        
+        return { success: false, error: errorMessage }; // Failed with specific error
     }
 }
 
@@ -1975,9 +2007,9 @@ function showTableStatusModal(tableId, currentStatus) {
             
             if (newStatus) {
                 const messageElement = modal.querySelector('.modal__message');
-                const success = await updateTableStatus(tableId, newStatus);
+                const result = await updateTableStatus(tableId, newStatus);
                 
-                if (success) {
+                if (result.success) {
                     // Update was successful
                     messageElement.textContent = 'Статус стола успешно обновлен';
                     messageElement.style.color = 'green';
@@ -1992,8 +2024,8 @@ function showTableStatusModal(tableId, currentStatus) {
                         messageElement.style.display = 'none';
                     }, 1500);
                 } else {
-                    // Handle error
-                    messageElement.textContent = 'Ошибка при обновлении статуса стола';
+                    // Handle error with specific message
+                    messageElement.textContent = result.error || 'Ошибка при обновлении статуса стола';
                     messageElement.style.color = 'red';
                     messageElement.style.display = 'block';
                 }

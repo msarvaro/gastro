@@ -150,9 +150,6 @@ func (r *TableRepository) UpdateTableStatus(ctx context.Context, tableID int, st
 	}
 
 	// updated_at is always set
-	// Note: The original query used `updated_at = $2`. If `updated_at` is a specific column,
-	// it should be explicitly part of the SET clause.
-	// Assuming table `tables` also has an `updated_at` column that needs updating.
 	result, err := r.db.ExecContext(ctx, `UPDATE tables 
 						   SET status = $1, occupied_at = $2, reserved_at = $3 
 						   WHERE id = $4`,

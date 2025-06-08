@@ -264,6 +264,44 @@ body {
     text-decoration: underline;
     font-weight: bold;
 }
+
+.notification-meta {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+}
+
+.notification-pending {
+    border-left: 3px solid #F79009;
+    background: #FFF4ED;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.notification-sent {
+    border-left: 3px solid #027A48;
+    background: #E6F9F0;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.notification-failed {
+    border-left: 3px solid #D92D20;
+    background: #FEF0EE;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.loading, .error, .no-notifications {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-style: italic;
+}
+
+.error {
+    color: #D92D20;
+}
 /* Inventory Table */
 .table-section {
     background: #fff;

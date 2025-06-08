@@ -140,3 +140,27 @@ func (s *InventoryService) DeleteInventory(ctx context.Context, id int, business
 
 	return s.repo.DeleteInventory(ctx, id, businessID)
 }
+
+func (s *InventoryService) CheckLowStockLevels(ctx context.Context, businessID int) ([]inventory.Inventory, error) {
+	if businessID <= 0 {
+		return nil, inventory.ErrInvalidInventoryData
+	}
+
+	// Get all inventory items
+	items, err := s.repo.GetAllInventory(ctx, businessID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter items that are at or below minimum quantity
+	var lowStockItems []inventory.Inventory
+	for _, item := range items {
+		if item.Quantity <= item.MinQuantity {
+			lowStockItems = append(lowStockItems, item)
+			log.Printf("Low stock detected: %s (ID: %d) - Current: %.2f, Minimum: %.2f",
+				item.Name, item.ID, item.Quantity, item.MinQuantity)
+		}
+	}
+
+	return lowStockItems, nil
+}

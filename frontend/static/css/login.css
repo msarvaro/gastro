@@ -145,6 +145,37 @@ body {
   background-color: #0056c7;
 }
 
+/* Google OAuth Styles */
+.divider {
+  position: relative;
+  text-align: center;
+  margin: 24px 0;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #e5e7eb;
+}
+
+.divider span {
+  background-color: white;
+  padding: 0 16px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* Google Sign-In Button Container */
+.g_id_signin {
+  margin: 16px 0;
+  display: flex;
+  justify-content: center;
+}
+
 .error-message {
   background-color: #ffebee;
   color: #d32f2f;

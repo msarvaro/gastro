@@ -30,4 +30,7 @@ type Repository interface {
 
 	// GetStats retrieves general user statistics
 	GetStats(ctx context.Context) (map[string]int, error)
+
+	// GetByGoogleEmail finds a user by Google email
+	GetByGoogleEmail(ctx context.Context, googleEmail string) (*User, error)
 }

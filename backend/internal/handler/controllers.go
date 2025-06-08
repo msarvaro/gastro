@@ -4,6 +4,7 @@ import (
 	"restaurant-management/internal/domain/business"
 	"restaurant-management/internal/domain/inventory"
 	"restaurant-management/internal/domain/menu"
+	"restaurant-management/internal/domain/notification"
 	"restaurant-management/internal/domain/order"
 	"restaurant-management/internal/domain/request"
 	"restaurant-management/internal/domain/shift"
@@ -23,9 +24,10 @@ type Controllers struct {
 	Menu      *MenuController
 	Manager   *ManagerController
 	Shift     *ShiftController
-	Table     *TableController
-	Waiter    *WaiterController
-	Kitchen   *KitchenController
+
+	Waiter       *WaiterController
+	Kitchen      *KitchenController
+	Notification *NotificationController
 
 	// Controllers now using services
 	Supplier *SupplierController
@@ -44,20 +46,21 @@ func NewControllers(
 	supplierService supplier.Service,
 	requestService request.Service,
 	waiterService waiter.Service,
+	notificationService notification.Service,
 ) *Controllers {
 	return &Controllers{
-		Auth:      NewAuthController(userService),
-		Admin:     NewAdminController(userService),
-		Business:  NewBusinessController(businessService),
-		Dashboard: NewDashboardController(businessService, userService, orderService, tableService, inventoryService),
-		Inventory: NewInventoryController(inventoryService),
-		Menu:      NewMenuController(menuService),
-		Manager:   NewManagerController(orderService),
-		Shift:     NewShiftController(shiftService),
-		Table:     NewTableController(tableService),
-		Waiter:    NewWaiterController(orderService, tableService, userService, waiterService),
-		Kitchen:   NewKitchenController(orderService, inventoryService),
-		Supplier:  NewSupplierController(supplierService),
-		Request:   NewRequestController(requestService),
+		Auth:         NewAuthController(userService),
+		Admin:        NewAdminController(userService),
+		Business:     NewBusinessController(businessService),
+		Dashboard:    NewDashboardController(businessService, userService, orderService, tableService, inventoryService),
+		Inventory:    NewInventoryController(inventoryService),
+		Menu:         NewMenuController(menuService),
+		Manager:      NewManagerController(orderService),
+		Shift:        NewShiftController(shiftService),
+		Waiter:       NewWaiterController(orderService, tableService, userService, waiterService),
+		Kitchen:      NewKitchenController(orderService, inventoryService),
+		Notification: NewNotificationController(notificationService),
+		Supplier:     NewSupplierController(supplierService),
+		Request:      NewRequestController(requestService),
 	}
 }
