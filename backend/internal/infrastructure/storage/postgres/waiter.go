@@ -96,7 +96,7 @@ func (r *WaiterRepository) GetWaiterProfile(ctx context.Context, waiterID int, b
 }
 
 func (r *WaiterRepository) GetWaiterCurrentAndUpcomingShifts(ctx context.Context, waiterID int, businessID int) (*waiter.ShiftWithEmployees, []waiter.ShiftWithEmployees, error) {
-	now := time.Now()
+	now := time.Now().UTC().Add(5 * time.Hour)
 	currentDate := now.Format("2006-01-02")
 	currentTime := now.Format("15:04:05")
 
